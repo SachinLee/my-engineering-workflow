@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Workflow"
+  short_description: "Route work through records and quality gates"
+  default_prompt: "Use $run-engineering-workflow to route this engineering task."

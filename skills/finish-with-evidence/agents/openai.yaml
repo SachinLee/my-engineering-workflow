@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finish With Evidence"
+  short_description: "Verify delivery and preserve implementation evidence"
+  default_prompt: "Use $finish-with-evidence to verify and record this completed task."

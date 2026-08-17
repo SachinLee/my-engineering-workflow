@@ -1,0 +1,4 @@
+interface:
+  display_name: "Independent Implementation Review"
+  short_description: "Review correctness, security, tests, and complexity"
+  default_prompt: "Use $review-implementation to independently review the active Trellis task and return evidence-backed findings."

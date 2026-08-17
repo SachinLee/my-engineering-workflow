@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clarify Requirements"
+  short_description: "Turn ambiguity into testable requirements"
+  default_prompt: "Use $clarify-requirements to clarify this change before implementation."

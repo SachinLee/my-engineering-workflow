@@ -1,0 +1,9 @@
+{
+  "name": "my-engineering-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A traceable multi-model engineering workflow for Trellis, ECC, Matt Pocock skills, Ponytail, Codex, Claude Code, and OMP.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

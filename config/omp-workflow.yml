@@ -1,0 +1,40 @@
+# Load this file explicitly with `omp --config <path>`.
+skills:
+  includeSkills:
+    - run-engineering-workflow
+    - clarify-requirements
+    - plan-solution
+    - review-implementation
+    - finish-with-evidence
+    - trellis-*
+    - intent-driven-development
+    - tdd-workflow
+    - verification-loop
+    - security-review
+    - coding-standards
+    - e2e-testing
+    - grilling
+    - domain-modeling
+    - codebase-design
+    - code-review
+    - ponytail-review
+    - ponytail-audit
+    - "*-tdd"
+    - "*-verification"
+    - "*-security"
+    - "*-code-review"
+
+task:
+  agentModelOverrides:
+    workflow-planner: "@plan"
+    trellis-implement: "@task"
+    trellis-check: "@advisor"
+    workflow-reviewer: "@advisor"
+  agentPrewalk:
+    trellis-implement: false
+
+plan:
+  defaultOnStartup: false
+
+prewalk:
+  enabled: false

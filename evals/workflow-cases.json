@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "ambiguous-request",
+      "state": "planning_without_prd",
+      "expected_stage": "clarify-requirements",
+      "forbidden": ["edit production code", "create docs/plans"]
+    },
+    {
+      "name": "accepted-requirements-without-solution",
+      "state": "planning_with_prd_without_reviewed_solution",
+      "expected_stage": "plan-solution",
+      "forbidden": ["edit production code", "create second task system"]
+    },
+    {
+      "name": "approved-plan-ready-for-tdd",
+      "state": "in_progress_without_code_changes",
+      "expected_stage": "tdd-implementation",
+      "omp_agent": "trellis-implement",
+      "omp_role": "@task"
+    },
+    {
+      "name": "implementation-needs-independent-review",
+      "state": "code_changed_without_independent_review",
+      "expected_stage": "review-implementation",
+      "omp_agent": "workflow-reviewer",
+      "omp_role": "@advisor"
+    },
+    {
+      "name": "review-found-material-defect",
+      "state": "review_has_high_finding",
+      "expected_stage": "remediate-and-reverify",
+      "forbidden": ["claim complete", "archive task"]
+    },
+    {
+      "name": "verification-command-unavailable",
+      "state": "ready_to_record_with_missing_check",
+      "expected_stage": "finish-with-evidence",
+      "required_evidence_status": "NOT RUN"
+    },
+    {
+      "name": "repository-without-trellis",
+      "state": "trellis_absent",
+      "expected_stage": "report-unavailable-and-follow-local-workflow",
+      "forbidden": ["initialize Trellis silently"]
+    }
+  ]
+}
