@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "cases": [
     {
       "name": "ambiguous-request",
@@ -44,6 +44,54 @@
       "state": "trellis_absent",
       "expected_stage": "report-unavailable-and-follow-local-workflow",
       "forbidden": ["initialize Trellis silently"]
+    },
+    {
+      "name": "no-current-task",
+      "state": "no_task",
+      "expected_stage": "request-task-selection-or-consent",
+      "forbidden": ["select arbitrary active task", "scan all task directories"]
+    },
+    {
+      "name": "resume-existing-task",
+      "state": "current_task_available",
+      "expected_stage": "resume-current-task",
+      "required_context": ["task_path", "phase", "status"]
+    },
+    {
+      "name": "planner-with-explicit-task",
+      "state": "planning_with_prd",
+      "expected_stage": "plan-solution",
+      "required_handoff": ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]
+    },
+    {
+      "name": "implementation-with-one-slice",
+      "state": "in_progress_with_approved_plan",
+      "expected_stage": "tdd-implementation",
+      "required_handoff": ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]
+    },
+    {
+      "name": "review-with-diff-evidence",
+      "state": "code_changed_with_evidence",
+      "expected_stage": "review-implementation",
+      "required_handoff": ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]
+    },
+    {
+      "name": "missing-task-path",
+      "state": "dispatch_without_task_path",
+      "expected_stage": "invalid-dispatch",
+      "required_status": "INVALID"
+    },
+    {
+      "name": "named-task-context-unavailable",
+      "state": "resolver_not_supported",
+      "expected_stage": "explicit-path-compatibility",
+      "required_behavior": "warn-and-fallback"
+    },
+    {
+      "name": "model-fallback",
+      "state": "requested_model_unavailable",
+      "expected_stage": "continue-with-observable-fallback",
+      "required_metadata": ["requested_model", "effective_model", "fallback"]
     }
   ]
 }

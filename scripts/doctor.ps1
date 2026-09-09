@@ -19,6 +19,11 @@ $skillNames = @(
   "finish-with-evidence"
 )
 
+$ompQualitySkillNames = @(
+  "tdd-workflow",
+  "verification-loop",
+  "security-review"
+ )
 if ($Scope -eq "Project") {
   if (-not $ProjectPath) {
     throw "ProjectPath is required when Scope is Project."
@@ -72,6 +77,30 @@ if ($Harness -in @("OMP", "Both", "All")) {
       $errors.Add("Missing OMP agent: $agent")
     }
   }
+  foreach ($agent in @("workflow-planner", "workflow-reviewer")) {
+    $agentPath = Join-Path $ompRoot "agents\$agent.md"
+    if (Test-Path -LiteralPath $agentPath -PathType Leaf) {
+      $agentBody = Get-Content -Raw -LiteralPath $agentPath
+      if ($agentBody -notmatch "Active task:") {
+        $errors.Add("OMP agent is missing the Active task handoff contract: $agent")
+      }
+      if ($agent -eq "workflow-planner" -and -not ($agentBody -match "Assigned slice:" -and $agentBody -match "Phase:" -and $agentBody -match "Read:" -and $agentBody -match "Must preserve:")) {
+        $errors.Add("OMP planner is missing bounded handoff fields: $agent")
+      }
+      if ($agent -eq "workflow-planner" -and $agentBody -notmatch "PLANNING_STATUS: INVALID") {
+        $errors.Add("OMP planner is missing invalid-dispatch behavior: $agent")
+      }
+      if ($agent -eq "workflow-reviewer" -and -not ($agentBody -match "Assigned slice:" -and $agentBody -match "Phase:" -and $agentBody -match "Read:" -and $agentBody -match "Must preserve:" -and $agentBody -match "Review scope:" -and $agentBody -match "Evidence:")) {
+        $errors.Add("OMP reviewer is missing bounded handoff fields: $agent")
+      }
+      if ($agent -eq "workflow-reviewer" -and $agentBody -notmatch "REVIEW_STATUS: INVALID") {
+        $errors.Add("OMP reviewer is missing invalid-dispatch behavior: $agent")
+      }
+      if ($agent -eq "workflow-reviewer" -and $agentBody -match "tools:.*(?:write|edit)") {
+        $errors.Add("OMP reviewer must remain read-only: $agent")
+      }
+    }
+  }
 
   $overlay = Join-Path $ompRoot "engineering-workflow.yml"
   $launcher = Join-Path $ompRoot "start-engineering-workflow.py"
@@ -88,6 +117,14 @@ if ($Harness -in @("OMP", "Both", "All")) {
       }
     }
 
+    foreach ($skill in $ompQualitySkillNames) {
+      if ($body -notmatch [regex]::Escape("- $skill")) {
+        $errors.Add("OMP overlay is missing quality skill baseline: $skill")
+      }
+    }
+    if ($body -notmatch "Context mode:") {
+      $warnings.Add("OMP overlay does not declare its pointer-based task context strategy.")
+    }
     if ($ompCommand) {
       $previousConfigFiles = $env:PI_CONFIG_FILES
       try {
@@ -106,6 +143,11 @@ if ($Harness -in @("OMP", "Both", "All")) {
             foreach ($skill in $skillNames) {
               if ($skill -notin $included) {
                 $errors.Add("Effective OMP skill whitelist is missing: $skill")
+              }
+            }
+            foreach ($skill in $ompQualitySkillNames) {
+              if ($skill -notin $included) {
+                $errors.Add("Effective OMP skill whitelist is missing quality baseline: $skill")
               }
             }
 

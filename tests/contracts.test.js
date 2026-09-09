@@ -65,6 +65,13 @@ test("router preserves Trellis state and delegates quality work", () => {
   assert.match(router, /workflow-planner/);
   assert.match(router, /trellis-implement/);
   assert.match(router, /workflow-reviewer/);
+  assert.match(router, /lightweight.*main session/s);
+  assert.match(router, /standard.*main session/s);
+  assert.match(router, /critical.*full gated path/s);
+  assert.match(router, /at most one live writer/);
+  assert.match(router, /After 10 minutes without progress/);
+  assert.match(router, /Do not automatically re-dispatch/);
+  assert.match(router, /do not poll `hub jobs`, `hub list`/);
   assert.match(router, /py -3/);
   assert.match(router, /WindowsApps alias/);
   assert.match(router, /Never use the `eval` Python kernel/);
@@ -117,6 +124,7 @@ test("profiles provide lightweight, standard, and critical gates", () => {
   }
   assert.match(profiles, /independent review/i);
   assert.match(profiles, /@task/);
+  assert.match(profiles, /Do not run both by default/);
 });
 
 test("independent review leads with evidence-backed findings", () => {
@@ -141,12 +149,96 @@ test("OMP adapter limits skills and separates model roles", () => {
   assert.match(config, /trellis-check: "@advisor"/);
   assert.match(config, /workflow-reviewer: "@advisor"/);
   assert.match(config, /prewalk:[\s\S]*enabled: false/);
+  assert.match(config, /maxConcurrency: 2/);
+  assert.match(config, /maxRuntimeMs: 900000/);
+  assert.match(config, /agentIdleTtlMs: 600000/);
+  assert.match(config, /softRequestBudget: 80/);
   assert.match(planner, /model: "@plan"/);
   assert.match(planner, /autoloadSkills:.*plan-solution/);
   assert.match(planner, /autoloadSkills:.*trellis-brainstorm/);
   assert.match(reviewer, /model: "@advisor"/);
   assert.match(reviewer, /autoloadSkills:.*review-implementation/);
   assert.doesNotMatch(reviewer, /tools:.*(?:write|edit)/);
+});
+
+test("OMP dispatches carry a bounded, explicit task handoff", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const planner = read(".omp/agents/workflow-planner.md");
+  const reviewer = read(".omp/agents/workflow-reviewer.md");
+
+  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
+    assert.match(router, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(router, /requested_model/);
+  assert.match(router, /effective_model/);
+  assert.match(router, /fallback/);
+  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
+    assert.match(planner, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(planner, /PLANNING_STATUS: INVALID/);
+  assert.match(planner, /do not scan.*tasks|do not.*scan.*task directories/i);
+  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]) {
+    assert.match(reviewer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(reviewer, /REVIEW_STATUS: INVALID/);
+  assert.match(reviewer, /do not scan.*tasks|do not.*scan.*task directories/i);
+});
+
+test("OMP overlay preserves the full quality skill baseline", () => {
+  const config = read("config/omp-workflow.yml");
+  for (const skill of ["tdd-workflow", "verification-loop", "security-review"]) {
+    assert.match(config, new RegExp(`^    - ${skill}$`, "m"));
+  }
+  assert.match(config, /contextMode|context mode|task context/i);
+});
+
+test("behavior cases cover bounded context and fallback observability", () => {
+  const fixture = JSON.parse(read("evals/workflow-cases.json"));
+  assert.equal(fixture.schema_version, 2);
+  const allowedHandoffFields = new Set([
+    "Active task:",
+    "Assigned slice:",
+    "Phase:",
+    "Read:",
+    "Must preserve:",
+    "May modify:",
+    "Verification:",
+    "Review scope:",
+    "Evidence:",
+  ]);
+  for (const entry of fixture.cases) {
+    assert.equal(typeof entry.name, "string");
+    assert.equal(typeof entry.state, "string");
+    assert.equal(typeof entry.expected_stage, "string");
+    if (entry.required_handoff) {
+      assert.ok(entry.required_handoff.length > 0);
+      for (const field of entry.required_handoff) {
+        assert.ok(allowedHandoffFields.has(field), `unknown handoff field: ${field}`);
+      }
+    }
+  }
+  const expectedHandoffs = new Map([
+    ["planner-with-explicit-task", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]],
+    ["implementation-with-one-slice", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]],
+    ["review-with-diff-evidence", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]],
+  ]);
+  for (const [name, requiredFields] of expectedHandoffs) {
+    const entry = fixture.cases.find((candidate) => candidate.name === name);
+    assert.deepEqual(entry.required_handoff, requiredFields);
+  }
+
+  for (const name of [
+    "no-current-task",
+    "resume-existing-task",
+    "planner-with-explicit-task",
+    "implementation-with-one-slice",
+    "review-with-diff-evidence",
+    "missing-task-path",
+    "named-task-context-unavailable",
+    "model-fallback",
+  ]) {
+    assert.ok(fixture.cases.some((entry) => entry.name === name), `missing behavior case for ${name}`);
+  }
 });
 
 test("Claude Code plugin maps planning and review without replacing Trellis agents", () => {
@@ -185,8 +277,8 @@ test("workflow behavior cases cover every state transition and failure gate", ()
   const fixture = JSON.parse(read("evals/workflow-cases.json"));
   const stages = new Set(fixture.cases.map((entry) => entry.expected_stage));
 
-  assert.equal(fixture.schema_version, 1);
-  assert.equal(fixture.cases.length, 7);
+  assert.equal(fixture.schema_version, 2);
+  assert.ok(fixture.cases.length >= 7);
   for (const stage of [
     "clarify-requirements",
     "plan-solution",
@@ -228,6 +320,9 @@ test("tooling supports synchronized install, diagnosis, and Python OMP launch", 
   assert.match(doctor, /claude.*--version/is);
   assert.match(doctor, /Missing Claude agent/);
   assert.match(doctor, /Missing Trellis Claude agent/);
+  assert.match(doctor, /foreach \(\$agent in \$requiredAgents\) \{[\s\S]*?\n  \}\r?\n  foreach \(\$agent in @\("workflow-planner", "workflow-reviewer"\)\)/);
+  assert.equal((doctor.match(/OMP agent is missing the Active task handoff contract/g) || []).length, 1);
+  assert.match(doctor, /Effective OMP skill whitelist is missing quality baseline/);
   assert.match(doctor, /Missing OMP Python launcher/);
   assert.match(installer, /start-engineering-workflow\.py/);
   assert.match(installer, /start-engineering-workflow\.ps1/);
@@ -281,5 +376,7 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /claude --model sonnet/);
   assert.match(readme, /trellis-implement.*`@task`/s);
   assert.match(readme, /skills\.includeSkills/);
+  assert.match(readme, /普通 `omp`.*默认设置/s);
+  assert.match(readme, /ompw.*显式指定项目 overlay/s);
   assert.match(readme, /doctor\.ps1/);
 });

@@ -21,6 +21,22 @@ workflow systems.
 | `docs/adr/` | Architecture decisions | Hard-to-reverse decisions and rationale |
 | Code and tests | Git | Executable implementation and behavioral proof |
 
+## Context Loading Contract
+
+Use three context tiers:
+
+| Tier | When loaded | Contents |
+| --- | --- | --- |
+| Project context | Session start | Project identity, workflow rules, and relevant spec index |
+| Task pointer | Session start or resume | One task path, phase, status, and short summary |
+| Task package | Activation or dispatch | Role- and slice-scoped artifact sections, file bounds, invariants, and checks |
+
+The task package is derived from the active Trellis artifacts and is not a second
+durable record. Refresh it after requirement clarification, plan approval, slice
+completion, review findings, and cross-session resume. When Trellis cannot resolve a
+named task package, use explicit task paths and bounded artifact sections as the
+compatibility mode and record the limitation.
+
 Issue trackers may link to a Trellis task, but must not duplicate its design and
 implementation record.
 
