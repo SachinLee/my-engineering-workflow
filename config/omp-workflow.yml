@@ -1,4 +1,7 @@
 # Load this file explicitly with `omp --config <path>`.
+# Context mode: pointer at session start; task artifacts are loaded by dispatch.
+# Default route is lightweight/standard inline; escalate to critical explicitly.
+# Named-task resolver is optional; explicit task paths are the compatibility fallback.
 skills:
   includeSkills:
     - run-engineering-workflow
@@ -25,6 +28,12 @@ skills:
     - "*-code-review"
 
 task:
+  # Keep ordinary OMP work bounded; critical tasks may opt into a larger budget.
+  maxConcurrency: 2
+  maxRuntimeMs: 900000
+  agentIdleTtlMs: 600000
+  maxRecursionDepth: 1
+  softRequestBudget: 80
   agentModelOverrides:
     workflow-planner: "@plan"
     trellis-implement: "@task"

@@ -85,6 +85,49 @@ Use this shape:
 - Rollback: how to remove or disable this slice safely
 ```
 
+#### Subagent Handoff
+
+Every slice dispatched through OMP or another agent-capable harness must include:
+
+```markdown
+Active task: .trellis/tasks/<task-id>/
+Assigned slice: Slice N / AC-XXX
+Phase: implement
+
+Required artifacts:
+- prd.md#AC-XXX
+- design.md#relevant-section
+- implement.md#slice-N
+
+Allowed files:
+- path/to/production-file
+- path/to/test-file
+
+Forbidden files:
+- unrelated paths
+- global task state
+
+Invariants:
+- behavior or contract that must remain true
+
+Verification commands:
+- focused test command
+- required lint, typecheck, integration, or build command
+
+Escalation conditions:
+- decision or change outside the approved boundary
+
+Evidence to return:
+- files changed
+- RED/GREEN commands and outcomes
+- remaining risks or unavailable checks
+```
+
+The main session supplies the task path and slice. The subagent must not search all
+Trellis tasks, choose a different slice, change `CURRENT TASK`, or create another
+handoff record. If the task path or assigned slice is missing or unreadable, the
+subagent returns an invalid status and does not edit production code.
+
 Map every required acceptance criterion to at least one slice or an explicit
 non-code verification step. Do not use `AC-001` as a placeholder when the PRD
 has different IDs.

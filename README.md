@@ -329,8 +329,17 @@ ompw() {
 重新加载 shell 配置后，从任意项目根目录只需运行 `ompw`。额外的 OMP 参数会原样转发，
 例如 `ompw --continue` 或 `ompw --model opus`。
 
-必须通过 Python launcher 或显式 `--config` 启动 OMP。普通 `omp` 启动无法保证加载本仓库的
-skill 白名单、`prewalk` 设置和 `@plan` / `@task` / `@advisor` 角色映射。
+完成用户级安装后，普通 `omp` 也会读取 `~/.omp/agent/config.yml` 中的本工作流默认设置，加载 skill 白名单、`prewalk` 设置和 `@plan` / `@task` / `@advisor` 角色映射。重新启动 OMP 会话后直接运行：
+
+```powershell
+omp
+```
+
+`ompw` 仍然保留，适合在未安装用户级默认配置的机器上，或需要显式指定项目 overlay 时使用：
+
+```powershell
+ompw --continue
+```
 
 ### `ompw` 启动后怎么用
 
@@ -631,9 +640,8 @@ RED 测试 -> 最小实现 -> GREEN -> 重构 -> Trellis/ECC 验证
 范围、升级和最终决策。
 
 ### 5. 独立复核
-
-普通行为变更和所有 `critical` 任务在完成前执行：
-
+`lightweight` 默认不派独立 reviewer。`standard` 在项目原生检查不足或确实需要
+fresh context 时执行一次 `review-implementation`；`critical` 任务必须执行：
 ```text
 使用 $review-implementation 从独立上下文复核当前实现。
 ```
@@ -668,8 +676,8 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 | 等级 | 适用场景 | 主要要求 |
 | --- | --- | --- |
 | `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查 |
-| `standard` | 普通功能、bug fix、重构 | RED/GREEN、测试、lint、类型、构建、Spec 和复杂度 review |
-| `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E |
+| `standard` | 普通功能、bug fix、重构 | RED/GREEN、目标测试、必要的 lint/类型/构建、Spec；`trellis-check` 与独立 review 二选一 |
+| `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E；必须独立 review |
 
 详细配置随主路由打包在
 [quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md)。风险等级

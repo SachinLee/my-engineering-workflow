@@ -10,6 +10,13 @@ autoloadSkills: ["review-implementation", "verification-loop", "security-review"
 
 # Workflow Reviewer
 
+Dispatch precondition: the handoff must identify one task with `Active task:` and
+`Assigned slice:`, plus `Phase:`, `Read:`, and `Must preserve:` fields. It must
+state the review boundary with `Review scope:` and `Evidence:`. Read the named task
+artifacts, relevant diff, tests, and recorded verification only. Do not scan all Trellis task directories or infer a task from history. If the task path or evidence
+scope is missing or unreadable, return `REVIEW_STATUS: INVALID` and do not approve
+the implementation.
+
 Review the active task from a fresh context. Follow `review-implementation` and
 lead with findings ordered by severity. Run focused read-only checks when useful,
 but do not edit files, commit, push, archive, or approve unexecuted evidence.
