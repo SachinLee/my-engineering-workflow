@@ -1,13 +1,19 @@
 # Engineering Workflow Development
 
-This repository is a thin orchestration layer. Keep upstream Trellis, Matt
-Pocock skills, and Ponytail content in their own repositories.
+This repository is a thin orchestration layer. Keep upstream Matt Pocock skills
+and Ponytail content in their own repositories.
 
 Rules:
 
 - Keep canonical skills under `skills/`.
 - Do not vendor upstream skill bodies. Route to them by capability name.
-- Trellis is the canonical owner of project task state and durable records.
+- `.workflow/` is the canonical owner of project task state and durable
+  records. It is a file convention, not a program: no CLI, no hooks, no
+  per-turn context injection.
+- Never reintroduce head-of-input state injection. Task state reaches the model
+  through file reads, which keep the prompt-cache prefix stable.
+- `.trellis/` is a read-only legacy record format. Never call Trellis scripts,
+  write into `.trellis/`, or install its injectors from this workflow.
 - Add or change contract tests before changing workflow behavior.
 - Keep skill bodies concise; put shared governance in
   `skills/run-engineering-workflow/references/` so installed skills retain it.
@@ -17,8 +23,9 @@ Rules:
 - Keep Claude Code plugin agents under root `agents/`; current Claude discovers
   that directory by convention, so do not add obsolete per-file `agents`
   entries to `.claude-plugin/plugin.json`.
-- Never overwrite Trellis `trellis-implement` or `trellis-check` agents. Their
-  project files and hooks own Claude context injection.
+- All three agents (`workflow-planner`, `workflow-implementer`,
+  `workflow-reviewer`) are owned and installed by this repository. Keep their
+  root, `.omp/`, and `.pi/` definitions in sync through `scripts/install.ps1`.
 - Preserve `Both` as Codex + OMP for compatibility; use `All` for Codex + OMP +
   Claude Code + Pi.
 - Keep implementation and final review in separate model contexts when the

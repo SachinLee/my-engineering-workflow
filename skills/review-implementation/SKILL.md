@@ -1,6 +1,6 @@
 ---
 name: review-implementation
-description: Independently review a completed implementation against the active Trellis requirements, project rules, tests, security constraints, and complexity budget. Use after implementation and before final evidence, especially when a different AI model or fresh context should challenge correctness claims.
+description: Independently review a completed implementation against the active task's requirements, project rules, tests, security constraints, and complexity budget. Use after implementation and before final evidence, especially when a different AI model or fresh context should challenge correctness claims.
 ---
 
 # Review Implementation
@@ -11,7 +11,8 @@ change under review and then approve it in the same pass.
 ## Establish The Contract
 
 1. Read the active `prd.md`, optional `design.md`, optional `implement.md`, and
-   applicable `.trellis/spec/` and ADRs.
+   applicable project specs (`.workflow/spec/`, or `.trellis/spec/` in a legacy
+   repository), and ADRs.
 2. Inspect `git status`, the complete relevant diff, adjacent code, and tests.
 3. Separate current-task changes from unrelated user or concurrent changes.
 4. Map every required acceptance criterion to code and executable evidence.
@@ -25,7 +26,7 @@ change under review and then approve it in the same pass.
 3. Security and data integrity: inspect input boundaries, authorization,
    secrets, injection, destructive behavior, persistence, migrations, and
    rollback when applicable.
-4. Project compliance: compare the change with `AGENTS.md`, Trellis specs,
+4. Project compliance: compare the change with `AGENTS.md`, project specs,
    established local patterns, and public contracts.
 5. Maintainability and complexity: identify unnecessary abstraction,
    duplication, dependencies, configuration, compatibility paths, and dead code

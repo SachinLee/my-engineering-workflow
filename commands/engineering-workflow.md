@@ -1,5 +1,5 @@
 ---
-description: Run or resume the five-stage Trellis engineering workflow for a software request.
+description: Run or resume the five-stage engineering workflow for a software request.
 argument-hint: "[request or continuation instruction]"
 ---
 
@@ -11,32 +11,34 @@ Use the `run-engineering-workflow` skill to process:
 
 Keep the interactive main session responsible for requirement questions,
 scope, approvals, risk escalation, remediation, and the final delivery claim.
-Trellis remains the only task and durable-record system.
+`.workflow/` remains the only task and durable-record system.
 
-Route work by the active task state:
+Route work by the active task phase:
 
 1. Clarify incomplete requirements in the main session and persist them in
    `prd.md`.
 2. After requirements are accepted, dispatch `workflow-planner` to create or
-   update `design.md` and `implement.md`. Do not start implementation until the
-   local Trellis execution gate is satisfied.
-3. For implementation, preserve the Trellis-native agent and hook protocol.
-   Dispatch `trellis-implement` with a prompt whose first line is
-   `Active task: <task-path>`. Require it to follow the approved RED/GREEN
-   slices in `implement.md`; do not replace or wrap this agent definition.
-4. Dispatch the Trellis-native `trellis-check` the same way, again starting the
-   prompt with `Active task: <task-path>` so Trellis can inject `check.jsonl`
-   context. Let it fix issues under the local workflow.
-5. After `trellis-check` completes and the worktree is stable, dispatch exactly
-   one `workflow-reviewer` for independent final review. Do not append generic
+   update `design.md`, `implement.md`, and the `context.md` read list. Do not
+   start implementation until the user approves the plan and `STATUS` moves to
+   `in_progress`.
+3. For implementation, dispatch `workflow-implementer` only for a `critical`
+   task or an explicitly justified fresh-context need. Its prompt must begin
+   `Active task: .workflow/tasks/<task-id>/` and must carry the assigned slice,
+   the `Read:` paths from `context.md`, `May modify:`, and `Verification:`.
+   Require it to follow the approved RED/GREEN slices in `implement.md`.
+   Ordinary work is implemented in the main session.
+4. Run the repository's own checks, then Matt `code-review` for the
+   Standards-versus-Spec axis.
+5. After checks complete and the worktree is stable, dispatch exactly one
+   `workflow-reviewer` for independent final review. Do not append generic
    `reviewer` or `code-reviewer` tasks for the same snapshot. The main session
    fixes findings, reruns affected checks, and dispatches a new final review
    only after the diff changes. An `INVALID` review has one controlled retry;
    its prompt must contain `Review retry: invalid`.
-6. Use `finish-with-evidence` to record actual results in `outcome.md` and then
-   follow the local Trellis finish/archive rules.
+6. Use `finish-with-evidence` to record actual results in `outcome.md`, then
+   close the record: `STATUS` to `done`, one `journal.md` line, move the task to
+   `.workflow/archive/`, and delete the session pointer.
 
-Claude Code has no OMP `@task` or `@advisor` role aliases. The two custom agents
-use Opus; Trellis implementation and checking keep their native definitions and
-inherit the model behavior configured by Claude Code/Trellis. A fresh context
-is independent, but it is not necessarily a different model.
+Claude Code has no OMP `@task` or `@advisor` role aliases. The planning and
+review agents use Opus; the implementer inherits the configured worker model.
+A fresh context is independent, but it is not necessarily a different model.

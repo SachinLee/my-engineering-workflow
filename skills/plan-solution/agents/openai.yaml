@@ -1,4 +1,4 @@
 interface:
   display_name: "Plan Solution"
   short_description: "Design the solution and execution plan"
-  default_prompt: "Use $plan-solution to design this Trellis task before implementation."
+  default_prompt: "Use $plan-solution to design this task and its read list before implementation."

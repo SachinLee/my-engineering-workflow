@@ -29,10 +29,12 @@ $skillNames = @(
 )
 $ompAgentNames = @(
   "workflow-planner.md",
+  "workflow-implementer.md",
   "workflow-reviewer.md"
 )
 $claudeAgentNames = @(
   "workflow-planner.md",
+  "workflow-implementer.md",
   "workflow-reviewer.md"
 )
 $claudeCommandNames = @(
@@ -40,6 +42,7 @@ $claudeCommandNames = @(
 )
 $piAgentNames = @(
   "workflow-planner.md",
+  "workflow-implementer.md",
   "workflow-reviewer.md"
 )
 

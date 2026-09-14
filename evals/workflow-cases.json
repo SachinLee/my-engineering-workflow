@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "cases": [
     {
       "name": "ambiguous-request",
@@ -17,7 +17,7 @@
       "name": "approved-plan-ready-for-tdd",
       "state": "in_progress_without_code_changes",
       "expected_stage": "tdd-implementation",
-      "omp_agent": "trellis-implement",
+      "omp_agent": "workflow-implementer",
       "omp_role": "@task"
     },
     {
@@ -53,10 +53,10 @@
       "required_evidence_status": "NOT RUN"
     },
     {
-      "name": "repository-without-trellis",
-      "state": "trellis_absent",
+      "name": "repository-without-records",
+      "state": "no_record_system",
       "expected_stage": "report-unavailable-and-follow-local-workflow",
-      "forbidden": ["initialize Trellis silently"]
+      "forbidden": ["create .workflow silently", "invent a task directory"]
     },
     {
       "name": "no-current-task",
@@ -69,6 +69,26 @@
       "state": "current_task_available",
       "expected_stage": "resume-current-task",
       "required_context": ["task_path", "phase", "status"]
+    },
+    {
+      "name": "legacy-trellis-task",
+      "state": "trellis_record_without_workflow_record",
+      "expected_stage": "resume-current-task",
+      "required_behavior": "read-legacy-artifacts-without-executing-trellis",
+      "forbidden": ["run .trellis scripts", "install Trellis context injection", "write into .trellis"]
+    },
+    {
+      "name": "per-turn-injector-proposed",
+      "state": "user_requests_startup_state_injection",
+      "expected_stage": "report-unavailable-and-follow-local-workflow",
+      "required_behavior": "read-state-on-demand",
+      "forbidden": ["inject task state before conversation history", "add a per-turn context hook"]
+    },
+    {
+      "name": "pointer-and-task-disagree",
+      "state": "pointer_path_conflicts_with_task_status",
+      "expected_stage": "resolve-pointer-conflict-before-implementing",
+      "forbidden": ["start implementation", "overwrite STATUS silently"]
     },
     {
       "name": "planner-with-explicit-task",
@@ -105,6 +125,18 @@
       "state": "requested_model_unavailable",
       "expected_stage": "continue-with-observable-fallback",
       "required_metadata": ["requested_model", "effective_model", "fallback"]
+    },
+    {
+      "name": "close-record-after-evidence",
+      "state": "outcome_complete_with_commit_permission",
+      "expected_stage": "close-record",
+      "required_artifacts": ["STATUS", "journal.md", "archive"]
+    },
+    {
+      "name": "incomplete-ac-table-blocks-close",
+      "state": "outcome_missing_ac_rows",
+      "expected_stage": "finish-with-evidence",
+      "forbidden": ["archive task", "claim complete"]
     }
   ]
 }

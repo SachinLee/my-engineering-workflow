@@ -1,7 +1,7 @@
 {
   "name": "my-engineering-workflow",
-  "version": "0.1.0",
-  "description": "Traceable Trellis-centered engineering workflow with requirement clarification, solution planning, TDD delivery, independent review, and evidence capture.",
+  "version": "0.2.0",
+  "description": "Traceable file-based engineering workflow with requirement clarification, solution planning, TDD delivery, independent review, and evidence capture.",
   "author": {
     "name": "shuan"
   },

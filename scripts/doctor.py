@@ -20,6 +20,14 @@ SKILLS = (
     "review-implementation",
     "finish-with-evidence",
 )
+AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
+UPSTREAM_SKILLS = (
+    "grill-with-docs",
+    "tdd",
+    "code-review",
+    "ponytail-review",
+    "domain-modeling",
+)
 HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "Both", "All")
 
 
@@ -46,8 +54,8 @@ def check_skills(root: Path, label: str, errors: list[str]) -> None:
             errors.append(f"Missing {label} skill: {skill}")
 
 
-def check_agents(root: Path, agents: tuple[str, ...], label: str, errors: list[str]) -> None:
-    for agent in agents:
+def check_agents(root: Path, label: str, errors: list[str]) -> None:
+    for agent in AGENTS:
         if not (root / f"{agent}.md").is_file():
             errors.append(f"Missing {label} agent: {agent}")
 
@@ -70,13 +78,15 @@ def check_omp_overlay(path: Path, errors: list[str]) -> None:
             errors.append(f"OMP overlay skill whitelist is missing: {skill}")
     for required, label in (
         ('workflow-planner: "@plan"', "workflow-planner"),
-        ('trellis-implement: "@task"', "trellis-implement"),
-        ('trellis-check: "@advisor"', "trellis-check"),
+        ('workflow-implementer: "@task"', "workflow-implementer"),
         ('workflow-reviewer: "@advisor"', "workflow-reviewer"),
+        ('workflow-implementer: "off"', "agentPrewalk.workflow-implementer"),
         ("prewalk:\n  enabled: false", "prewalk.enabled: false"),
     ):
         if required not in body:
             errors.append(f"OMP overlay is missing required setting: {label}")
+    if "trellis" in body.lower():
+        errors.append("OMP overlay still references Trellis; the record system is .workflow/.")
 
 
 def check_review_gate(root: Path, errors: list[str]) -> None:
@@ -105,21 +115,73 @@ def check_review_gate(root: Path, errors: list[str]) -> None:
             errors.append("OMP workflow review gate contract tests failed.")
 
 
+def check_record_layout(project: Path, warnings: list[str]) -> None:
+    """A repository may legitimately keep no records, so this only warns."""
+    if (project / ".workflow").is_dir():
+        tasks = project / ".workflow" / "tasks"
+        if not tasks.is_dir():
+            warnings.append(f"{project}/.workflow exists but has no tasks/ directory.")
+        for task in sorted(p for p in tasks.glob("*") if p.is_dir()) if tasks.is_dir() else []:
+            if not (task / "prd.md").is_file():
+                warnings.append(f"Task without prd.md: {task}")
+            if not (task / "STATUS").is_file():
+                warnings.append(f"Task without STATUS (treated as planning): {task}")
+        return
+    if (project / ".trellis" / "tasks").is_dir():
+        warnings.append(
+            f"Legacy Trellis record found under {project}/.trellis. Read-only mode applies; "
+            "new state is written under .workflow/ and no Trellis script may run."
+        )
+    else:
+        warnings.append(
+            f"No durable record system under {project}. The workflow will ask for consent "
+            "before creating .workflow/."
+        )
+
+
+def check_injectors(project: Path, warnings: list[str]) -> None:
+    """Head-of-input per-turn injection destroys the prompt cache; flag it."""
+    found = []
+    for path in (
+        project / ".omp" / "extensions" / "trellis",
+        project / ".pi" / "extensions" / "trellis",
+        project / ".claude" / "hooks",
+    ):
+        if path.exists():
+            found.append(str(path))
+    hooks = project / ".codex" / "hooks.json"
+    if hooks.is_file():
+        try:
+            body = json.loads(hooks.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            body = {}
+        if "UserPromptSubmit" in (body.get("hooks") or {}):
+            found.append(str(hooks) + " (UserPromptSubmit)")
+    for item in found:
+        warnings.append(
+            f"Per-turn context injector present: {item}. Content placed before the "
+            "conversation history invalidates the prompt cache on every turn; read state "
+            "on demand instead."
+        )
+
+
 def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
     executable_exists("omp", errors)
     root = project / ".omp" if scope == "Project" else home / ".omp" / "agent"
     check_skills(root / "skills", "OMP", errors)
-    agents = ("workflow-planner", "workflow-reviewer")
-    if scope == "Project":
-        agents += ("trellis-implement", "trellis-check")
-    check_agents(root / "agents", agents, "OMP", errors)
+    check_agents(root / "agents", "OMP", errors)
     if not (root / "start-engineering-workflow.py").is_file():
         errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
     check_omp_overlay(root / "engineering-workflow.yml", errors)
     check_review_gate(root, errors)
     if scope == "Project" and project is not None:
-        candidates = (project / ".omp" / "skills", project / ".agents" / "skills", home / ".omp" / "agent" / "skills", home / ".codex" / "skills")
-        for upstream in ("trellis-before-dev", "grill-with-docs", "tdd", "code-review", "ponytail-review"):
+        candidates = (
+            project / ".omp" / "skills",
+            project / ".agents" / "skills",
+            home / ".omp" / "agent" / "skills",
+            home / ".codex" / "skills",
+        )
+        for upstream in UPSTREAM_SKILLS:
             if not any((candidate / upstream / "SKILL.md").is_file() for candidate in candidates):
                 warnings.append(f"Recommended upstream skill was not found: {upstream}")
 
@@ -128,11 +190,9 @@ def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]
     executable_exists("claude", errors)
     root = project / ".claude" if scope == "Project" else home / ".claude"
     check_skills(root / "skills", "Claude", errors)
-    check_agents(root / "agents", ("workflow-planner", "workflow-reviewer"), "Claude", errors)
+    check_agents(root / "agents", "Claude", errors)
     if not (root / "commands" / "engineering-workflow.md").is_file():
         errors.append("Missing Claude command: engineering-workflow")
-    if scope == "Project":
-        check_agents(root / "agents", ("trellis-implement", "trellis-check"), "Trellis Claude", errors)
 
 
 def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
@@ -141,27 +201,12 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
     root = project / ".pi" if scope == "Project" else pi_user_root
     skills_root = project / ".agents" / "skills" if scope == "Project" else root / "skills"
     check_skills(skills_root, "Pi", errors)
-    check_agents(root / "agents", ("workflow-planner", "workflow-reviewer"), "Pi", errors)
+    check_agents(root / "agents", "Pi", errors)
     if not (pi_user_root / "npm" / "node_modules" / "@narumitw" / "pi-subagents").is_dir():
-        warnings.append("Optional Pi package @narumitw/pi-subagents was not found. Planning and independent review will remain in the main Pi session.")
-    if scope != "Project" or project is None:
-        return
-    check_agents(root / "agents", ("trellis-implement", "trellis-check"), "Trellis Pi", errors)
-    if not (root / "extensions" / "trellis" / "index.ts").is_file():
-        errors.append("Missing Trellis Pi extension: .pi\\extensions\\trellis\\index.ts. Run trellis init --pi or trellis update.")
-    settings_path = root / "settings.json"
-    if not settings_path.is_file():
-        errors.append("Missing Pi project settings: .pi\\settings.json. Run trellis init --pi or trellis update.")
-        return
-    try:
-        settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        errors.append(f"Could not parse Pi project settings: {exc.msg}")
-        return
-    if "./extensions/trellis/index.ts" not in settings.get("extensions", []):
-        errors.append("Pi project settings do not load the Trellis extension.")
-    if "./prompts" not in settings.get("prompts", []):
-        errors.append("Pi project settings do not load Trellis prompts.")
+        warnings.append(
+            "Optional Pi package @narumitw/pi-subagents was not found. Planning, bounded "
+            "implementation, and independent review will remain in the main Pi session."
+        )
 
 
 def main() -> int:
@@ -176,8 +221,9 @@ def main() -> int:
             project = Path(args.project_path).expanduser().resolve()
             if not project.is_dir():
                 errors.append(f"Project path was not found: {project}")
-            elif not (project / ".trellis" / "workflow.md").is_file():
-                errors.append(f"Trellis workflow was not found under {project}\\.trellis.")
+            else:
+                check_record_layout(project, warnings)
+                check_injectors(project, warnings)
     if args.scope == "Project" and project is None:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

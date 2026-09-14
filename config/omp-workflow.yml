@@ -1,7 +1,7 @@
 # Load this file explicitly with `omp --config <path>`.
-# Context mode: pointer at session start; task artifacts are loaded by dispatch.
+# Context mode: pointer read at session start; task artifacts are loaded by dispatch.
 # Default route is lightweight/standard inline; escalate to critical explicitly.
-# Named-task resolver is optional; explicit task paths are the compatibility fallback.
+# Never add a per-turn context injector here; head-of-input state destroys the prompt cache.
 skills:
   includeSkills:
     - run-engineering-workflow
@@ -9,13 +9,13 @@ skills:
     - plan-solution
     - review-implementation
     - finish-with-evidence
-    - trellis-*
     - grill-with-docs
     - grilling
     - domain-modeling
     - codebase-design
     - diagnosing-bugs
     - tdd
+    - code-review
     - ponytail-review
 
 task:
@@ -27,11 +27,10 @@ task:
   softRequestBudget: 80
   agentModelOverrides:
     workflow-planner: "@plan"
-    trellis-implement: "@task"
-    trellis-check: "@advisor"
+    workflow-implementer: "@task"
     workflow-reviewer: "@advisor"
   agentPrewalk:
-    trellis-implement: "off"
+    workflow-implementer: "off"
 
 plan:
   defaultOnStartup: false

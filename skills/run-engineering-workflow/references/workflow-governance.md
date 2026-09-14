@@ -1,25 +1,101 @@
 # Workflow Governance
 
-Read this reference when routing a task, resolving conflicts between extensions,
-or deciding where durable information belongs.
+Read this reference when routing a task, resolving conflicts between
+integrations, or deciding where durable information belongs.
+
+## Record Layout
+
+`.workflow/` is a convention, not a program. Every file below is written and
+read with the platform's own file tools. There is no CLI, no lock service, and
+no background process; a missing file means the state it would hold was never
+decided, and an unreadable file is an invalid dispatch, not a reason to guess.
+
+```text
+.workflow/
+  CURRENT.md                 human-visible pointer: task path + phase + updated
+  by-session/<key>.md        per-session pointer; <key> is <platform>-<session id>
+                             or "main" when the harness exposes no session id
+  journal.md                 one append-only line per closed task
+  spec/                      optional durable conventions, package/layer scoped
+  tasks/<MM-DD-slug>/
+    prd.md                   requirements, scope, assumptions, acceptance criteria
+    design.md                optional technical design
+    implement.md             optional ordered vertical slices
+    context.md               the files this task must read, each with a reason
+    STATUS                   exactly two lines: phase and updated
+    outcome.md               written at close: evidence per acceptance criterion
+    tickets/                 optional Matt to-tickets output for multi-session work
+    research/                optional notes, source excerpts, measurements
+  archive/<MM-DD-slug>/      moved here on close; contents are never edited
+```
+
+`STATUS` holds only:
+
+```text
+phase: planning | in_progress | review | done
+updated: 2026-09-14T15:40:00Z
+```
+
+Rules that keep the layout cheap to read:
+
+- One task, one directory, one `STATUS`. Never store the phase in the pointer
+  file alone, because two concurrent sessions must not overwrite each other.
+- `context.md` replaces automatic spec injection. It lists paths and one-line
+  reasons, not file bodies. Dispatch copies those paths into the handoff `Read:`
+  field.
+- `outcome.md` is the only place delivery claims live. Anything not evidenced
+  there is not delivered.
+- `archive/` is append-only history. Recovering an old decision means reading
+  it, never resurrecting it as current state.
+- The whole layout is optional per repository. When a repository keeps no
+  records, this workflow says so out loud instead of inventing a store.
+
+## Prompt Cache Constraint
+
+Task state must reach the model through reads, never through head-of-request
+injection. A per-turn injector places volatile content before the conversation
+history, which invalidates the cached prefix for every later turn; measured cost
+of one phase-change injection in a long session was a full re-bill of the entire
+history, tens of thousands of tokens, to deliver a few hundred tokens of state.
+Reads append to the tail and keep the prefix stable. This constraint outranks
+convenience: a hook or extension that "helpfully" injects `.workflow/` state is
+a defect, not a feature.
 
 ## Artifact Ownership
 
-Trellis is the canonical owner of task state and durable delivery records. Store
-one fact in one authoritative place. Do not duplicate task facts across
+`.workflow/` is the canonical owner of task state and durable delivery records.
+Store one fact in one authoritative place. Do not duplicate task facts across
 workflow systems.
 
 | Artifact | Canonical owner | Purpose |
 | --- | --- | --- |
-| `prd.md` | Active Trellis task | Requirements, scope, assumptions, acceptance criteria |
-| `design.md` | Active Trellis task | Technical design, alternatives, compatibility, rollout |
-| `implement.md` | Active Trellis task | Ordered execution and validation plan |
-| `outcome.md` | Active Trellis task | Actual delivery, evidence, review, deviations, remaining risk |
-| `.trellis/spec/` | Trellis project knowledge | Durable conventions and prevention rules |
-| `.trellis/workspace/` | Trellis developer journal | Session summaries and task pointers |
+| `prd.md` | Active task directory | Requirements, scope, assumptions, acceptance criteria |
+| `design.md` | Active task directory | Technical design, alternatives, compatibility, rollout |
+| `implement.md` | Active task directory | Ordered execution and validation plan |
+| `outcome.md` | Active task directory | Actual delivery, evidence, review, deviations, remaining risk |
+| `STATUS` | Active task directory | Current phase and last transition |
+| `by-session/` | Workflow record | Session-to-task binding only, never requirements |
+| `.workflow/spec/` | Project knowledge | Durable conventions and prevention rules |
+| `.workflow/journal.md` | Project journal | One-line closure record per task |
 | `CONTEXT.md` | Domain glossary | Stable business vocabulary only |
 | `docs/adr/` | Architecture decisions | Hard-to-reverse decisions and rationale |
 | Code and tests | Git | Executable implementation and behavioral proof |
+
+## Legacy `.trellis/` Repositories
+
+Some repositories were initialized with Trellis before this workflow dropped it.
+Treat `.trellis/` as a read-only historical format:
+
+- Read `prd.md`, `design.md`, `implement.md`, `outcome.md`,
+  `implement.jsonl`, `check.jsonl`, `research/`, and `task.json` when they are
+  the only record of an active task. Map `task.json` `status` onto `phase`
+  (`planning` → `planning`, `in_progress` → `in_progress`, `completed` → `done`).
+- Convert a `*.jsonl` spec manifest into `context.md` the first time you
+  dispatch for that task.
+- Never execute a Trellis script, never install a Trellis injector, and never
+  write into `.trellis/`. New state goes to `.workflow/`.
+- Global spec directories (`.trellis/spec/`) may still be read; new conventions
+  are written to `.workflow/spec/`.
 
 ## Context Loading Contract
 
@@ -28,46 +104,48 @@ Use three context tiers:
 | Tier | When loaded | Contents |
 | --- | --- | --- |
 | Project context | Session start | Project identity, workflow rules, and relevant spec index |
-| Task pointer | Session start or resume | One task path, phase, status, and short summary |
+| Task pointer | Session start or resume | One task path, phase, and short summary |
 | Task package | Activation or dispatch | Role- and slice-scoped artifact sections, file bounds, invariants, and checks |
 
-The task package is derived from the active Trellis artifacts and is not a second
+The task package is derived from the active task artifacts and is not a second
 durable record. Refresh it after requirement clarification, plan approval, slice
-completion, review findings, and cross-session resume. When Trellis cannot resolve a
-named task package, use explicit task paths and bounded artifact sections as the
-compatibility mode and record the limitation.
+completion, review findings, and cross-session resume. When a harness cannot
+bind a pointer to a session, use explicit task paths and bounded artifact
+sections as the compatibility mode and record the limitation.
 
-Issue trackers may link to a Trellis task, but must not duplicate its design and
-implementation record.
+Issue trackers may link to a task directory, but must not duplicate its design
+and implementation record.
 
 ## Routing Ownership
 
 | Need | Primary capability | Destination |
 | --- | --- | --- |
-| Resume context | Trellis start/continue/session insight | Existing task |
-| Clarify intent | Matt-style grilling + observable ACs | `prd.md` |
+| Resume context | pointer + `STATUS` read | Existing task |
+| Clarify intent | Matt `grilling` + observable ACs | `prd.md` |
 | Model domain | Matt domain modeling | `CONTEXT.md`, rare ADR |
 | Design solution | `plan-solution` + relevant specialists | `design.md` |
 | Plan execution | `plan-solution` + test strategy | `implement.md` |
-| Implement behavior | Trellis before-dev + Matt `tdd` | Code and tests |
-| Review independently | `review-implementation` | Findings returned to main session |
-| Verify and record | Trellis check + risk-specific checks | `outcome.md` |
+| Implement behavior | Matt `tdd` / ECC `tdd-workflow` | Code and tests |
+| Review independently | `review-implementation` + Matt `code-review` | Findings returned to main session |
+| Verify and record | repository checks + risk-specific checks | `outcome.md` |
 | Reduce complexity | Ponytail review | Code, then re-verification |
-| Preserve learning | Trellis update-spec | `.trellis/spec/` |
+| Preserve learning | `finish-with-evidence` promotion step | `.workflow/spec/` |
 
-Do not call Matt `to-spec`, `to-tickets`, or `implement` when Trellis already
-owns the task. Do not use Ponytail minimal checks to replace required repository
-checks.
+Do not run Matt `to-spec` or `to-tickets` as a parallel record system: their
+output belongs inside the active task directory. Skip `to-spec` when
+`clarify-requirements` already produced a complete `prd.md`. Do not use Ponytail
+minimal checks to replace required repository checks.
 
 ## Source Trust
 
 When sources disagree, use this order:
 
 1. Running code, tests, and externally verified behavior.
-2. Trellis project specs and accepted ADRs.
+2. Project specs (`.workflow/spec/`, or `.trellis/spec/` in legacy repos) and
+   accepted ADRs.
 3. Active task PRD, design, implementation plan, and outcome.
 4. Git history and reviewed issue references.
-5. Trellis journals and explicit handoffs.
+5. Workflow journal, session pointers, and explicit handoffs.
 6. Raw AI conversations and generated memory entries.
 
 Promote reusable knowledge only after checking code, tests, or the user.
@@ -80,8 +158,7 @@ Use role aliases so the workflow remains provider-independent:
 | --- | --- | --- |
 | Main orchestration and user questions | `@default` | Holds task context and user interaction |
 | Solution planning | `@plan` | Dedicated architecture/planning role |
-| Trellis `trellis-implement` | `@task` | Cost-effective coding subagent under a reviewed plan |
-| Trellis `trellis-check` | `@advisor` | Different model/context performs quality remediation |
+| `workflow-implementer` | `@task` | Cost-effective coding subagent under a reviewed plan |
 | Independent review | `@advisor` | Different model/context from the implementer |
 | Escalation | `@slow` or `@default` | Critical risk, repeated failure, or unresolved design drift |
 
@@ -102,14 +179,11 @@ approvals, remediation, and delivery. Use this repository's Opus
 `workflow-planner` and read-only Opus `workflow-reviewer` for independent
 planning and final review contexts.
 
-Keep Trellis `trellis-implement` and `trellis-check` definitions native to the
-project created by `trellis init --claude`. Replacing them would bypass or
-weaken Trellis hook injection, `implement.jsonl` / `check.jsonl` loading, and
-their fallback context protocol. TDD for the Claude implementation agent is
-therefore enforced through reviewed RED/GREEN slices in `implement.md`, the
-dispatch prompt, Trellis checking, and independent review; do not state that it
-automatically loads an external skill when its tool list does not include
-`Skill`.
+All three agent definitions are owned by this repository and installed by
+`scripts/install.ps1`. Because nothing is injected automatically, every dispatch
+must carry the task path, the `context.md` read list, and the approved
+RED/GREEN slices in its prompt; a handoff that omits them is invalid rather than
+recoverable by scanning.
 
 Launching the main session with `claude --model sonnet` normally separates the
 implementation model from the Opus planning/review agents. When the main

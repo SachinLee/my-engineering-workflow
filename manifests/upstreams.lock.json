@@ -1,22 +1,14 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-14",
+  "schema_version": 2,
+  "generated_at": "2026-09-14",
   "sources": {
-    "trellis": {
-      "local_path": "../Trellis",
-      "remote": "https://github.com/mindfold-ai/Trellis.git",
-      "revision": "a8a50a5e5d247b922f4e751d2604659923d9883b",
-      "version_hint": "v0.6.15-3-ga8a50a5e",
-      "license": "AGPL-3.0",
-      "role": "workflow state, project records, specifications, and session continuity"
-    },
     "mattpocock-skills": {
       "local_path": "../mattpocock-skills",
       "remote": "https://github.com/mattpocock/skills.git",
       "revision": "8b78b531ab965735c5dc74f6f7a219e1e37326df",
       "version_hint": "1.2.3",
       "license": "MIT",
-      "role": "requirements grilling, domain modeling, module design, and two-axis review"
+      "role": "requirements grilling, domain modeling, module design, TDD, two-axis review, and specification or ticket decomposition"
     },
     "ponytail": {
       "local_path": "../ponytail",
@@ -25,6 +17,18 @@
       "version_hint": "4.9.0",
       "license": "MIT",
       "role": "YAGNI, reuse, native-first implementation, and complexity review"
+    }
+  },
+  "retired_sources": {
+    "trellis": {
+      "local_path": "../Trellis",
+      "remote": "https://github.com/mindfold-ai/Trellis.git",
+      "revision": "a8a50a5e5d247b922f4e751d2604659923d9883b",
+      "version_hint": "v0.6.15-3-ga8a50a5e",
+      "license": "AGPL-3.0",
+      "retired": "2026-09-14",
+      "role": "former record system; retained only as the read-only legacy .trellis/ task format",
+      "reason": "per-turn context injection invalidated the prompt cache for the whole session, and its methodology is now covered by the upstream skills above"
     }
   }
 }

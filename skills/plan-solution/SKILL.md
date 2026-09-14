@@ -1,11 +1,11 @@
 ---
 name: plan-solution
-description: Design a traceable technical solution and execution plan for an active Trellis task. Use after requirements are clarified and before implementation, especially for behavior changes, multi-file work, public interfaces, data flow, migrations, security-sensitive work, or tasks another AI session must execute.
+description: Design a traceable technical solution and execution plan for an active .workflow task. Use after requirements are clarified and before implementation, especially for behavior changes, multi-file work, public interfaces, data flow, migrations, security-sensitive work, or tasks another AI session must execute.
 ---
 
 # Plan Solution
 
-Turn an accepted Trellis `prd.md` into an implementation-ready solution. Keep
+Turn an accepted `prd.md` into an implementation-ready solution. Keep
 technical decisions in `design.md` and ordered execution in `implement.md`.
 Do not implement production code while using this skill.
 
@@ -16,7 +16,8 @@ planning agent must not guess product intent.
 
 ## Confirm Readiness
 
-1. Read `prd.md`, related code and tests, applicable `.trellis/spec/`, and prior
+1. Read `prd.md`, related code and tests, applicable project specs
+   (`.workflow/spec/`, or `.trellis/spec/` in a legacy repository), and prior
    ADRs before designing.
 2. Verify that the goal, in scope, out of scope, assumptions, and acceptance
    criteria are explicit.
@@ -90,7 +91,7 @@ Use this shape:
 Every slice dispatched through OMP or another agent-capable harness must include:
 
 ```markdown
-Active task: .trellis/tasks/<task-id>/
+Active task: .workflow/tasks/<task-id>/
 Assigned slice: Slice N / AC-XXX
 Phase: implement
 
@@ -124,7 +125,7 @@ Evidence to return:
 ```
 
 The main session supplies the task path and slice. The subagent must not search all
-Trellis tasks, choose a different slice, change `CURRENT TASK`, or create another
+task directories, choose a different slice, move the session pointer, or create another
 handoff record. If the task path or assigned slice is missing or unreadable, the
 subagent returns an invalid status and does not edit production code.
 
@@ -132,9 +133,24 @@ Map every required acceptance criterion to at least one slice or an explicit
 non-code verification step. Do not use `AC-001` as a placeholder when the PRD
 has different IDs.
 
+## Write context.md
+
+Nothing is injected into a subagent automatically, so record the read list that
+dispatch depends on. One row per file, with a one-line reason:
+
+```text
+- .workflow/spec/gateway/billing.md — price rules stay additive; migrations never rewrite history
+- docs/adr/0012-cost-source.md — provider cost wins over local estimate
+- crates/service/src/quota/model_pricing.rs — current resolution order
+```
+
+Keep paths and reasons only. Never paste file bodies into `context.md`: they go
+stale, and a reader can read the source. When resuming a legacy task that has an
+`implement.jsonl` or `check.jsonl` manifest, convert it here once.
+
 ## Lightweight Planning
 
-For documentation, configuration, or an isolated low-risk change, Trellis may
+For documentation, configuration, or an isolated low-risk change, the task may
 remain PRD-only. Record an explicit solution sketch, affected files, runnable
 check, and the reason `design.md` / `implement.md` are unnecessary in `prd.md`.
 Skipping files is allowed; skipping the planning decision is not.
@@ -152,4 +168,5 @@ Before handing off:
 - Record unresolved technical risk instead of presenting guesses as decisions.
 
 Finish by summarizing the selected profile, artifacts written, major decisions,
-and whether the task is ready to enter Trellis `in_progress`.
+and whether the task is ready to enter `in_progress`. List `context.md` among the
+artifacts written; a plan without a read list cannot be dispatched safely.

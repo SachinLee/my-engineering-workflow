@@ -18,10 +18,10 @@ Use for normal features, bug fixes, and refactors.
 
 - Capture RED/GREEN evidence.
 - Run targeted tests, lint, typecheck, and the relevant build.
-- Review Trellis specs and the final diff.
-- Run one independent correctness and complexity review; use the project's native
-  check agent when it provides fresh context, otherwise use `review-implementation`.
-  Do not run both by default.
+- Review project specs and the final diff, with Matt `code-review` for the
+  Standards-versus-Spec axis.
+- Run one independent correctness and complexity review through
+  `review-implementation` or `workflow-reviewer`. Do not run both by default.
 - Re-run affected checks after fixes or simplification.
 
 ## Critical

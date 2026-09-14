@@ -1,11 +1,11 @@
 ---
 name: clarify-requirements
-description: Convert an ambiguous software request into scoped, observable acceptance criteria in the active Trellis task. Use before planning complex work, when business intent is unclear, or when another AI session needs a reliable requirement handoff.
+description: Convert an ambiguous software request into scoped, observable acceptance criteria in the active task's prd.md under .workflow/. Use before planning complex work, when business intent is unclear, or when another AI session needs a reliable requirement handoff.
 ---
 
 # Clarify Requirements
 
-Improve the active Trellis `prd.md`; do not create a second specification.
+Improve the active task's `prd.md`; do not create a second specification.
 Combine codebase discovery, Matt-style grilling, and observable acceptance
 criteria.
 
@@ -38,7 +38,9 @@ Maintain these sections in `prd.md`:
 
 Write acceptance criteria as `AC-001`, `AC-002`, and so on. Each criterion must
 name the scenario, action, expected observable result, prohibited side effect
-when meaningful, and verification method.
+when meaningful, and verification method. Give each criterion a checkbox row
+(`- [ ] AC-001: <title>`) so `outcome.md` can close them one by one; a criterion
+without a checkbox cannot be verified or reported as delivered.
 
 Example:
 
@@ -66,3 +68,7 @@ Example:
 
 Report confirmed requirements, recorded assumptions, and any blockers. Do not
 start risky or irreversible implementation while a blocking decision remains.
+When this clarification created the task directory, also create `STATUS`
+(`phase: planning` plus `updated`), `context.md` with the spec and code paths a
+later dispatch must read, and this session's pointer under `.workflow/by-session/`.
+Never leave a `prd.md` that no pointer resolves to.
