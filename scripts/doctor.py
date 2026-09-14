@@ -145,7 +145,8 @@ def check_injectors(project: Path, warnings: list[str]) -> None:
     for path in (
         project / ".omp" / "extensions" / "trellis",
         project / ".pi" / "extensions" / "trellis",
-        project / ".claude" / "hooks",
+        project / ".claude" / "hooks" / "inject-workflow-state.py",
+        project / ".claude" / "hooks" / "session-start.py",
     ):
         if path.exists():
             found.append(str(path))
