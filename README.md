@@ -1,7 +1,7 @@
 # 我的 AI 工程工作流
 
-这是一个面向个人开发习惯的 AI 工程工作流仓库。它把 Trellis、ECC、
-Matt Pocock Skills 和 Ponytail 中适合自己的部分组合起来，用于提高需求质量、
+这是一个面向个人开发习惯的 AI 工程工作流仓库。它把 Trellis、Matt Pocock Skills
+和 Ponytail 中适合自己的部分组合起来，用于提高需求质量、
 代码质量、验证质量，以及不同 AI 会话之间的上下文连续性。
 
 本仓库不是上述项目的完整替代品，也不复制它们的源码。它是一个轻量编排层，
@@ -19,13 +19,12 @@ Matt Pocock Skills 和 Ponytail 中适合自己的部分组合起来，用于提
 - AI 容易增加不必要的抽象、依赖、配置和文件。
 - 计划中的方案和最终实际实现存在偏差，但没有被记录。
 
-四个上游项目在本工作流中的职责如下：
+三个上游项目在本工作流中的职责如下：
 
 | 组件 | 职责 | 本仓库如何使用 |
 | --- | --- | --- |
 | Trellis | 任务状态、需求、设计、项目规范、会话记忆 | 作为唯一记录系统和工作流内核 |
-| ECC | TDD、验证、安全和专业 review | 作为工程质量能力库 |
-| Matt Pocock Skills | 需求追问、领域建模、模块边界设计 | 选择性吸收和调用 |
+| Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界和 review | 作为默认工程方法 |
 | Ponytail | YAGNI、复用、stdlib/native 优先 | 只用于复杂度控制，不降低质量要求 |
 
 本仓库目前提供五个 skill：
@@ -64,7 +63,7 @@ Matt Pocock Skills 和 Ponytail 中适合自己的部分组合起来，用于提
 - Git
 - Node.js 18 或更高版本
 - Python 3.9 或更高版本
-- Codex App / Codex CLI、Claude Code 2.1 或更高版本，按实际使用的平台安装
+- Codex App / Codex CLI、Claude Code 2.1、Pi 0.84 或更高版本，按实际使用的平台安装
 - 需要供应商无关的多模型角色映射时，可选 OMP 17.3.3 或更高版本
 
 ### 必须安装：Trellis
@@ -84,40 +83,8 @@ trellis init --codex -u your-name
 如果同时使用多个平台，可以一次初始化：
 
 ```bash
-trellis init --codex --omp --claude --cursor --opencode -u your-name
+trellis init --codex --claude --omp --pi --cursor --opencode -u your-name
 ```
-
-### 推荐安装：ECC
-
-ECC 是本工作流的主要质量能力来源。Codex 原生插件安装方式：
-
-```bash
-codex plugin marketplace add affaan-m/ECC
-codex plugin add ecc@ecc
-codex plugin list --json
-```
-
-安装后重启 Codex，检查并信任需要启用的 hooks，然后调用
-`$configure-ecc` 完成配置。至少保留：
-
-- `tdd-workflow`
-- `verification-loop`
-- `intent-driven-development`
-- 与项目技术栈匹配的测试或 reviewer skill
-- 涉及认证、输入、密钥、支付或数据安全时使用 `security-review`
-
-Claude Code 中在会话内分别执行：
-
-```text
-/plugin marketplace add https://github.com/affaan-m/ECC
-/plugin install ecc@ecc
-```
-
-同一个平台只选一种 ECC 安装方式，不要叠加 plugin 和完整手工复制，否则会出现重复
-skill、command 或 hook。
-
-不需要把 ECC 的全部 skill、agent 和 rules 都设置成日常加载项。建议按项目使用
-`agent-sort` 分成 `DAILY` 和 `LIBRARY`。
 
 ### 可选安装：Matt Pocock Skills
 
@@ -134,15 +101,15 @@ Claude Code 也可以只选一种方式安装完整 plugin：
 claude plugins install mattpocock-skills
 ```
 
-建议只选择：
+建议选择：
 
+- `grill-with-docs`
 - `grilling`
 - `domain-modeling`
 - `codebase-design`
 
-Matt 的 `code-review` 只在当前 harness 没有同名 reviewer 时安装。使用 ECC 和本仓库的
-`review-implementation` 时不要全局安装它，否则 Claude Code 会同时看到两个
-`code-review` 来源，增加命名冲突和误路由。
+另外按需要启用 `tdd`、`diagnosing-bugs` 和 `code-review`。本仓库的
+`review-implementation` 负责 Trellis 任务级独立复核，不与 Matt 的双轴 review 重复调用。
 
 不要使用 Matt 的 `to-spec`、`to-tickets` 和 `implement` 作为主入口，否则会和
 Trellis 的任务、方案和提交流程重复。也不要让其 setup 创建第二套 issue/task 记录。
@@ -164,8 +131,8 @@ Claude Code 中在会话内分别执行：
 ```
 
 安装后检查并信任它的 hooks。建议把默认模式设为 `off` 或 `lite`，只在需要时显式
-调用 `ponytail-review` / `ponytail-audit`。不要用 Ponytail 的最小测试规则替代
-ECC 或项目自身的测试要求。
+调用 `ponytail-review` / `ponytail-audit`。不要用 Ponytail 的最小化规则替代项目自身的
+测试要求。
 
 Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
@@ -177,7 +144,7 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 ## 安装本仓库的 Skill
 
-仅克隆本仓库不会自动让 Codex、Claude Code 或 OMP 发现这五个 skill。使用安装器
+仅克隆本仓库不会自动让 Codex、Claude Code、OMP 或 Pi 发现这五个 skill。使用安装器
 同步，避免升级后残留旧文件。
 
 ### 全局安装到 Codex
@@ -201,28 +168,50 @@ PowerShell 7 `pwsh`）：
 这会安装五个 skill、`workflow-planner` / `workflow-reviewer` 和
 `/engineering-workflow`，不会安装或覆盖 Trellis agent。重新启动 Claude Code 后生效。
 
-### 安装到项目，同时支持三个平台
-
-先用 Trellis 初始化目标项目的 Codex、OMP 和 Claude 资产，再运行：
+### 全局安装到 Pi
 
 ```powershell
-trellis init --codex --omp --claude -u your-name
+.\scripts\install.ps1 -Scope User -Harness Pi
+.\scripts\doctor.ps1 -Scope User -Harness Pi
+```
+
+这会把五个 skill 安装到 `~/.pi/agent/skills/`，把 provider-independent 的
+`workflow-planner` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
+`model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
+`.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
+该用户目录。Pi 会在 `/reload` 或新会话后刷新 agent catalog。
+
+方案规划和独立复核需要 Pi subagents 扩展；没有它时主路由会在主会话内执行并记录缺少
+独立上下文：
+
+```powershell
+pi install npm:@narumitw/pi-subagents
+```
+
+### 安装到项目，同时支持四个平台
+
+先用 Trellis 初始化目标项目的 Codex、OMP、Claude 和 Pi 资产，再运行：
+
+```powershell
+trellis init --codex --claude --omp --pi -u your-name
 .\scripts\install.ps1 -Scope Project -Harness All -ProjectPath "D:\path\to\project"
 .\scripts\doctor.ps1 -Scope Project -Harness All -ProjectPath "D:\path\to\project"
 ```
 
 安装器会同步：
 
-- 五个 canonical skill 到 `.agents/skills/`、`.omp/skills/` 和
-  `.claude/skills/`。
+- 五个 canonical skill 到共享 `.agents/skills/`、`.omp/skills/` 和
+  `.claude/skills/`；Pi 与 Codex 共用项目 `.agents/skills/`，不制造重复副本。
 - 两个本仓库 OMP agent 到 `.omp/agents/`；Trellis 自己提供
   `trellis-implement` 和 `trellis-check`。
 - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
 - 两个本仓库 Claude agent 和 `/engineering-workflow` 到项目 `.claude/`；安装器不会
   复制、修改或替换 Trellis 的 Claude agent 和 hooks。
+- 两个本仓库 Pi agent 到 `.pi/agents/`；安装器不会复制、修改或替换 Trellis 的
+  `trellis-implement`、`trellis-check`、extension、prompts 或 `.pi/settings.json`。
 
-只需要一个平台时使用 `Codex`、`OMP` 或 `Claude`。为兼容旧用法，`Both` 仍只表示
-Codex + OMP；`All` 才表示三个平台。先用 `-WhatIf` 可以预览安装器将替换的受管目录
+只需要一个平台时使用 `Codex`、`OMP`、`Claude` 或 `Pi`。为兼容旧用法，`Both` 仍只表示
+Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可以预览安装器将替换的受管目录
 和文件。
 
 个人电脑推荐使用全局安装。项目级安装只用于团队需要把适配文件固定在仓库中，或某个
@@ -233,12 +222,14 @@ Codex + OMP；`All` 才表示三个平台。先用 `-WhatIf` 可以预览安装�
 
 ### 一次性全局准备
 
-Codex 和 Claude Code 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
-OMP adapter：
+Codex、Claude Code 和 Pi 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
+OMP adapter。也可以一次安装全部四个平台：
 
 ```powershell
 .\scripts\install.ps1 -Scope User -Harness OMP
 .\scripts\doctor.ps1 -Scope User -Harness OMP
+.\scripts\install.ps1 -Scope User -Harness All
+.\scripts\doctor.ps1 -Scope User -Harness All
 ```
 
 全局安装后，不要再为每个项目复制本仓库的 skill。只有以下内容仍是项目级的：
@@ -253,15 +244,17 @@ skill。已有 `.trellis/` 的项目无需重复初始化；升级 Trellis 时�
 
 ### 每个项目只需初始化一次
 
-同时使用 Codex、Claude Code 和 OMP 时，在项目根目录运行：
+同时使用 Codex、Claude Code、OMP 和 Pi 时，在项目根目录运行：
 
 ```powershell
-trellis init --codex --claude --omp -u your-name
+trellis init --codex --claude --omp --pi -u your-name
 ```
 
-这一步不是重复安装本工作流。它只为当前项目创建 `.trellis/`，并生成三个客户端需要的
-Trellis agent、hook 和 extension。已经初始化的项目不要重新 init；升级 Trellis 后使用
-`trellis update`，并先检查项目中的自定义文件。
+这一步不是重复安装本工作流。它只为当前项目创建 `.trellis/`，并生成四个客户端需要的
+Trellis agent、hook 和 extension。已有 `.trellis/` 但尚未配置 Pi 的项目，使用
+`trellis init --pi -y` 进入 Trellis 的 Add platforms 流程；它会保留已配置的平台。已经
+配置 Pi 的项目无需重复执行。升级 Trellis 后使用 `trellis update`，并先检查项目中的
+自定义文件。
 
 只使用部分客户端时，仅传对应 flag。例如：
 
@@ -276,6 +269,7 @@ trellis init --codex --claude -u your-name
 | Codex App / CLI | 从项目根目录打开 Codex | `使用 $run-engineering-workflow 处理这个需求：...` | `使用 $run-engineering-workflow 继续当前 Trellis 任务。` |
 | Claude Code | 从项目根目录运行 `claude --model sonnet` | `/engineering-workflow 处理这个需求：...` | `/engineering-workflow 继续当前 Trellis 任务` |
 | OMP | 使用下面的全局 launcher | `使用 run-engineering-workflow 处理这个需求：...` | `使用 run-engineering-workflow 继续当前 Trellis 任务。` |
+| Pi | 从受信任的项目根目录运行 `pi` | `/skill:run-engineering-workflow 处理这个需求：...` | `/skill:run-engineering-workflow 继续当前 Trellis 任务。` |
 | 其他 skills-compatible 客户端 | 从项目根目录启动客户端 | 显式加载 `run-engineering-workflow` 并附带需求 | 显式加载同一 skill 并要求继续当前任务 |
 
 OMP 全局安装后的启动方式：
@@ -299,8 +293,27 @@ python3 "$HOME/.omp/agent/start-engineering-workflow.py" \
   --project-path "/path/to/project"
 ```
 
-launcher 会直接执行并启动 OMP，它不是启动 OMP 之前的额外准备命令。每次需要带本工作流
-启动一个新的 OMP 会话时使用 launcher，不要在它之后再运行一次 `omp`。
+launcher 会直接执行并启动 OMP，或在 `--web` 模式下启动/复用共享的 ompweb；它不是启动 OMP 之前的额外准备命令。
+每次需要带本工作流启动一个新的 OMP 会话时使用 launcher，不要在它之后再运行一次 `omp`。
+
+启动共享的 Web UI 使用 `--web`：
+
+```powershell
+ompw --web
+```
+
+`ompw --web` 只启动或复用一个 `ompweb` 服务，不会为每个项目目录创建新的 Web 服务。
+Web UI 中的每个项目会按自己的 session cwd 启动 OMP RPC 子进程，但使用启动该 Web 服务时
+解析出的同一个 workflow overlay。若服务已经运行，再从其他项目目录执行 `ompw --web` 时，
+会复用已有服务；要切换 workflow 配置，先停止已有 ompweb 再重新启动。
+
+PowerShell wrapper 会把参数放在 `--` 后转发，因此以下命令用于传递 Web 参数：
+
+```powershell
+ompw --web -- --no-open
+ompw --web -- --port 30178
+```
+
 
 `--project-path` 默认是当前目录。因此从项目根目录启动时，可以省略该参数：
 
@@ -327,9 +340,9 @@ ompw() {
 ```
 
 重新加载 shell 配置后，从任意项目根目录只需运行 `ompw`。额外的 OMP 参数会原样转发，
-例如 `ompw --continue` 或 `ompw --model opus`。
+例如 `ompw --continue` 或 `ompw --model opus`；`ompw --web` 则启动或复用共享的 Web UI。
 
-完成用户级安装后，普通 `omp` 也会读取 `~/.omp/agent/config.yml` 中的本工作流默认设置，加载 skill 白名单、`prewalk` 设置和 `@plan` / `@task` / `@advisor` 角色映射。重新启动 OMP 会话后直接运行：
+完成用户级安装后，普通 `omp` 会读取 `~/.omp/agent/config.yml` 中的本工作流默认设置，加载 skill 白名单、`prewalk` 设置和 `@plan` / `@task` / `@advisor` 角色映射。重新启动 OMP 会话后直接运行：
 
 ```powershell
 omp
@@ -341,6 +354,7 @@ omp
 ompw --continue
 ```
 
+如果没有用户级默认配置，必须使用 Python launcher 或显式 `--config` 启动 OMP，普通 `omp` 不会自动加载本仓库的 workflow overlay。
 ### `ompw` 启动后怎么用
 
 `ompw` 只负责打开已经配置好的 OMP。进入 OMP 后，直接把需求交给主路由：
@@ -416,17 +430,32 @@ py -3 .\.trellis\scripts\get_context.py --mode phase
 | 需求或方案仍含模糊决策 | Matt `grilling` | 结论整理回 `prd.md` 或 `design.md` |
 | 统一业务术语和实体关系 | Matt `domain-modeling` | 稳定词汇写入 `CONTEXT.md`，真实架构决策写 ADR |
 | 设计模块边界和测试 seam | Matt `codebase-design` | 方案写入当前 task 的 `design.md` |
-| 功能或 bug fix | ECC `tdd-workflow` | 测试和代码；证据最终写 `outcome.md` |
-| 发布前综合验证 | ECC `verification-loop` | 实际命令结果写 `outcome.md` |
-| 安全敏感改动 | ECC security/reviewer 能力 | findings 返回主会话，修复后记录结果 |
+| 功能或 bug fix | Matt `tdd` / `diagnosing-bugs` | 测试和代码；证据最终写 `outcome.md` |
+| 发布前综合验证 | 仓库自身测试、lint、typecheck、build | 实际命令结果写 `outcome.md` |
+| 安全敏感改动 | 项目自身安全工具和检查 | findings 返回主会话，修复后记录结果 |
 | 正确性检查完成后压缩复杂度 | Ponytail review/audit | 修改代码并重新运行受影响检查 |
 
-扩展只提供方法，不拥有任务状态。不要让 Matt、ECC 或 Ponytail 另建与 Trellis 重复的
+扩展只提供方法，不拥有任务状态。不要让 Matt 或 Ponytail 另建与 Trellis 重复的
 PRD、ticket、plan 或 outcome。
+
+### 默认调用顺序
+
+主入口是 `$run-engineering-workflow`。它按 Trellis 状态选择以下能力：
+
+| 阶段 | 默认调用 | 说明 |
+| --- | --- | --- |
+| 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论再写入 Trellis `prd.md` |
+| 方案设计 | `plan-solution` + Matt `codebase-design` | 生成当前任务的 `design.md`、`implement.md` |
+| 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 通过 Trellis 原生 `trellis-implement` 执行，遵循 RED/GREEN slice |
+| 质量检查 | Trellis 原生 `trellis-check` | 检查任务规范和仓库检查，不替代项目自身测试 |
+| 独立复核 | `review-implementation` + `ponytail-review` | 通过 `workflow-reviewer` 在新上下文执行；主会话负责修复 |
+| 收尾 | `finish-with-evidence` | 将真实命令和结果写入 `outcome.md` |
+
+Matt 的 `code-review` 不在默认路由中；只有你明确指定比较基线或要做双轴 review 时手动调用。
 
 ### 跨客户端和新会话续接
 
-Codex、Claude Code、OMP 和其他客户端通过同一个工作树和 `.trellis/` 共享上下文，不
+Codex、Claude Code、OMP、Pi 和其他客户端通过同一个工作树和 `.trellis/` 共享上下文，不
 通过复制聊天记录共享。切换前确保本阶段结论已经写入正确产物；切换后从同一项目根目录
 启动新客户端，然后要求继续当前 Trellis 任务。
 
@@ -442,7 +471,7 @@ Codex、Claude Code、OMP 和其他客户端通过同一个工作树和 `.trelli
 
 ### 其他客户端
 
-Trellis 还支持 Cursor、OpenCode、Gemini CLI、Kiro、GitHub Copilot、Pi Agent、Qoder、
+Trellis 还支持 Cursor、OpenCode、Gemini CLI、Kiro、GitHub Copilot、Qoder、
 CodeBuddy、Kimi Code 等平台。先查看当前 Trellis 版本支持的 flag：
 
 ```powershell
@@ -455,7 +484,7 @@ trellis init --help
 trellis init --cursor --opencode --gemini -u your-name
 ```
 
-本仓库安装器目前原生管理 Codex、Claude Code 和 OMP。其他支持 agentskills.io 的客户端
+本仓库安装器目前原生管理 Codex、Claude Code、OMP 和 Pi。其他支持 agentskills.io 的客户端
 可使用 `skills` CLI 从本地仓库安装五个 canonical skill：
 
 ```powershell
@@ -474,6 +503,49 @@ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
 不支持 skill，直接要求它读取 `.trellis/workflow.md` 和当前 task，按其中阶段执行；此时
 本仓库的自动路由和质量加固不能视为已加载。
 
+## Pi 工作流
+
+Pi 原生扫描 `~/.pi/agent/skills/`、`~/.agents/skills/`、项目 `.pi/skills/` 和项目
+`.agents/skills/`。使用 `-Harness Pi` 后无需 launcher；从已经执行 `trellis init --pi`
+且已信任的项目根目录直接运行：
+
+```powershell
+pi
+```
+
+首次进入带 `.pi` 资源或项目 `.agents/skills` 的仓库时，Pi 会要求确认 project trust。
+只有信任后，它才会加载项目 `.pi/settings.json`、Trellis extension、prompts、agents 和
+项目 skills。可在 Pi 中使用 `/trust` 管理决定，变更后重新启动或 `/reload`。
+
+主入口是：
+
+```text
+/skill:run-engineering-workflow 处理这个需求：...
+```
+
+Pi 中的阶段分工如下：
+
+| 阶段 | Pi 执行者 | 上下文/模型规则 |
+| --- | --- | --- |
+| 主路由、需求追问、批准、修复、交付 | 主会话 | 当前 Pi 模型 |
+| 方案规划 | `workflow-planner` | blocking `subagent`；默认继承当前模型 |
+| TDD 实现 | Trellis `trellis-implement` | 项目 `trellis_subagent`，保留 task context injection |
+| Trellis 质量检查 | Trellis `trellis-check` | 项目 `trellis_subagent`，保留 `check.jsonl` |
+| 最终只读复核 | `workflow-reviewer` | blocking `subagent`；默认继承当前模型 |
+
+Pi 不读取 OMP 的 `engineering-workflow.yml`，也不识别 `@plan`、`@task`、`@advisor`。
+本仓库的 Pi agents 因此不硬编码 `model`。若 planner/reviewer 没有配置不同模型，它们仍然
+提供 fresh context，但不能称为跨模型复核。实现和检查必须使用 Trellis 的
+`trellis_subagent`，不能用社区 `subagent` 替代，否则会丢失 Trellis 的任务上下文协议。
+
+升级 Pi、本仓库或 Trellis 后检查：
+
+```powershell
+pi --version
+.\scripts\doctor.ps1 -Scope User -Harness Pi
+.\scripts\doctor.ps1 -Scope Project -Harness Pi -ProjectPath "D:\path\to\project"
+```
+
 ## OMP 多模型工作流
 
 OMP 默认会扫描 Codex、Claude、Agents 和 Pi/OMP 的用户级及项目级 skill。被发现的
@@ -487,13 +559,19 @@ python ./.omp/start-engineering-workflow.py --project-path .
 ```
 
 该脚本显式加载 `.omp/engineering-workflow.yml`，其中
-`skills.includeSkills` 只保留本工作流、Trellis 和选定的 ECC/Matt/Ponytail 能力。
+`skills.includeSkills` 只保留本工作流、Trellis、Matt 和 Ponytail 能力。
 OMP 17.3.3 的项目 `.omp/config.yml` 只自动接管 `modelRoles`；把白名单仅写进该文件并
 不能保证生效，所以不要绕过启动脚本。临时启动也可以使用：
 
 ```powershell
 omp --cwd "D:\path\to\project" --config "D:\path\to\project\.omp\engineering-workflow.yml"
 ```
+
+项目安装同时会从同级的
+`D:\my-works\claude-skills\omp-extensions\workflow-review-gate` 同步 OMP extension 到
+`.omp/extensions/workflow-review-gate`。它只阻止同一 `Active task + review profile +
+worktree snapshot` 的重复最终审查；`trellis-check` 不受影响，修复产生新快照后仍必须进行
+新的独立审查。扩展的短期状态写入 `.omp/.runtime/`，不替代 Trellis 记录。
 
 ### OMP 升级后的检查
 
@@ -506,8 +584,12 @@ omp --version
 ompw --help
 ```
 
-`doctor` 会验证 overlay 是否仍能被 OMP 读取，并检查 `includeSkills`、`@plan`、`@task`、
-`@advisor` 和 `modelRoles`。检查通过就不需要修改其他文件。
+`doctor` 的主实现为 `scripts/doctor.py`，PowerShell 文件只负责转发参数。它会检查已安装
+文件、overlay 的 skill 白名单、角色映射和 review gate；检查通过就不需要修改其他文件。
+
+不要用 `omp --config <overlay> config list` 验证 overlay：OMP 17.3.8 的 `config`
+子命令不会转发该参数，会错误地显示默认配置。Python doctor 因此不调用该接口；正常启动仍
+由启动器传入 `--config`。
 
 如果 OMP 发布说明明确修改了配置键或 agent/skill API，再按以下顺序处理：
 
@@ -533,7 +615,7 @@ OMP 更新和 Trellis 更新是两件事：只有 Trellis 更新时才运行项�
 
 自定义规划和复核 agent 用 `autoloadSkills` 强制加载阶段 skill 正文。实现继续使用
 Trellis 原生 `trellis-implement`，保留 Trellis 的 `implement.jsonl` context injection；主路由
-会要求它先读取 `skill://tdd-workflow`。实现使用 `@task` 不代表降低标准；遇到认证、资金、
+会要求它遵循 `implement.md` 中的 TDD 切片。实现使用 `@task` 不代表降低标准；遇到认证、资金、
 迁移、公共接口等 `critical` 风险，或目标测试反复失败时，必须停止猜测并升级到
 `@default` / `@slow`。overlay 同时关闭 `prewalk`，避免实现过程中意外切换到 `@smol`。
 
@@ -576,7 +658,7 @@ claude --model sonnet
 
 本仓库刻意不覆盖 Trellis 的 `trellis-implement` / `trellis-check`。它们负责 Claude hook
 注入、`implement.jsonl` / `check.jsonl` 和无 hook 时的 fallback context loading。Claude
-实现 agent 的 tools 不含 `Skill`，因此不能宣称它会自动加载 ECC `tdd-workflow`；TDD
+实现 agent 的 tools 不含 `Skill`，因此不能宣称它会自动加载外部 skill；TDD
 由 `implement.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、Trellis check
 和最终独立 review 共同约束。
 
@@ -625,17 +707,17 @@ test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
 需求确认后继续调用主路由：
 
 ```text
-使用 $run-engineering-workflow 继续当前任务，按照 implement.md 和 ECC TDD 实现。
+使用 $run-engineering-workflow 继续当前任务，按照 implement.md 和 Matt TDD 实现。
 ```
 
 正常行为变更应经历：
 
 ```text
-RED 测试 -> 最小实现 -> GREEN -> 重构 -> Trellis/ECC 验证
+RED 测试 -> 最小实现 -> GREEN -> 重构 -> Trellis/仓库验证
 ```
 
 在 OMP 中，主路由会按 Trellis 原生协议把已批准的任务交给 `trellis-implement`，默认
-使用 `@task`，并要求它加载 ECC `tdd-workflow`。在 Claude Code 中仍调用 Trellis 原生
+使用 `@task`，并要求它遵循 `implement.md` 中的 TDD 切片。在 Claude Code 中仍调用 Trellis 原生
 `trellis-implement`，按已批准的 `implement.md` 执行 RED/GREEN slice。主会话继续负责
 范围、升级和最终决策。
 
@@ -691,7 +773,7 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 2. 项目 `AGENTS.md` 和 `.trellis/workflow.md`。
 3. 当前 Trellis 任务与 `.trellis/spec/`。
 4. 本仓库的路由和质量策略。
-5. ECC、Matt Skills、Ponytail 的通用默认规则。
+5. Matt Skills、Ponytail 的通用默认规则。
 
 任何扩展都不能创建与 Trellis 重复的需求、方案或任务记录，也不能以“减少代码”为由
 删除必要的正确性、安全、可访问性或验证措施。
@@ -706,5 +788,5 @@ npm test
 
 五个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
 相对路径提示记录在 [`manifests/upstreams.lock.json`](manifests/upstreams.lock.json) 中。
-升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射和
-Claude Code agent 边界。
+升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射、
+Claude Code agent 边界和 Pi/Trellis extension 契约。

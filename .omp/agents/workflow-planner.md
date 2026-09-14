@@ -1,6 +1,6 @@
 ---
 name: workflow-planner
-description: Plan an accepted Trellis task without implementing production code.
+description: Plan a critical Trellis task in fresh context. Only dispatch for critical work or explicit planning requests.
 tools: read, write, edit, bash, grep, glob, lsp
 model: "@plan"
 thinking-level: high

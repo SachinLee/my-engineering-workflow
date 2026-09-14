@@ -1,6 +1,6 @@
 ---
 name: run-engineering-workflow
-description: Route software work through Trellis records, requirement clarification, solution planning, ECC quality practices, and complexity review. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
+description: Route software work through Trellis records, Matt-style clarification and design, TDD, independent review, and Ponytail complexity checks. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
 ---
 
 # Run Engineering Workflow
@@ -72,9 +72,35 @@ changing a risk profile.
 6. Read the active task status and its existing artifacts before deciding what
    to do next.
 
+## Assess Profile First
+
+Before any routing or dispatch decision, explicitly assess the task's risk profile
+by reading `prd.md` and the task scope:
+
+1. **Is this critical?** Does the task touch authentication, authorization, money,
+   secrets, persistent data, migrations, public contracts, destructive operations,
+   or a cross-layer release boundary?
+   - **Yes** → profile is `critical`
+   - **No** → continue to step 2
+
+2. **Is this lightweight?** Is this only documentation, local configuration, or an
+   isolated low-risk change with no behavior modification?
+   - **Yes** → profile is `lightweight`
+   - **No** → profile is `standard` (normal features, bug fixes, refactors)
+
+3. **State the assessed profile explicitly** before proceeding to routing.
+   Example: "This is a **standard** task (bug fix in presentation layer, no auth
+   or data changes). Implementation will stay in the main session unless a bounded
+   worker is justified."
+
+When uncertain, default to `standard` and escalate to `critical` only when clear
+risk signals appear. Never default to `critical` for ordinary feature work.
+
 ## Route By State
-Select the smallest risk profile before selecting any agent. The profile controls
-dispatch, not just the checklist:
+
+After assessing the profile, route according to the task state and the assessed
+risk level. The profile controls dispatch, not just the checklist:
+
 - `lightweight`: keep the work in the main session. Do not dispatch planner,
   implementer, checker, or reviewer. Run one focused check before delivery.
 - `standard`: keep implementation in the main session by default. Use at most one
@@ -86,32 +112,49 @@ dispatch, not just the checklist:
 
 - No active task: follow the local Trellis consent and task-creation rules.
 - `planning` without a complete `prd.md`: invoke `clarify-requirements` in the main
-  session; dispatch `workflow-planner` only for a critical task or an explicit
-  user request.
-- `planning` with accepted requirements but no reviewed solution: invoke
-  `plan-solution` in the main session for lightweight/standard work. In OMP,
-  dispatch `workflow-planner` only for critical work or when the main session
-  cannot resolve a material design uncertainty.
+  session. Only dispatch `workflow-planner` if the task is assessed as `critical`
+  or the user explicitly requests planning delegation.
+- `planning` with accepted requirements but no reviewed solution:
+  - For `lightweight` or `standard`: invoke `plan-solution` in the main session.
+  - For `critical`: In OMP, dispatch `workflow-planner` on `@plan`. In Pi, use the
+    blocking `subagent` tool with `agentScope: "both"` when available; otherwise
+    keep planning in the main session and disclose the lack of fresh context.
+  - Only dispatch a planner if the task is assessed as `critical` or when the main
+    session cannot resolve a material design uncertainty.
 - `planning` with complete artifacts: follow the local Trellis gate for entering
   `in_progress`; planning completion is not permission to start implicitly.
 - `in_progress`: read `prd.md`, optional `design.md`, optional `implement.md`,
   and relevant `.trellis/spec/` files through `trellis-before-dev`. Use ECC
-  `tdd-workflow` for behavior changes and regression fixes. For lightweight and
-  standard work, implement in the main session unless a single bounded worker is
-  explicitly justified. For critical work, dispatch `trellis-implement` on `@task`
-  and require it to read `skill://tdd-workflow` before editing.
-- Code changed: run the smallest check that proves the changed behavior. For
-  standard work, use either `trellis-check` or `workflow-reviewer`, not both; in
-  a project with native Trellis check, prefer `trellis-check`; otherwise use
-  `review-implementation` in a fresh context. For critical work, run `trellis-check`
-  and then `workflow-reviewer` from a fresh context. The main
-  session fixes findings and repeats affected checks; the implementation model
-  does not approve its own work.
+  `tdd-workflow` for behavior changes and regression fixes.
+  - For `lightweight` or `standard`: implement in the main session. Only use a
+    single bounded worker if explicitly justified by the need for fresh context.
+  - For `critical`: dispatch `trellis-implement` on `@task` and require it to read
+    `skill://tdd-workflow` before editing. In Pi, use the project's native
+    `trellis_subagent` with `trellis-implement` so Trellis keeps task-context
+    injection; do not replace it with a generic subagent.
+- Code changed: run the smallest check that proves the changed behavior.
+  - For `lightweight`: run one focused check before delivery.
+  - For `standard`: use either `trellis-check` or `workflow-reviewer`, not both.
+    In a project with native Trellis check, prefer `trellis-check`; otherwise use
+    `review-implementation` in a fresh context.
+  - For `critical`: run `trellis-check` and then `workflow-reviewer` from a fresh
+    context. In OMP, run exactly one `workflow-reviewer` final review after checks
+    finish, against a stable worktree snapshot; do not append duplicate reviewer
+    tasks. In Claude Code, first run the native Trellis `trellis-check`, then this
+    repository's `workflow-reviewer`. In Pi, first use native `trellis-check`, then
+    the blocking `subagent` reviewer when available.
+  - The main session fixes findings and repeats affected checks; a changed snapshot
+    requires a new review. The implementation model does not approve its own work.
 - Ready to finish: invoke `finish-with-evidence` before Trellis archival or
   journal recording.
 
 ### OMP Dispatch Limits
-- Prefer the main session for lightweight and standard implementation.
+
+These limits enforce the profile-based routing rules:
+
+- **Prefer the main session for `lightweight` and `standard` work.** Only dispatch
+  when the assessed profile is `critical` or when fresh context is explicitly
+  justified for a bounded slice.
 - Allow at most one live writer and one review/check worker for a task.
 - Treat a worker as making progress only when it edits a declared file, runs a
   relevant check, reports a concrete result, or states a reproducible blocker.
@@ -136,23 +179,59 @@ interpret a lightweight profile as permission to skip a regression check for a
 behavior change.
 
 ## OMP Roles
+
 Keep role selection separate from provider-specific model names. These roles are
-escalation targets, not an automatic pipeline:
+escalation targets for `critical` tasks, not an automatic pipeline for all work:
+
 - Main session and interactive clarification: `@default`.
-- Optional solution planning: `workflow-planner` on `@plan` for critical or
-  explicitly requested planning.
-- Optional TDD implementation worker: Trellis `trellis-implement` on `@task` when
-  a bounded worker is justified, normally for critical work.
-- Optional quality check: `trellis-check` on `@advisor`; use it once for standard
+- Optional solution planning: `workflow-planner` on `@plan` **only for `critical`
+  tasks** or explicitly requested planning.
+- Optional TDD implementation worker: Trellis `trellis-implement` on `@task` **only
+  for `critical` tasks** when a bounded worker is justified.
+- Optional quality check: `trellis-check` on `@advisor`; use it once for `standard`
   work when fresh context is useful, and with the full critical gate when required.
-- Optional independent final review: `workflow-reviewer` on `@advisor` for
-  critical work or an explicit review request.
+- Optional independent final review: `workflow-reviewer` on `@advisor` **for
+  `critical` tasks** or an explicit review request.
 - Critical uncertainty or repeated implementation failure: escalate to `@default`
   or `@slow` before continuing.
 
 The role changes cost and perspective, not acceptance criteria or quality gates. The
 active `.trellis/workflow.md` remains authoritative for dispatch names and context
 injection. Do not let OMP `prewalk` silently move implementation to `@smol`.
+
+### OMP Review Idempotency
+
+The project-installed `workflow-review-gate` extension permits one final review
+per `Active task + review profile + worktree snapshot`. `trellis-check` remains
+a separate quality gate and is never suppressed. A final reviewer that returns
+`REVIEW_STATUS: INVALID` may be replaced once on the same snapshot only when the
+new dispatch contains `Review retry: invalid`; escalate instead of dispatching
+further retries. Material findings require remediation, affected checks, and a
+new final review after the diff changes. The only separate profiles are an
+explicitly requested `security` or `data-integrity` review.
+
+## Pi Roles
+
+Pi does not use OMP `@role` aliases or the OMP overlay. Keep these
+responsibilities while preserving Pi's native resource and project-trust model:
+
+- Main session: active Pi model, interactive clarification, approvals,
+  remediation, evidence, and final delivery claim.
+- Solution planning: `workflow-planner` through the blocking `subagent` tool
+  with `agentScope: "both"`; the installed definition inherits the active Pi
+  model unless a user or trusted project definition selects another model.
+- TDD implementation: the project-owned Trellis `trellis-implement` through
+  `trellis_subagent`, with the active task path and approved RED/GREEN slices.
+- Trellis quality check: the project-owned `trellis-check` through
+  `trellis_subagent` so Trellis keeps `check.jsonl` context injection.
+- Independent final review: the read-only `workflow-reviewer` through the
+  blocking `subagent` tool with `agentScope: "both"`.
+
+The project must be trusted before Pi loads `.pi` extensions, project agents,
+or project `.agents/skills`. If `subagent` is unavailable, keep planning and
+review in the main session, run deterministic checks, and report that only
+context/model independence was unavailable. Never substitute generic Pi
+subagents for Trellis implementation or check agents.
 
 ## Claude Code Roles
 
@@ -184,8 +263,8 @@ Resolve conflicts in this order:
 5. Upstream skill defaults.
 
 Trellis owns state and records. Matt-style skills improve clarification and
-module design. ECC owns TDD, specialist review, and verification. Ponytail owns
-complexity reduction only. Never let one layer write a second source of truth.
+module design. Matt owns TDD and design discipline; Ponytail owns complexity
+reduction; repository-native checks own verification.
 
 ## Boundaries
 

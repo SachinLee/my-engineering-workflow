@@ -27,8 +27,12 @@ Route work by the active task state:
 4. Dispatch the Trellis-native `trellis-check` the same way, again starting the
    prompt with `Active task: <task-path>` so Trellis can inject `check.jsonl`
    context. Let it fix issues under the local workflow.
-5. Dispatch `workflow-reviewer` for independent final review. The main session
-   fixes findings and reruns affected checks.
+5. After `trellis-check` completes and the worktree is stable, dispatch exactly
+   one `workflow-reviewer` for independent final review. Do not append generic
+   `reviewer` or `code-reviewer` tasks for the same snapshot. The main session
+   fixes findings, reruns affected checks, and dispatches a new final review
+   only after the diff changes. An `INVALID` review has one controlled retry;
+   its prompt must contain `Review retry: invalid`.
 6. Use `finish-with-evidence` to record actual results in `outcome.md` and then
    follow the local Trellis finish/archive rules.
 

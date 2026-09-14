@@ -3,7 +3,7 @@ param(
   [ValidateSet("User", "Project")]
   [string]$Scope = "Project",
 
-  [ValidateSet("Codex", "OMP", "Claude", "Both", "All")]
+  [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
   [string]$Harness = "Both",
 
   [string]$ProjectPath
@@ -11,6 +11,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
+$ompExtensionsRoot = Join-Path (Split-Path -Parent $repoRoot) "omp-extensions"
+$workflowReviewGateSource = Join-Path $ompExtensionsRoot "workflow-review-gate"
+$piUserRoot = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR)) {
+  Join-Path $HOME ".pi\agent"
+} else {
+  $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(
+    $env:PI_CODING_AGENT_DIR
+  )
+}
 $skillNames = @(
   "run-engineering-workflow",
   "clarify-requirements",
@@ -28,6 +37,10 @@ $claudeAgentNames = @(
 )
 $claudeCommandNames = @(
   "engineering-workflow.md"
+)
+$piAgentNames = @(
+  "workflow-planner.md",
+  "workflow-reviewer.md"
 )
 
 if ($Scope -eq "Project") {
@@ -139,6 +152,7 @@ if ($Harness -in @("OMP", "Both", "All")) {
   }
   $ompSkills = Join-Path $ompRoot "skills"
   $ompAgents = Join-Path $ompRoot "agents"
+  $ompExtensions = Join-Path $ompRoot "extensions"
 
   foreach ($name in $skillNames) {
     Sync-SkillDirectory `
@@ -152,6 +166,11 @@ if ($Harness -in @("OMP", "Both", "All")) {
       -Source (Join-Path $repoRoot ".omp\agents\$fileName") `
       -Target (Join-Path $ompAgents $fileName)
   }
+
+  Sync-SkillDirectory `
+    -Source $workflowReviewGateSource `
+    -TargetRoot $ompExtensions `
+    -Name "workflow-review-gate"
 
   Copy-ManagedFile `
     -Source (Join-Path $repoRoot "config\omp-workflow.yml") `
@@ -193,10 +212,40 @@ if ($Harness -in @("Claude", "All")) {
   }
 }
 
+if ($Harness -in @("Pi", "All")) {
+  $piRoot = if ($Scope -eq "Project") {
+    Join-Path $project ".pi"
+  } else {
+    $piUserRoot
+  }
+  $piSkills = if ($Scope -eq "Project") {
+    Join-Path $project ".agents\skills"
+  } else {
+    Join-Path $piRoot "skills"
+  }
+  $piAgents = Join-Path $piRoot "agents"
+
+  foreach ($name in $skillNames) {
+    Sync-SkillDirectory `
+      -Source (Join-Path $repoRoot "skills\$name") `
+      -TargetRoot $piSkills `
+      -Name $name
+  }
+
+  foreach ($fileName in $piAgentNames) {
+    Copy-ManagedFile `
+      -Source (Join-Path $repoRoot ".pi\agents\$fileName") `
+      -Target (Join-Path $piAgents $fileName)
+  }
+}
+
 $resultVerb = if ($WhatIfPreference) { "Planned" } else { "Installed" }
 Write-Host "$resultVerb $($skillNames.Count) workflow skills for $Harness at $Scope scope."
 if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
   $startPrefix = if ($WhatIfPreference) { "After installation, start" } else { "Start" }
   $launcher = Join-Path $project ".omp\start-engineering-workflow.py"
   Write-Host "$startPrefix OMP with: python '$launcher' --project-path '$project'"
+}
+if ($Scope -eq "Project" -and $Harness -in @("Pi", "All")) {
+  Write-Host "Start Pi from the trusted project root with: pi"
 }

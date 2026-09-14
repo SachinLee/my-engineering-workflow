@@ -1,6 +1,6 @@
 ---
 name: workflow-planner
-description: Plan an accepted Trellis task in an independent Opus context without implementing production code.
+description: Plan a critical Trellis task in an independent Opus context. Only dispatch for critical work or explicit planning requests.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
 skills:

@@ -34,6 +34,19 @@
       "forbidden": ["claim complete", "archive task"]
     },
     {
+      "name": "duplicate-final-review-same-snapshot",
+      "state": "final_review_already_complete_without_diff_change",
+      "expected_stage": "report-existing-independent-review",
+      "forbidden": ["dispatch code-reviewer", "dispatch generic reviewer"]
+    },
+    {
+      "name": "remediated-diff-needs-fresh-final-review",
+      "state": "material_finding_fixed_with_changed_snapshot",
+      "expected_stage": "review-implementation",
+      "omp_agent": "workflow-reviewer",
+      "omp_role": "@advisor"
+    },
+    {
       "name": "verification-command-unavailable",
       "state": "ready_to_record_with_missing_check",
       "expected_stage": "finish-with-evidence",

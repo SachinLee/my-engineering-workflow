@@ -15,7 +15,7 @@ shipped. Write results to the active task's `outcome.md`.
 2. Inspect `git status` and `git diff`. Identify unrelated changes and leave
    them untouched.
 3. Run `trellis-check` for spec compliance and repository checks.
-4. Run relevant ECC verification: targeted tests, type checking, lint, build,
+4. Run relevant repository verification: targeted tests, type checking, lint, build,
    security review, migration checks, or E2E based on risk and available tools.
 5. Confirm that `review-implementation` ran from an independent context for
    standard behavior changes and critical work. In OMP, use

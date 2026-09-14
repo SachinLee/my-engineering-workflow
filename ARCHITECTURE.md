@@ -6,10 +6,9 @@
    session continuity.
 2. Matt-style practices improve requirements, domain language, module seams,
    and Spec-versus-Standards review.
-3. ECC supplies TDD, specialist analysis, security, and verification.
-4. Ponytail supplies a final pressure against unnecessary complexity.
-5. This repository supplies routing, ownership, profiles, independent review,
-   OMP and Claude Code role adapters, and the evidence format.
+3. Ponytail supplies a final pressure against unnecessary complexity.
+4. This repository supplies routing, ownership, profiles, independent review,
+   Codex, OMP, Claude Code, and Pi adapters, and the evidence format.
 
 ## Design Rules
 
@@ -27,8 +26,8 @@ request
   -> Trellis task
   -> clarify requirements
   -> plan solution in design.md and implement.md
-  -> ECC TDD inside Trellis execution
-  -> Trellis and ECC verification
+  -> Matt TDD inside Trellis execution
+  -> Trellis and repository verification
   -> independent correctness/security/complexity review
   -> remediation and re-verification
   -> outcome evidence
@@ -47,8 +46,8 @@ main @default
 ```
 
 The OMP overlay limits skill candidates. Custom planning/review agents use
-`autoloadSkills`; the Trellis implement dispatch explicitly reads
-`skill://tdd-workflow` while preserving Trellis context injection.
+`autoloadSkills` while the Trellis implement dispatch preserves Trellis context
+injection.
 Provider-specific model IDs remain user config.
 
 ## Claude Code Roles
@@ -67,3 +66,22 @@ and hooks remain project-owned so `implement.jsonl` / `check.jsonl` context
 injection continues to work. Starting the main session with Sonnet creates a
 Sonnet implementation plus Opus planning/review split; an Opus main session
 provides context separation but not model separation.
+
+## Pi Roles
+
+```text
+main configured model
+  -> workflow-planner via blocking subagent (optional pi-subagents package)
+  -> native Trellis trellis-implement via trellis_subagent
+  -> native Trellis trellis-check via trellis_subagent
+  -> workflow-reviewer via blocking subagent (optional, read-only)
+  -> main-session remediation and evidence
+```
+
+The workflow installs only its five skills and two provider-independent Pi
+agents. Trellis owns `.pi/settings.json`, `.pi/extensions/trellis`, prompts,
+and the `trellis-implement` / `trellis-check` agents so task-context injection
+continues to work. Pi agents omit a fixed `model` and inherit the active Pi
+model; they never use OMP `@role` aliases. If `@narumitw/pi-subagents` is not
+installed, planning and independent review fall back to the main session and
+must disclose the loss of fresh-context review.

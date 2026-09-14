@@ -1,6 +1,6 @@
 ---
 name: workflow-reviewer
-description: Independently review the active Trellis implementation in a fresh Opus context and return evidence-backed findings.
+description: Independently review a critical Trellis implementation in a fresh Opus context. Only dispatch for critical work or explicit review requests.
 tools: Read, Bash, Grep, Glob
 model: opus
 skills:

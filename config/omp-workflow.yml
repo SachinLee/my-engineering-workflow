@@ -10,22 +10,13 @@ skills:
     - review-implementation
     - finish-with-evidence
     - trellis-*
-    - intent-driven-development
-    - tdd-workflow
-    - verification-loop
-    - security-review
-    - coding-standards
-    - e2e-testing
+    - grill-with-docs
     - grilling
     - domain-modeling
     - codebase-design
-    - code-review
+    - diagnosing-bugs
+    - tdd
     - ponytail-review
-    - ponytail-audit
-    - "*-tdd"
-    - "*-verification"
-    - "*-security"
-    - "*-code-review"
 
 task:
   # Keep ordinary OMP work bounded; critical tasks may opt into a larger budget.
@@ -40,7 +31,7 @@ task:
     trellis-check: "@advisor"
     workflow-reviewer: "@advisor"
   agentPrewalk:
-    trellis-implement: false
+    trellis-implement: "off"
 
 plan:
   defaultOnStartup: false

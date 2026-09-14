@@ -6,8 +6,8 @@ description: Convert an ambiguous software request into scoped, observable accep
 # Clarify Requirements
 
 Improve the active Trellis `prd.md`; do not create a second specification.
-Combine codebase discovery, Matt-style grilling, and ECC-style observable
-acceptance criteria.
+Combine codebase discovery, Matt-style grilling, and observable acceptance
+criteria.
 
 ## Clarify
 

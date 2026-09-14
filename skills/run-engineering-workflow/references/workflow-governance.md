@@ -49,15 +49,15 @@ implementation record.
 | Model domain | Matt domain modeling | `CONTEXT.md`, rare ADR |
 | Design solution | `plan-solution` + relevant specialists | `design.md` |
 | Plan execution | `plan-solution` + test strategy | `implement.md` |
-| Implement behavior | Trellis before-dev + ECC TDD | Code and tests |
+| Implement behavior | Trellis before-dev + Matt `tdd` | Code and tests |
 | Review independently | `review-implementation` | Findings returned to main session |
 | Verify and record | Trellis check + risk-specific checks | `outcome.md` |
 | Reduce complexity | Ponytail review | Code, then re-verification |
 | Preserve learning | Trellis update-spec | `.trellis/spec/` |
 
 Do not call Matt `to-spec`, `to-tickets`, or `implement` when Trellis already
-owns the task. Do not use Ponytail minimal checks to replace required ECC or
-repository checks.
+owns the task. Do not use Ponytail minimal checks to replace required repository
+checks.
 
 ## Source Trust
 
@@ -108,7 +108,8 @@ weaken Trellis hook injection, `implement.jsonl` / `check.jsonl` loading, and
 their fallback context protocol. TDD for the Claude implementation agent is
 therefore enforced through reviewed RED/GREEN slices in `implement.md`, the
 dispatch prompt, Trellis checking, and independent review; do not state that it
-automatically loads an ECC skill when its tool list does not include `Skill`.
+automatically loads an external skill when its tool list does not include
+`Skill`.
 
 Launching the main session with `claude --model sonnet` normally separates the
 implementation model from the Opus planning/review agents. When the main

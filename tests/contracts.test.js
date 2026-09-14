@@ -58,7 +58,8 @@ test("router preserves Trellis state and delegates quality work", () => {
   assert.match(router, /in_progress/);
   assert.match(router, /clarify-requirements/);
   assert.match(router, /plan-solution/);
-  assert.match(router, /tdd-workflow/);
+  assert.match(router, /Matt's[\s\S]*`tdd`/);
+  assert.match(router, /diagnosing-bugs/);
   assert.match(router, /trellis-check/);
   assert.match(router, /review-implementation/);
   assert.match(router, /finish-with-evidence/);
@@ -148,17 +149,48 @@ test("OMP adapter limits skills and separates model roles", () => {
   assert.match(config, /trellis-implement: "@task"/);
   assert.match(config, /trellis-check: "@advisor"/);
   assert.match(config, /workflow-reviewer: "@advisor"/);
+  assert.match(config, /trellis-implement: "off"/);
+  assert.doesNotMatch(config, /trellis-implement:\s*false/);
+  assert.match(config, /- diagnosing-bugs/);
+  assert.match(config, /- grill-with-docs/);
+  assert.match(config, /- tdd/);
   assert.match(config, /prewalk:[\s\S]*enabled: false/);
   assert.match(config, /maxConcurrency: 2/);
   assert.match(config, /maxRuntimeMs: 900000/);
   assert.match(config, /agentIdleTtlMs: 600000/);
   assert.match(config, /softRequestBudget: 80/);
+  assert.doesNotMatch(config, /\*-code-review/);
   assert.match(planner, /model: "@plan"/);
   assert.match(planner, /autoloadSkills:.*plan-solution/);
   assert.match(planner, /autoloadSkills:.*trellis-brainstorm/);
   assert.match(reviewer, /model: "@advisor"/);
   assert.match(reviewer, /autoloadSkills:.*review-implementation/);
   assert.doesNotMatch(reviewer, /tools:.*(?:write|edit)/);
+  assert.match(reviewer, /REVIEW_STATUS: CLEAN/);
+  assert.match(reviewer, /REVIEW_STATUS: INVALID/);
+});
+
+test("Pi adapter uses native agents without OMP role aliases", () => {
+  const planner = read(".pi/agents/workflow-planner.md");
+  const reviewer = read(".pi/agents/workflow-reviewer.md");
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+
+  assert.match(planner, /^name: workflow-planner$/m);
+  assert.match(planner, /^tools: .*\bedit\b.*\bwrite\b/m);
+  assert.match(planner, /^thinkingLevel: high$/m);
+  assert.match(planner, /capabilityManifest:/);
+  assert.doesNotMatch(planner, /^model:/m);
+
+  assert.match(reviewer, /^name: workflow-reviewer$/m);
+  assert.match(reviewer, /^tools: read, grep, find, ls$/m);
+  assert.match(reviewer, /verificationRoles: \[independent-review\]/);
+  assert.doesNotMatch(reviewer, /^model:/m);
+  assert.doesNotMatch(reviewer, /^tools:.*(?:bash|edit|write)/m);
+
+  assert.match(router, /^## Pi Roles$/m);
+  assert.match(router, /trellis_subagent/);
+  assert.match(router, /agentScope.*both/i);
+  assert.match(router, /does not use OMP `@role` aliases/i);
 });
 
 test("OMP dispatches carry a bounded, explicit task handoff", () => {
@@ -285,6 +317,7 @@ test("workflow behavior cases cover every state transition and failure gate", ()
     "tdd-implementation",
     "review-implementation",
     "remediate-and-reverify",
+    "report-existing-independent-review",
     "finish-with-evidence",
     "report-unavailable-and-follow-local-workflow",
   ]) {
@@ -303,40 +336,59 @@ test("workflow behavior cases cover every state transition and failure gate", ()
 
 test("tooling supports synchronized install, diagnosis, and Python OMP launch", () => {
   const installer = read("scripts/install.ps1");
-  const doctor = read("scripts/doctor.ps1");
+  const doctor = read("scripts/doctor.py");
+  const doctorWrapper = read("scripts/doctor.ps1");
   const launcher = read("scripts/start-omp.py");
 
   assert.match(installer, /SupportsShouldProcess/);
   assert.match(installer, /Remove-Item -LiteralPath \$target -Recurse -Force/);
   assert.match(installer, /engineering-workflow\.yml/);
   assert.match(installer, /"Claude"/);
+  assert.match(installer, /"Pi"/);
   assert.match(installer, /"All"/);
   assert.match(installer, /Join-Path \$project "\.claude"/);
   assert.match(installer, /Join-Path \$claudeRoot "skills"/);
   assert.match(installer, /Join-Path \$claudeRoot "agents"/);
   assert.match(installer, /Join-Path \$claudeRoot "commands"/);
-  assert.match(doctor, /trellis-implement: \"@task\"/);
-  assert.match(doctor, /trellis\\workflow\.md/);
-  assert.match(doctor, /claude.*--version/is);
-  assert.match(doctor, /Missing Claude agent/);
-  assert.match(doctor, /Missing Trellis Claude agent/);
-  assert.match(doctor, /foreach \(\$agent in \$requiredAgents\) \{[\s\S]*?\n  \}\r?\n  foreach \(\$agent in @\("workflow-planner", "workflow-reviewer"\)\)/);
-  assert.equal((doctor.match(/OMP agent is missing the Active task handoff contract/g) || []).length, 1);
-  assert.match(doctor, /Effective OMP skill whitelist is missing quality baseline/);
+  assert.match(doctor, /trellis-implement/);
+  assert.match(doctor, /trellis\\workflow\.md|\.trellis/);
+  assert.match(doctor, /claude.*--version|executable_exists\("claude"/is);
+  assert.match(doctor, /Missing Claude agent|"Claude", errors/);
+  assert.match(doctor, /Missing Trellis Claude agent|"Trellis Claude", errors/);
+  assert.match(installer, /PI_CODING_AGENT_DIR/);
+  assert.match(installer, /Join-Path \$HOME "\.pi\\agent"/);
+  assert.match(installer, /Join-Path \$piRoot "agents"/);
+  assert.match(installer, /\.pi\\agents\\\$fileName/);
+  assert.match(doctorWrapper, /doctor\.py/);
+  assert.match(doctorWrapper, /& py -3/);
+  assert.match(doctor, /executable_exists\("pi"/);
+  assert.match(doctor, /"Pi", errors/);
+  assert.match(doctor, /"Trellis Pi", errors/);
+  assert.match(doctor, /"extensions" \/ "trellis" \/ "index\.ts"/);
+  assert.match(doctor, /"@narumitw" \/ "pi-subagents"/);
   assert.match(doctor, /Missing OMP Python launcher/);
+  assert.match(doctor, /OMP overlay skill whitelist is missing/);
+  assert.match(doctor, /workflow-review-gate/);
+  assert.doesNotMatch(doctor, /omp config list/);
   assert.match(installer, /start-engineering-workflow\.py/);
   assert.match(installer, /start-engineering-workflow\.ps1/);
-  assert.match(launcher, /shutil\.which\("omp"\)/);
-  assert.match(launcher, /project \/ "\.omp" \/ OVERLAY_NAME/);
+  assert.match(installer, /omp-extensions/);
+  assert.match(installer, /workflow-review-gate/);
+  assert.match(launcher, /which\("ompweb" if web else "omp"\)/);
+  assert.match(launcher, /def find_executable/);
+  assert.match(launcher, /"--web"/);
+  assert.match(launcher, /build_launch_command/);
   assert.match(launcher, /"--cwd", str\(project\), "--config", str\(overlay\)/);
-});
+  assert.match(launcher, /"--omp-config", str\(overlay\)/);
+  assert.match(launcher, /single ompweb service/);
 
+});
 test("upstream manifest pins auditable revisions and licenses", () => {
   const manifest = JSON.parse(read("manifests/upstreams.lock.json"));
 
   assert.deepEqual(
     Object.keys(manifest.sources).sort(),
-    ["ecc", "mattpocock-skills", "ponytail", "trellis"],
+    ["mattpocock-skills", "ponytail", "trellis"],
   );
 
   for (const source of Object.values(manifest.sources)) {
@@ -357,26 +409,33 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /^## 安装本仓库的 Skill$/m);
   assert.match(readme, /^## 使用方法$/m);
   assert.match(readme, /npm install -g @mindfoldhq\/trellis@latest/);
-  assert.match(readme, /codex plugin add ecc@ecc/);
+  assert.match(readme, /grill-with-docs/);
   assert.match(readme, /\$run-engineering-workflow/);
   assert.match(readme, /\$clarify-requirements/);
   assert.match(readme, /\$plan-solution/);
   assert.match(readme, /\$review-implementation/);
   assert.match(readme, /\$finish-with-evidence/);
   assert.match(readme, /^## OMP 多模型工作流$/m);
+  assert.match(readme, /^## Pi 工作流$/m);
   assert.match(readme, /^## Claude Code 工作流$/m);
   assert.match(readme, /^## 完整使用指南$/m);
   assert.match(readme, /^### 各客户端入口$/m);
   assert.match(readme, /^### 跨客户端和新会话续接$/m);
   assert.match(readme, /^### 其他客户端$/m);
-  assert.match(readme, /trellis init --codex --claude --omp/);
+  assert.match(readme, /trellis init --codex --claude --omp --pi/);
   assert.match(readme, /start-engineering-workflow\.py.*--project-path/s);
   assert.match(readme, /-Harness Claude/);
+  assert.match(readme, /-Harness Pi/);
   assert.match(readme, /-Harness All/);
+  assert.match(readme, /~\/\.pi\/agent\/skills/);
+  assert.match(readme, /\/skill:run-engineering-workflow/);
+  assert.match(readme, /trellis_subagent/);
   assert.match(readme, /claude --model sonnet/);
   assert.match(readme, /trellis-implement.*`@task`/s);
   assert.match(readme, /skills\.includeSkills/);
   assert.match(readme, /普通 `omp`.*默认设置/s);
   assert.match(readme, /ompw.*显式指定项目 overlay/s);
+  assert.match(readme, /workflow-review-gate/);
+  assert.match(readme, /Active task \+ review profile \+\s*worktree snapshot/);
   assert.match(readme, /doctor\.ps1/);
 });

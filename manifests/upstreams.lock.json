@@ -10,14 +10,6 @@
       "license": "AGPL-3.0",
       "role": "workflow state, project records, specifications, and session continuity"
     },
-    "ecc": {
-      "local_path": "../ECC",
-      "remote": "https://github.com/affaan-m/ECC.git",
-      "revision": "c9de8f5b2b3a225bca9befa2b7700aa5e3a4d1b8",
-      "version_hint": "2.2.0",
-      "license": "MIT",
-      "role": "TDD, specialist review, security, and verification"
-    },
     "mattpocock-skills": {
       "local_path": "../mattpocock-skills",
       "remote": "https://github.com/mattpocock/skills.git",
