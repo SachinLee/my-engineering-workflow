@@ -179,6 +179,7 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
             project / ".omp" / "skills",
             project / ".agents" / "skills",
             home / ".omp" / "agent" / "skills",
+            home / ".agents" / "skills",
             home / ".codex" / "skills",
         )
         for upstream in UPSTREAM_SKILLS:
@@ -202,10 +203,12 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
     skills_root = project / ".agents" / "skills" if scope == "Project" else root / "skills"
     check_skills(skills_root, "Pi", errors)
     check_agents(root / "agents", "Pi", errors)
-    if not (pi_user_root / "npm" / "node_modules" / "@narumitw" / "pi-subagents").is_dir():
+    node_modules = pi_user_root / "npm" / "node_modules"
+    subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
+    if not any(pkg.is_dir() for pkg in subagent_pkgs):
         warnings.append(
-            "Optional Pi package @narumitw/pi-subagents was not found. Planning, bounded "
-            "implementation, and independent review will remain in the main Pi session."
+            "Optional Pi package pi-subagents was not found. Planning, bounded ",
+            "implementation, and independent review will remain in the main Pi session.",
         )
 
 
