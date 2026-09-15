@@ -26,6 +26,12 @@
 - Prefer wrappers and adapters over upstream forks.
 - Every durable artifact must be readable by a fresh session that knows only the
   pointer file. If a fact cannot be found on disk, it was never decided.
+- Write human-facing artifacts in the user's language, Chinese by default; keep
+  identifiers, paths, commands, log text, `STATUS` keys, and status tokens English.
+- A dispatch is ready only when its 上下文包 inlines what the main session already
+  concluded. Paths alone push the survey onto the worker.
+- Split at the smallest level that matches execution: 切片, then `tickets/`, then
+  multiple task directories.
 
 ## Workflow
 
@@ -35,8 +41,9 @@ request
   -> create or resume task directory
   -> clarify requirements (prd.md with checkboxed ACs)
   -> plan solution in design.md, implement.md, and context.md
-  -> user approval, STATUS -> in_progress
-  -> Matt TDD (main session by default, workflow-implementer when critical)
+  -> user approval, STATUS -> in_progress (tickets/ frontier when split)
+  -> Matt TDD with an inlined 上下文包 (main session by default,
+     workflow-implementer when critical)
   -> repository verification + Matt code-review
   -> independent correctness/security/complexity review
   -> remediation and re-verification

@@ -37,3 +37,6 @@ closing status line:
 
 For `CLEAN`, list residual risk and checks not run. Never mark a check PASS
 without executed evidence.
+
+Write findings in the user's language (Chinese by default); keep identifiers,
+paths, commands, and the `REVIEW_STATUS` tokens verbatim.

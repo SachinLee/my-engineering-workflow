@@ -12,11 +12,15 @@ skills:
 Implement exactly one approved slice from the active task.
 
 1. Require the handoff to carry `Active task:`, `Assigned slice:`, `Phase:`,
-   `Read:`, `Must preserve:`, `May modify:`, and `Verification:`. If any is
+   `Read:`, `Must preserve:`, `May modify:`, `Verification:`, and the slice's 上下文包.
    missing or the task path is unreadable, return `IMPLEMENT_STATUS: INVALID`
    and edit nothing.
 2. Read only the named artifacts and the paths under `Read:`, including
    `context.md`. Do not scan `.workflow/tasks/` to guess the active task.
+   Treat that package as settled ground truth: work from its inlined AC text,
+   `file:line` conclusions, and verification command instead of repeating the
+   survey. Open a file only because you will edit it or a load-bearing conclusion
+   looks stale, and report any mismatch with disk as drift.
 3. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing.
    Work one RED/GREEN pair at a time on the assigned slice, using the test seam
    declared in `implement.md`.

@@ -6,8 +6,10 @@ description: Design a traceable technical solution and execution plan for an act
 # Plan Solution
 
 Turn an accepted `prd.md` into an implementation-ready solution. Keep
-technical decisions in `design.md` and ordered execution in `implement.md`.
-Do not implement production code while using this skill.
+technical decisions in `design.md`, ordered execution in `implement.md`, and the
+dispatch context in `context.md`. Do not implement production code while using
+this skill. Write the artifacts in the user's language (Chinese by default);
+keep code identifiers, paths, commands, and log text verbatim.
 
 When OMP is available, run this skill in the `workflow-planner` agent on the
 `@plan` role. In Claude Code, use this repository's `workflow-planner` agent on
@@ -19,8 +21,7 @@ planning agent must not guess product intent.
 1. Read `prd.md`, related code and tests, applicable project specs
    (`.workflow/spec/`, or `.trellis/spec/` in a legacy repository), and prior
    ADRs before designing.
-2. Verify that the goal, in scope, out of scope, assumptions, and acceptance
-   criteria are explicit.
+2. Verify that 目标, 范围内, 范围外, 假设, and 验收标准 are explicit.
 3. If a decision still changes required behavior or scope, return to
    `clarify-requirements`. Do not hide a requirement question inside a technical
    plan.
@@ -44,22 +45,22 @@ data integrity, compatibility, observability, accessibility, or rollback.
 
 For standard work, create `design.md` when the task changes an interface, data
 flow, module boundary, persistence model, or meaningful technical decision.
-For critical work, `design.md` is required.
+For critical work, `design.md` is required. Use Chinese headings and keep only
+the sections that apply:
 
-Include only applicable sections:
-
-- Context and current behavior
-- Proposed solution and change boundary
-- Components and responsibilities
-- Public interfaces and invariants
-- Data flow and state transitions
-- Error handling and failure modes
-- Security and privacy considerations
-- Compatibility and migration
-- Observability
-- Alternatives considered and rejection reasons
-- Rollout and rollback
-- Open technical risks
+- 背景与现状
+- 方案与改动边界
+- 组件与职责
+- 公开接口与不变量
+- 数据流与状态迁移
+- 错误处理与失败模式
+- 安全与隐私
+- 兼容性与迁移
+- 可观测性
+- 备选方案与否决理由
+- 发布与回滚
+- 未决技术风险
+- 验收追溯（AC → 设计点）
 
 Do not copy acceptance criteria into `design.md`; reference their IDs. Create an
 ADR only for a hard-to-reverse and surprising decision produced by a real
@@ -68,80 +69,111 @@ tradeoff, then link it instead of duplicating its rationale.
 ## Write implement.md
 
 For standard and critical work, create an ordered `implement.md`. Organize work
-as vertical slices that leave the repository verifiable after each slice.
-
-Use this shape:
-
-```markdown
-### Slice 1: AC-001 - Reject unauthorized export
-
-- Behavior: observable result delivered by this slice
-- Code boundary: modules or interfaces expected to change
-- Test seam: public boundary used to prove behavior
-- RED: targeted test and intended failure
-- Implementation: minimum production change
-- GREEN: targeted passing command
-- Validation: lint, typecheck, integration, build, or manual check
-- Dependencies: prerequisite slices or external decisions
-- Rollback: how to remove or disable this slice safely
-```
-
-#### Subagent Handoff
-
-Every slice dispatched through OMP or another agent-capable harness must include:
+as vertical slices that leave the repository verifiable after each slice. Use
+this shape per slice:
 
 ```markdown
-Active task: .workflow/tasks/<task-id>/
-Assigned slice: Slice N / AC-XXX
-Phase: implement
+### 切片 N：AC-XXX - <标题>
 
-Required artifacts:
-- prd.md#AC-XXX
-- design.md#relevant-section
-- implement.md#slice-N
-
-Allowed files:
-- path/to/production-file
-- path/to/test-file
-
-Forbidden files:
-- unrelated paths
-- global task state
-
-Invariants:
-- behavior or contract that must remain true
-
-Verification commands:
-- focused test command
-- required lint, typecheck, integration, or build command
-
-Escalation conditions:
-- decision or change outside the approved boundary
-
-Evidence to return:
-- files changed
-- RED/GREEN commands and outcomes
-- remaining risks or unavailable checks
+- 行为：本片交付的可观测结果
+- 代码边界：预期会改动的模块或接口
+- 测试接缝：用来证明行为的公开边界
+- RED：目标测试与预期失败
+- 实现：最小生产改动
+- GREEN：目标通过命令
+- 验证：lint、typecheck、集成、构建或手工检查
+- 依赖：前置切片或外部决策
+- 回滚：如何安全移除或关闭本片
 ```
-
-The main session supplies the task path and slice. The subagent must not search all
-task directories, choose a different slice, move the session pointer, or create another
-handoff record. If the task path or assigned slice is missing or unreadable, the
-subagent returns an invalid status and does not edit production code.
 
 Map every required acceptance criterion to at least one slice or an explicit
 non-code verification step. Do not use `AC-001` as a placeholder when the PRD
 has different IDs.
 
+## Write The Context Package
+
+Every slice that can be dispatched must carry a 上下文包 written at planning
+time, so a fresh subagent starts from conclusions instead of repeating the
+main session's investigation. The rule is simple: **what the main session has
+already read and reasoned about gets inlined; only files the worker must newly
+open stay as paths.**
+
+```text
+Active task: .workflow/tasks/<task-id>/
+Assigned slice: 切片 N / AC-XXX
+Phase: implement
+
+已内联上下文（子代理不需要再读原文）：
+- 验收标准：<把本片 AC 整条贴进来>
+- 相关设计决策：<design.md 对应小节的关键原文>
+- 已定位：<file:line> + 符号 + 结论（例：XxxServiceImpl.java:212 handleHeartbeat 用部分实体调用 dao.update(entity, wrapper)）
+- 现成模式：可直接照抄结构的实现或测试文件，附关键片段
+- 不变量：本片必须保持的行为
+- 验证命令：确切命令，含 JDK、离线、模块参数，以及预期输出要点
+
+需要新打开（只列真正要读的）：
+- path/to/production-file
+- path/to/test-file
+
+允许修改：
+- path/to/production-file
+- path/to/test-file
+禁止修改：
+- 实体注解、mapper/XML、配置、数据库、其他 task 目录、STATUS 与指针文件
+升级条件：
+- 需要越出允许范围，或内联结论与磁盘不符时，停止并报告差异
+返回证据：
+- 改动文件、RED/GREEN 命令与结果、未运行的检查、剩余风险
+```
+
+Keep the package under roughly 1,500 tokens per slice. When the source material
+is longer, inline the decisive lines and cite the file rather than pasting it.
+A slice without a context package is planned for a main-session edit, not for
+dispatch.
+
+## Decompose The Work
+
+Choose the smallest split level that matches how the work will actually be
+executed:
+
+| 级别 | 用在什么时候 | 落在哪里 |
+| --- | --- | --- |
+| 切片 | 同一会话内顺序完成，共享模块，一个 writer | `implement.md` 的 `### 切片 N` |
+| 工单 | 每片可独立验收、需要跨会话续接、或多 writer 并行推进 | `.workflow/tasks/<task-id>/tickets/NN-<slug>.md` |
+| 多任务 | 不同发布单元、不同仓库、或可独立交付收口的成果 | 各自 `.workflow/tasks/<id>/`，由一个总控 task 记 `prd.md` 与子任务清单 |
+
+Do not split `lightweight` work, a single test seam, or a change confined to one
+or two files. Splitting is a scheduling decision, not a documentation goal.
+
+For the 工单 level, one file per ticket:
+
+```markdown
+---
+id: T2
+标题：摄像头状态 CAS 更新
+covers: [AC-001]
+blocked_by: [T1]
+state: ready          # ready | in_progress | done | blocked
+writer: main          # main | workflow-implementer
+---
+
+范围、入口文件、验收与验证命令；细节直接引用 `implement.md#切片-3` 与其上下文包。
+```
+
+The frontier is the set of `ready` tickets whose `blocked_by` are all `done`.
+Advance one ticket per writer; on completion set `state: done`, then record the
+evidence in `outcome.md`. Use Matt `to-tickets` to draft this list, but write the
+result inside the task directory — never into `.scratch/` or a second tracker.
+
 ## Write context.md
 
 Nothing is injected into a subagent automatically, so record the read list that
-dispatch depends on. One row per file, with a one-line reason:
+dispatch depends on. One row per file, with a one-line Chinese reason:
 
 ```text
-- .workflow/spec/gateway/billing.md — price rules stay additive; migrations never rewrite history
-- docs/adr/0012-cost-source.md — provider cost wins over local estimate
-- crates/service/src/quota/model_pricing.rs — current resolution order
+- .workflow/spec/gateway/billing.md — 价格规则只增不改；迁移不重写历史
+- docs/adr/0012-cost-source.md — provider 实际费用优先于本地估算
+- crates/service/src/quota/model_pricing.rs — 当前价格解析入口
 ```
 
 Keep paths and reasons only. Never paste file bodies into `context.md`: they go
@@ -163,6 +195,8 @@ Before handing off:
 - Confirm expected changed files are inside the declared scope.
 - Confirm test seams exercise public behavior rather than internals.
 - Confirm dependency ordering, migration, rollout, and rollback where relevant.
+- Confirm every dispatchable slice has a context package with inlined AC text,
+  located code, and the exact verification command.
 - Challenge speculative abstractions, dependencies, configuration, and fallback
   paths through Ponytail's simplicity ladder.
 - Record unresolved technical risk instead of presenting guesses as decisions.

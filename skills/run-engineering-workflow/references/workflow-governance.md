@@ -12,7 +12,7 @@ decided, and an unreadable file is an invalid dispatch, not a reason to guess.
 
 ```text
 .workflow/
-  CURRENT.md                 human-visible pointer: task path + phase + updated
+  CURRENT.md                 human-visible pointer: task path + updated (phase lives in STATUS)
   by-session/<key>.md        per-session pointer; <key> is <platform>-<session id>
                              or "main" when the harness exposes no session id
   journal.md                 one append-only line per closed task
@@ -24,7 +24,7 @@ decided, and an unreadable file is an invalid dispatch, not a reason to guess.
     context.md               the files this task must read, each with a reason
     STATUS                   exactly two lines: phase and updated
     outcome.md               written at close: evidence per acceptance criterion
-    tickets/                 optional Matt to-tickets output for multi-session work
+    tickets/                 one file per 工单 when the task spans sessions or writers
     research/                optional notes, source excerpts, measurements
   archive/<MM-DD-slug>/      moved here on close; contents are never edited
 ```
@@ -49,6 +49,44 @@ Rules that keep the layout cheap to read:
   it, never resurrecting it as current state.
 - The whole layout is optional per repository. When a repository keeps no
   records, this workflow says so out loud instead of inventing a store.
+
+## Artifact Language
+
+Human-facing artifacts — `prd.md`, `design.md`, `implement.md`, `context.md`,
+`outcome.md`, `journal.md`, and ticket bodies — are written in the user's
+language, Chinese by default, including section headings and field labels. Keep
+verbatim and greppable: code identifiers, file paths, commands, log and error
+text, `STATUS` keys (`phase`, `updated`), ticket front-matter keys, and status
+tokens (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`). Do not translate an identifier
+into prose, and do not restate in chat what the artifact already records.
+
+## Tickets And Decomposition
+
+Three split levels; use the smallest one that fits how the work gets executed:
+
+| 级别 | 用在什么时候 | 落在哪里 |
+| --- | --- | --- |
+| 切片 | 同一会话顺序完成、共享模块、单 writer | `implement.md` 的 `### 切片 N` |
+| 工单 | 可独立验收、跨会话续接、或多 writer | `tickets/NN-<slug>.md` |
+| 多任务 | 不同发布单元、不同仓库、可独立收口 | 多个 task 目录，外加一个总控 task |
+
+A ticket file starts with:
+
+```text
+---
+id: T2
+标题：摄像头状态 CAS 更新
+covers: [AC-001]
+blocked_by: [T1]
+state: ready          # ready | in_progress | done | blocked
+writer: main          # main | workflow-implementer
+---
+```
+
+The frontier is the set of `ready` tickets whose `blocked_by` are all `done`. One
+ticket, one live writer. `state: done` requires executed verification evidence,
+recorded in `outcome.md`. Never duplicate the slice plan inside a ticket:
+reference `implement.md#切片-N` and its 上下文包 instead.
 
 ## Prompt Cache Constraint
 
@@ -75,6 +113,7 @@ workflow systems.
 | `outcome.md` | Active task directory | Actual delivery, evidence, review, deviations, remaining risk |
 | `STATUS` | Active task directory | Current phase and last transition |
 | `by-session/` | Workflow record | Session-to-task binding only, never requirements |
+| `tickets/` | Active task directory | Scheduling state for cross-session or parallel work; never a second plan |
 | `.workflow/spec/` | Project knowledge | Durable conventions and prevention rules |
 | `.workflow/journal.md` | Project journal | One-line closure record per task |
 | `CONTEXT.md` | Domain glossary | Stable business vocabulary only |
@@ -104,14 +143,20 @@ Use three context tiers:
 | Tier | When loaded | Contents |
 | --- | --- | --- |
 | Project context | Session start | Project identity, workflow rules, and relevant spec index |
-| Task pointer | Session start or resume | One task path, phase, and short summary |
-| Task package | Activation or dispatch | Role- and slice-scoped artifact sections, file bounds, invariants, and checks |
+| Task pointer | Session start or resume | One task path; the phase comes from that task's `STATUS` |
+| Task package | Activation or dispatch | Inlined AC text, the design decisions it rests on, located `file:line` conclusions, invariants, file bounds, and the exact checks |
 
 The task package is derived from the active task artifacts and is not a second
 durable record. Refresh it after requirement clarification, plan approval, slice
 completion, review findings, and cross-session resume. When a harness cannot
 bind a pointer to a session, use explicit task paths and bounded artifact
 sections as the compatibility mode and record the limitation.
+
+Inlining is the point: the package exists so a fresh worker starts from
+conclusions. Paths alone are only acceptable for material the worker genuinely
+has to open itself — usually the two or three files it will edit. When the package
+is thin, the planning was thin; fix `implement.md` rather than letting every
+dispatch re-run the same repository survey.
 
 Issue trackers may link to a task directory, but must not duplicate its design
 and implementation record.

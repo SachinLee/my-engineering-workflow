@@ -11,6 +11,11 @@ as methods inside that workflow; never create a competing task or plan system.
 All state is plain files read and written with the platform's file tools. This
 workflow has no CLI, no daemon, and no script interpreter dependency.
 
+Task artifacts (`prd.md`, `design.md`, `implement.md`, `context.md`, `outcome.md`,
+`journal.md`, and tickets) are written in the user's language — Chinese by default.
+Keep code identifiers, paths, commands, log text, `STATUS` keys, and status tokens
+(`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`) verbatim so they stay greppable.
+
 ## Bounded Context And Dispatch Contract
 
 `.workflow/` remains the only durable source of task state. Treat the pointer
@@ -32,6 +37,14 @@ one task path and pass a bounded handoff. The handoff must begin with:
 Active task: .workflow/tasks/<task-id>/
 Assigned slice: <slice-or-stage>
 ```
+
+That block is the boundary, not the whole payload. Paste the slice's 上下文包 from
+`implement.md` into the dispatch: the AC text verbatim, the design decisions that
+slice rests on, the located `file:line` conclusions with the symbol names, the
+existing pattern the worker should copy, and the exact verification command. The
+worker must not redo research the main session already finished. If something is
+missing from the package, stop and complete it in `implement.md`; do not widen the
+subagent's own investigation to compensate.
 
 For planning, use `Assigned slice: planning / all accepted ACs`; for
 implementation, use `Assigned slice: Slice N / AC-XXX`; for review, use
@@ -148,6 +161,11 @@ Phase routing:
   - For `critical`: dispatch `workflow-implementer` on `@task` and require it
     to read `skill://tdd-workflow` (or `tdd`) before editing. Keep the handoff
     inside the declared file boundary.
+- `in_progress` with a `tickets/` directory: recompute the frontier (every
+  `blocked_by` ticket is `done`), advance exactly one ticket per writer, and set
+  that ticket's `state: done` only after its verification command has executed
+  evidence. Resuming after a session break means recomputing the frontier from the
+  ticket files, never rereading the previous chat.
 - Code changed: run the smallest check that proves the changed behavior.
   - For `lightweight`: run one focused check before delivery.
   - For `standard`: use either Matt `code-review` in the main session or one
@@ -281,6 +299,10 @@ repository-native checks own verification.
   tracker, or separate TDD evidence when the active task directory can hold the
   same information. Matt `to-tickets` output belongs in
   `.workflow/tasks/<task-id>/tickets/` when it is needed at all.
+- Do not substitute a wider subagent investigation for a missing context package.
+  Complete the package in `implement.md` first, then dispatch.
+- Do not split work into tickets or extra tasks when one slice boundary suffices.
+  Splitting costs bookkeeping; it buys nothing by itself.
 - Do not add a startup, hook, or extension injector that places task state
   before the conversation history. Read it instead.
 - Do not commit, push, publish, archive, or modify remote state without the

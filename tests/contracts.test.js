@@ -156,10 +156,10 @@ test("solution planning separates design decisions from execution steps", () => 
   assert.match(skill, /design\.md/);
   assert.match(skill, /implement\.md/);
   assert.match(skill, /## Write context\.md/);
-  assert.match(skill, /alternatives/i);
-  assert.match(skill, /data flow/i);
-  assert.match(skill, /rollback/i);
-  assert.match(skill, /test seam/i);
+  assert.match(skill, /备选方案/);
+  assert.match(skill, /数据流/);
+  assert.match(skill, /回滚/);
+  assert.match(skill, /测试接缝/);
   assert.match(skill, /AC-001/);
   assert.match(skill, /do not implement/i);
 });
@@ -170,9 +170,9 @@ test("clarification writes observable acceptance criteria into the task record",
   assert.match(skill, /prd\.md/);
   assert.match(skill, /AC-001/);
   assert.match(skill, /- \[ \] AC-001/);
-  assert.match(skill, /in scope/i);
-  assert.match(skill, /out of scope/i);
-  assert.match(skill, /verification method/i);
+  assert.match(skill, /范围内/);
+  assert.match(skill, /范围外/);
+  assert.match(skill, /验证方法/);
   assert.match(skill, /one question at a time/i);
   assert.match(skill, /STATUS/);
   assert.match(skill, /by-session/);
@@ -187,7 +187,7 @@ test("finish skill records actual evidence without inventing results", () => {
   assert.match(skill, /do not invent/i);
   assert.match(skill, /\.workflow\/spec\//);
   assert.match(skill, /one row for every `- \[ \] AC-NNN`/);
-  assert.match(skill, /Independent Review/);
+  assert.match(skill, /## 独立复核/);
   assert.match(skill, /workflow-reviewer/);
 });
 
@@ -378,6 +378,8 @@ test("behavior cases cover bounded context and fallback observability", () => {
     "pointer-and-task-disagree",
     "close-record-after-evidence",
     "incomplete-ac-table-blocks-close",
+    "dispatch-without-context-package",
+    "multi-ticket-frontier",
   ]) {
     assert.ok(fixture.cases.some((entry) => entry.name === name), `missing behavior case for ${name}`);
   }
@@ -528,6 +530,9 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /^## 这个仓库是做什么的$/m);
   assert.match(readme, /^## 核心产物$/m);
   assert.match(readme, /^## 为什么不自动注入任务上下文$/m);
+  assert.match(readme, /^## 子代理拿到的上下文包$/m);
+  assert.match(readme, /^## 任务怎么拆$/m);
+  assert.match(readme, /^## 产物用什么语言$/m);
   assert.match(readme, /^## 需要安装什么$/m);
   assert.match(readme, /^### 不需要安装：记录系统$/m);
   assert.match(readme, /^## 安装本仓库的 Skill$/m);
@@ -562,4 +567,66 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /workflow-review-gate/);
   assert.match(readme, /Active task \+ review profile \+\s*worktree snapshot/);
   assert.match(readme, /doctor\.ps1/);
+});
+
+test("task artifacts are written in the user's language", () => {
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const clarify = read("skills/clarify-requirements/SKILL.md");
+  const plan = read("skills/plan-solution/SKILL.md");
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+
+  assert.match(governance, /## Artifact Language/);
+  assert.match(governance, /`STATUS` keys \(`phase`, `updated`\)/);
+  assert.match(router, /written in the user's language/);
+  for (const body of [clarify, plan, finish]) {
+    assert.match(body, /Chinese by default/);
+  }
+  assert.match(clarify, /- \[ \] AC-001: 拒绝越权导出/);
+  assert.match(plan, /### 切片 N：AC-XXX/);
+  assert.match(finish, /# 交付结果/);
+  assert.match(finish, /NOT RUN/);
+});
+
+test("dispatch carries an inlined context package, not a path list", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const plan = read("skills/plan-solution/SKILL.md");
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const implementers = [
+    read("agents/workflow-implementer.md"),
+    read(".omp/agents/workflow-implementer.md"),
+    read(".pi/agents/workflow-implementer.md"),
+  ];
+
+  assert.match(plan, /## Write The Context Package/);
+  assert.match(plan, /已内联上下文/);
+  assert.match(plan, /需要新打开/);
+  assert.match(router, /上下文包/);
+  assert.match(router, /must not redo research/);
+  assert.match(governance, /Inlining is the point/);
+  for (const implementer of implementers) {
+    assert.match(implementer, /上下文包/);
+  }
+});
+
+test("decomposition exposes slices, tickets, and a recomputable frontier", () => {
+  const plan = read("skills/plan-solution/SKILL.md");
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+  const planner = read("agents/workflow-planner.md");
+
+  assert.match(plan, /## Decompose The Work/);
+  assert.match(plan, /blocked_by: \[T1\]/);
+  assert.match(governance, /## Tickets And Decomposition/);
+  assert.match(governance, /frontier is the set of `ready` tickets/);
+  assert.match(router, /recompute the frontier/);
+  assert.match(finish, /tickets\//);
+  assert.match(planner, /tickets\/NN-<slug>\.md/);
 });

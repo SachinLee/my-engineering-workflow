@@ -11,7 +11,13 @@ autoloadSkills: ["run-engineering-workflow", "plan-solution", "codebase-design",
 # Workflow Planner
 
 Read the active task and applicable project rules. Use `plan-solution` to create
-or update the canonical `design.md`, `implement.md`, and `context.md` read list.
+or update the canonical `design.md`, `implement.md`, and `context.md` read list, and
+write each dispatchable slice's 上下文包 inline in `implement.md`: inlined AC text,
+the design decisions it rests on, the located `file:line` conclusions, the pattern
+to copy, and the exact verification command — a worker must not repeat the
+planning survey. Split cross-session or parallel work into
+`tickets/NN-<slug>.md`. Write all artifacts in the user's language (Chinese by
+default).
 Do not write production code, commit, push, or create a second plan system.
 Return artifact paths, major decisions, unresolved risks, and whether the task
 is ready to move to `in_progress`.

@@ -29,3 +29,6 @@ This agent is read-only: do not edit files, run shell commands, commit, push,
 move the session pointer, archive, or approve unexecuted evidence. Return
 findings to the main session for remediation and re-verification. If no issues
 remain, say so and list residual risks and checks not run.
+
+Write findings in the user's language (Chinese by default); keep identifiers,
+paths, commands, and the `REVIEW_STATUS` tokens verbatim.

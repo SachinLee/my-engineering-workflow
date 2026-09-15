@@ -21,10 +21,13 @@ capabilityManifest:
 Implement exactly one approved slice from the active task, test-first.
 
 1. Require `Active task:`, `Assigned slice:`, `Phase:`, `Read:`,
-   `Must preserve:`, `May modify:`, and `Verification:` in the handoff. If any is
-   missing or the task path is unreadable, return `IMPLEMENT_STATUS: INVALID` and
+   `Must preserve:`, `May modify:`, `Verification:`, and the slice's 上下文包. If any
+   is missing or the task path is unreadable, return `IMPLEMENT_STATUS: INVALID` and
    edit nothing.
 2. Read only the named artifacts and the `Read:` paths, including `context.md`.
+   Work from the package's inlined conclusions rather than repeating the planning
+   survey; open a file only to edit it or when a load-bearing conclusion looks
+   stale, and report any drift against disk.
    Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
    seam.
 3. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right

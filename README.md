@@ -46,6 +46,7 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 | `.workflow/tasks/<task>/prd.md` | 需求、范围、非目标、假设和带复选框的验收标准 |
 | `.workflow/tasks/<task>/design.md` | 技术方案、接口、数据流、兼容性和取舍 |
 | `.workflow/tasks/<task>/implement.md` | 实施顺序、测试计划、验证命令和回滚点 |
+| `.workflow/tasks/<task>/tickets/NN-<slug>.md` | 跨会话或多 writer 时的工单：covers、blocked_by、state、writer |
 | `.workflow/tasks/<task>/context.md` | 本任务必须读取的规范、代码和研究文件清单（含一句理由） |
 | `.workflow/tasks/<task>/STATUS` | 当前阶段（planning / in_progress / review / done）和时间戳 |
 | `.workflow/tasks/<task>/outcome.md` | 实际实现、逐条 AC 结果、RED/GREEN、独立复核、验证结果和剩余风险 |
@@ -58,6 +59,13 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 旧项目里已有的 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
 Trellis 脚本、不再安装它的注入扩展，新状态一律写入 `.workflow/`。
 
+## 产物用什么语言
+
+所有面向人的产物（`prd.md`、`design.md`、`implement.md`、`context.md`、`outcome.md`、
+`journal.md`、工单正文）用中文书写，包括小标题和字段名；代码标识符、文件路径、
+命令、日志原文，以及状态记号（`PASS`、`NOT RUN`、`REVIEW_STATUS: CLEAN`）和 `STATUS`
+的键名保持英文原样，方便 grep 与脚本解析。
+
 ## 为什么不自动注入任务上下文
 
 旧做法是每轮把状态块塞到请求最前面。实测代价：一次状态变更会让整条历史前缀失效，
@@ -68,6 +76,62 @@ Trellis 脚本、不再安装它的注入扩展，新状态一律写入 `.workfl
 读。因此约定是——不装 hook、不加 extension、不写启动注入块；主路由把“读指针 →
 读 `STATUS` → 读产物”作为入口动作，并由硬性前置检查保证它真的发生（读不到任务路径就是
 INVALID 派发，不允许进入实现）。
+
+## 子代理拿到的上下文包
+
+规划阶段每写一个切片，就同时把它对应的 **上下文包** 写进 `implement.md`。派发给
+`workflow-implementer` / `workflow-planner` / `workflow-reviewer` 时整段贴进去：
+
+```text
+已内联上下文（子代理不需要再读原文）：
+- 验收标准：本片 AC 整条原文
+- 相关设计决策：design.md 对应小节的关键原文
+- 已定位：file:line + 符号 + 结论
+- 现成模式：可直接照抄结构的实现或测试文件，附关键片段
+- 不变量：本片必须保持的行为
+- 验证命令：确切命令（含 JDK、离线、模块参数）与预期输出要点
+
+需要新打开（只列真正要读的）：
+- 它将要编辑的那两三个文件
+```
+
+原则是：**主会话读过并据此做过判断的内容，一律内联**，只给路径就等于让子代理把
+调研重做一遍。预算约每片 1500 token；超了就摘录决定性的那几行并标注出处，不要贴
+整份文件。上下文包缺字段时，正确做法是回 `implement.md` 补全再派发，而不是放任子
+代理自己扩大搜索——reviewer 会把这种情况作为流程问题报出来。
+
+## 任务怎么拆
+
+拆分的粒度由“实际怎么执行”决定，不按文档好看程度决定。三档从小到大：
+
+| 档位 | 用在什么时候 | 写在哪里 |
+| --- | --- | --- |
+| 切片 | 同一会话内顺序完成、共享模块、只有一个 writer | `implement.md` 的 `### 切片 N` |
+| 工单 | 每片能独立验收、需要跨会话续接、或多 writer 并行 | `tickets/NN-<slug>.md` |
+| 多任务 | 不同发布单元、不同仓库、可各自独立收口 | 多个 task 目录 + 一个总控 task |
+
+工单文件头部固定字段：
+
+```text
+---
+id: T2
+标题：摄像头状态 CAS 更新
+covers: [AC-001]
+blocked_by: [T1]
+state: ready          # ready | in_progress | done | blocked
+writer: main          # main | workflow-implementer
+---
+```
+
+调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；一次工单只给一个
+writer；验证命令真正跑过并把证据写进 `outcome.md` 后，才能把 `state` 改成 `done`。
+换会话或换客户端续接时，重新读 `tickets/` 算 frontier，不靠上一段聊天回忆进度。
+工单正文不重写切片计划，直接引用 `implement.md#切片-N` 和它的上下文包。
+
+不要拆的情形：`lightweight` 任务、单一测试接缝、改动集中在一两个文件。拆分本身有
+记账成本，不会自动带来质量。需要更大范围探路时，先走 Matt `wayfinder` 出决策地图，
+再回到 `to-spec` / `to-tickets` 收拢成工单。
+
 
 详细约定随主路由一起打包在
 [workflow-governance.md](skills/run-engineering-workflow/references/workflow-governance.md)，

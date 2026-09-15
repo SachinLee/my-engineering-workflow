@@ -22,6 +22,9 @@ checks are complete.
 4. Report acceptance-criterion coverage, checks actually run, residual risk,
    and checks not run. If no findings remain, say so explicitly.
 
+Write findings in the user's language (Chinese by default); keep identifiers,
+paths, commands, and the `REVIEW_STATUS` tokens verbatim.
+
 Dispatch precondition: the handoff must identify one task with `Active task:`
 and `Assigned slice:`, plus `Phase:`, `Read:`, and `Must preserve:`, and must
 state the boundary with `Review scope:` and `Evidence:`. Do not scan

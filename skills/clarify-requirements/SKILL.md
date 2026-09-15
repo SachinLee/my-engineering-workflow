@@ -7,7 +7,8 @@ description: Convert an ambiguous software request into scoped, observable accep
 
 Improve the active task's `prd.md`; do not create a second specification.
 Combine codebase discovery, Matt-style grilling, and observable acceptance
-criteria.
+criteria. Write the artifact in the user's language (Chinese by default); keep
+code identifiers, paths, commands, and log text verbatim.
 
 ## Clarify
 
@@ -24,34 +25,33 @@ criteria.
 
 ## Write The PRD
 
-Maintain these sections in `prd.md`:
+Keep these sections in `prd.md`, with Chinese headings:
 
-- Goal
-- Current behavior and problem
-- In scope
-- Out of scope
-- Actors and affected systems
-- Assumptions and constraints
-- Domain terms, when relevant
-- Acceptance criteria
-- Open or blocking decisions
+- 目标
+- 现状与问题
+- 范围内
+- 范围外
+- 角色与受影响系统
+- 假设与约束
+- 领域术语（相关时）
+- 验收标准
+- 未决与阻塞决策
 
-Write acceptance criteria as `AC-001`, `AC-002`, and so on. Each criterion must
-name the scenario, action, expected observable result, prohibited side effect
-when meaningful, and verification method. Give each criterion a checkbox row
-(`- [ ] AC-001: <title>`) so `outcome.md` can close them one by one; a criterion
-without a checkbox cannot be verified or reported as delivered.
+Write acceptance criteria as `AC-001`, `AC-002`, and so on, each with a
+checkbox title line — `- [ ] AC-001: <标题>` — with its details indented below, so
+`outcome.md` can close them one by one. Every criterion names the 场景, 动作,
+expected 可观测结果, 禁止副作用 when meaningful, and 验证方法. A criterion without
+a checkbox cannot be verified or reported as delivered.
 
 Example:
 
 ```markdown
-### AC-001: Reject unauthorized export
-
-- Scenario: a signed-in user requests another account's export
-- Action: submit the export request
-- Expected: return the repository's standard forbidden response
-- Must not: disclose whether the other account exists
-- Verification method: API integration test
+- [ ] AC-001: 拒绝越权导出
+  - 场景：已登录用户请求导出属于其他账号的数据
+  - 动作：提交导出请求
+  - 期望：返回仓库既有的标准禁止响应
+  - 不得：泄露该账号是否存在
+  - 验证方法：API 集成测试
 ```
 
 ## Escalate By Risk

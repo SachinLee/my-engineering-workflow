@@ -8,6 +8,9 @@ description: Independently review a completed implementation against the active 
 Review from a fresh context when the platform supports it. Do not implement the
 change under review and then approve it in the same pass.
 
+Write your findings in the user's language (Chinese by default); keep identifiers,
+paths, commands, and severity tokens verbatim.
+
 ## Establish The Contract
 
 1. Read the active `prd.md`, optional `design.md`, optional `implement.md`, and
@@ -47,6 +50,10 @@ Lead with actionable findings ordered by severity. For each finding include:
 Distinguish confirmed defects from questions. Do not report style preferences
 without a project rule or maintainability consequence. If no findings remain,
 say so and list any checks not run or residual risk.
+
+When a dispatched slice had to redo research the plan should have carried, report
+the thin 上下文包 as a process finding: naming the missing field is enough to fix
+the next plan.
 
 Return findings to the main session. The main session applies fixes, re-runs
 affected checks, and records the final review result in `outcome.md`. A reviewer

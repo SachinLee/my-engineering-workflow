@@ -13,12 +13,16 @@ autoloadSkills: ["tdd", "ponytail-review", "codebase-design"]
 Implement exactly one approved slice from the active task.
 
 Dispatch precondition: the handoff must carry `Active task:`, `Assigned slice:`,
-`Phase:`, `Read:`, `Must preserve:`, `May modify:`, and `Verification:`. If any
-is missing or the task path is unreadable, return `IMPLEMENT_STATUS: INVALID` and
+`Phase:`, `Read:`, `Must preserve:`, `May modify:`, `Verification:`, and the slice's
+上下文包. If any is missing or the task path is unreadable, return
+`IMPLEMENT_STATUS: INVALID` and
 edit nothing.
 
 1. Read only the named artifacts and the paths under `Read:`, including
    `context.md`. Do not scan `.workflow/tasks/` to guess the active task.
+   Work from the package's inlined AC text, `file:line` conclusions, and
+   verification command instead of repeating the planning survey; open a file only
+   to edit it or when a load-bearing conclusion looks stale, and report drift.
 2. Follow the preloaded `tdd` skill. Work one RED/GREEN pair at a time on the
    assigned slice using the test seam declared in `implement.md`.
 3. Stay inside `May modify:`. When the correct change needs a file outside that

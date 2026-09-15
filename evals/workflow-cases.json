@@ -103,6 +103,19 @@
       "required_handoff": ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]
     },
     {
+      "name": "dispatch-without-context-package",
+      "state": "handoff_lists_paths_only",
+      "expected_stage": "complete-context-package-before-dispatch",
+      "forbidden": ["widen subagent investigation", "let the worker re-survey the repository"]
+    },
+    {
+      "name": "multi-ticket-frontier",
+      "state": "tickets_with_blockers_resolved",
+      "expected_stage": "advance-one-frontier-ticket",
+      "required_behavior": "one-writer-per-ticket",
+      "forbidden": ["advance two tickets for one writer", "duplicate the slice plan into the ticket"]
+    },
+    {
       "name": "review-with-diff-evidence",
       "state": "code_changed_with_evidence",
       "expected_stage": "review-implementation",

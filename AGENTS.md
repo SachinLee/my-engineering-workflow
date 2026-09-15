@@ -14,6 +14,16 @@ Rules:
   through file reads, which keep the prompt-cache prefix stable.
 - `.trellis/` is a read-only legacy record format. Never call Trellis scripts,
   write into `.trellis/`, or install its injectors from this workflow.
+- Write human-facing task artifacts (prd/design/implement/context/outcome/journal/
+  and tickets) in the user's language, Chinese by default, including headings and
+  field labels. Keep identifiers, paths, commands, log text, `STATUS` keys, and
+  status tokens in English so they stay greppable.
+- Planning writes a 上下文包 per dispatchable slice into `implement.md`. A handoff
+  that only lists paths is not dispatch-ready; complete the package instead of
+  letting a subagent redo the survey.
+- Split at the smallest level that matches execution: 切片 inside one session,
+  `tickets/` across sessions or writers, multiple task directories for separately
+  shippable outcomes.
 - Add or change contract tests before changing workflow behavior.
 - Keep skill bodies concise; put shared governance in
   `skills/run-engineering-workflow/references/` so installed skills retain it.
