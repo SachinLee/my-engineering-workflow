@@ -231,10 +231,10 @@ test("OMP adapter limits skills and separates model roles", () => {
   assert.match(config, /- tdd/);
   assert.match(config, /- code-review/);
   assert.match(config, /prewalk:[\s\S]*enabled: false/);
-  assert.match(config, /maxConcurrency: 2/);
-  assert.match(config, /maxRuntimeMs: 900000/);
-  assert.match(config, /agentIdleTtlMs: 600000/);
-  assert.match(config, /softRequestBudget: 80/);
+  assert.match(config, /maxConcurrency: 4/);
+  assert.doesNotMatch(config, /maxRuntimeMs:/);
+  assert.doesNotMatch(config, /agentIdleTtlMs:/);
+  assert.doesNotMatch(config, /softRequestBudget:/);
   assert.doesNotMatch(config, /\*-code-review/);
 
   assert.match(planner, /model: "@plan"/);

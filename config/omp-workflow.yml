@@ -19,12 +19,9 @@ skills:
     - ponytail-review
 
 task:
-  # Keep ordinary OMP work bounded; critical tasks may opt into a larger budget.
-  maxConcurrency: 2
-  maxRuntimeMs: 900000
-  agentIdleTtlMs: 600000
+  # Use the global OMP defaults for runtime, idle TTL, and request budget.
+  maxConcurrency: 4
   maxRecursionDepth: 1
-  softRequestBudget: 80
   agentModelOverrides:
     workflow-planner: "@plan"
     workflow-implementer: "@task"
