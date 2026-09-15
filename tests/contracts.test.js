@@ -138,15 +138,35 @@ test("router preserves .workflow state and delegates quality work", () => {
   assert.match(router, /do not initialize one silently/i);
 });
 
-test("closeout journals and archives the task record", () => {
+test("acceptance and archival belong to the user", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
   const finish = read("skills/finish-with-evidence/SKILL.md");
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const architecture = read("ARCHITECTURE.md");
+  const agents = read("AGENTS.md");
 
-  assert.match(finish, /## Close The Record/);
-  assert.match(finish, /phase: done/);
-  assert.match(finish, /journal\.md/);
-  assert.match(finish, /\.workflow\/archive\//);
-  assert.match(finish, /delete this session's\s+pointer file/);
-  assert.match(finish, /Never delete an archived task/);
+  assert.match(governance, /## Acceptance And Archival/);
+  assert.match(
+    governance,
+    /The user accepts and archives\. The agent never does it on its own initiative/
+  );
+  assert.match(governance, /awaiting-acceptance/);
+  assert.match(governance, /phase: done` means "the user accepted"/);
+  assert.match(finish, /## Hand It Back For Acceptance/);
+  assert.match(finish, /You do not accept the work, and you do not archive it/);
+  assert.match(finish, /phase: awaiting-acceptance/);
+  assert.match(finish, /do not write `phase: done`/);
+  assert.match(finish, /复验轮次/);
+  assert.match(router, /does not set `phase: done`/);
+  assert.match(router, /print the commands instead of running them/);
+  assert.match(
+    router,
+    /Do not archive a task, set `phase: done`, or clear pointers/
+  );
+  assert.match(architecture, /\(user\) accept, then archive/);
+  assert.match(agents, /Acceptance and archival belong to the user/);
 });
 
 test("solution planning separates design decisions from execution steps", () => {
@@ -376,7 +396,9 @@ test("behavior cases cover bounded context and fallback observability", () => {
     "legacy-trellis-task",
     "per-turn-injector-proposed",
     "pointer-and-task-disagree",
-    "close-record-after-evidence",
+    "await-acceptance-after-evidence",
+    "user-acceptance-defect-bounces-task",
+    "explicit-user-request-archives",
     "incomplete-ac-table-blocks-close",
     "dispatch-without-context-package",
     "multi-ticket-frontier",
@@ -433,6 +455,7 @@ test("workflow behavior cases cover every state transition and failure gate", ()
     "report-existing-independent-review",
     "finish-with-evidence",
     "report-unavailable-and-follow-local-workflow",
+    "await-user-acceptance",
     "close-record",
     "resolve-pointer-conflict-before-implementing",
   ]) {

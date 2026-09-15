@@ -27,12 +27,13 @@ decided, and an unreadable file is an invalid dispatch, not a reason to guess.
     tickets/                 one file per 工单 when the task spans sessions or writers
     research/                optional notes, source excerpts, measurements
   archive/<MM-DD-slug>/      moved here on close; contents are never edited
+                             written only by a user-requested archival step
 ```
 
 `STATUS` holds only:
 
 ```text
-phase: planning | in_progress | review | done
+phase: planning | in_progress | review | awaiting-acceptance | done
 updated: 2026-09-14T15:40:00Z
 ```
 
@@ -87,6 +88,46 @@ The frontier is the set of `ready` tickets whose `blocked_by` are all `done`. On
 ticket, one live writer. `state: done` requires executed verification evidence,
 recorded in `outcome.md`. Never duplicate the slice plan inside a ticket:
 reference `implement.md#切片-N` and its 上下文包 instead.
+
+## Acceptance And Archival
+
+**The user accepts and archives. The agent never does it on its own initiative.**
+
+- Once evidence is complete, the agent writes `outcome.md`, sets `STATUS` to
+  `awaiting-acceptance`, and stops. It states what to verify: every AC with the
+  command or manual step that proves it, plus every check left `NOT RUN`.
+- Moving a task directory, deleting a pointer, and setting `phase: done` are the
+  user's actions. The agent prints the commands instead of running them, and runs
+  them only when the user explicitly asks in the current session and the task is
+  already in `awaiting-acceptance`.
+- A failed verification is a normal transition, not an exception: the user reports
+  what is wrong, the agent moves `STATUS` back to `in_progress`, fixes, re-runs the
+  affected checks, and appends a new round to `outcome.md`. Earlier rounds stay
+  visible; nobody rewrites history to make a task look clean.
+- `phase: done` means "the user accepted", not "the checks passed".
+
+Archival, run by the user (PowerShell):
+
+```text
+$task = ".workflow\tasks\<id>"
+Add-Content -LiteralPath .workflow\journal.md -Value "<date>  $task  <一句话结果>  <commit or branch>"
+Move-Item -LiteralPath $task -Destination .workflow\archive\
+Remove-Item -LiteralPath .workflow\by-session\<key>.md
+Set-Content -LiteralPath .workflow\CURRENT.md -Value "task: none"
+```
+
+or in POSIX shells:
+
+```text
+task=.workflow/tasks/<id>
+printf '%s  %s  <一句话结果>  <commit or branch>\n' "$(date -F)" "$task" >> .workflow/journal.md
+mv "$task" .workflow/archive/
+rm -f .workflow/by-session/<key>.md
+printf 'task: none\n' > .workflow/CURRENT.md
+```
+
+Afterwards `.workflow/tasks/` no longer contains the task, and the archived copy is
+read-only from then on.
 
 ## Prompt Cache Constraint
 

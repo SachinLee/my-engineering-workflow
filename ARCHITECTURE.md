@@ -48,7 +48,9 @@ request
   -> independent correctness/security/complexity review
   -> remediation and re-verification
   -> outcome evidence (one row per AC)
-  -> STATUS -> done, journal line, archive, clear pointer
+  -> STATUS -> awaiting-acceptance, hand the verification list to the user
+  -> (user) verify, or bounce back to in_progress with a new outcome round
+  -> (user) accept, then archive: journal line, move, clear pointer, phase: done
 ```
 
 ## Record Layout

@@ -140,10 +140,24 @@
       "required_metadata": ["requested_model", "effective_model", "fallback"]
     },
     {
-      "name": "close-record-after-evidence",
-      "state": "outcome_complete_with_commit_permission",
+      "name": "await-acceptance-after-evidence",
+      "state": "outcome_complete",
+      "expected_stage": "await-user-acceptance",
+      "required_status": "awaiting-acceptance",
+      "forbidden": ["move task to archive", "set phase done", "clear pointers", "append journal line"]
+    },
+    {
+      "name": "user-acceptance-defect-bounces-task",
+      "state": "awaiting_acceptance_user_reports_problem",
+      "expected_stage": "remediate-and-reverify",
+      "required_behavior": "append-new-outcome-round-and-reopen",
+      "forbidden": ["rewrite earlier outcome rounds", "archive task"]
+    },
+    {
+      "name": "explicit-user-request-archives",
+      "state": "user_accepted_and_asks_to_archive",
       "expected_stage": "close-record",
-      "required_artifacts": ["STATUS", "journal.md", "archive"]
+      "required_artifacts": ["journal.md", "archive", "pointer cleared"]
     },
     {
       "name": "incomplete-ac-table-blocks-close",

@@ -37,7 +37,8 @@ verbatim. Status tokens (`PASS`, `NOT RUN`, `UNVERIFIED`, `NOT APPLICABLE`,
 9. Decide whether a reusable convention, prevention rule, or non-obvious lesson
    belongs in `.workflow/spec/`. Write it there, or route it to `CONTEXT.md` or
    `docs/adr/` when it is vocabulary or a hard-to-reverse decision. Record a
-   pointer to it in `journal.md` rather than repeating the text.
+   pointer to it in `outcome.md` rather than repeating the text (`journal.md` belongs
+   to the archival step, which the user runs).
 
 Do not invent commands, output, coverage, commits, or PASS results. Use `NOT RUN`,
 `UNVERIFIED`, or `NOT APPLICABLE` when evidence is unavailable.
@@ -80,6 +81,11 @@ Create or update `outcome.md` with:
 
 ## 剩余风险
 - 已知缺口、延后事项，以及明确的升级触发条件
+
+## 验收
+- 状态：待用户验收
+- 验证清单：每条 AC 对应的命令或手工步骤
+- 未运行的检查：NOT RUN 项及其原因
 ```
 
 Make the acceptance-criteria table exhaustive: one row for every `- [ ] AC-NNN`
@@ -93,17 +99,30 @@ Link to code, tests, ADRs, or commits instead of copying their content.
 If work is incomplete, record the blocker and next executable step rather than
 claiming completion.
 
-## Close The Record
+## Hand It Back For Acceptance
 
-Only after `outcome.md` is complete, every required check has executed evidence or
-an explicit `NOT RUN`, and the repository's commit permission is satisfied:
+You do not accept the work, and you do not archive it. Once the evidence above is
+recorded:
 
-1. Set `STATUS` to `phase: done` with the current timestamp.
-2. Append one line to `.workflow/journal.md`: date, task path, one-sentence
-   outcome, and the commit or branch that carries it.
-3. Move the task directory to `.workflow/archive/`, then delete this session's
-   pointer file. Point `CURRENT.md` at the next real task, or clear it.
-4. Confirm `.workflow/tasks/` no longer lists the closed task.
+1. Set `STATUS` to `phase: awaiting-acceptance` with the current timestamp.
+2. In your reply, give the verification list: every AC with the exact command or
+   manual step that proves it, every check left `NOT RUN`, and the residual risks.
+3. Print the archival commands from
+   [workflow-governance.md](../run-engineering-workflow/references/workflow-governance.md)
+   so the user can run them, or say that you will run them on request.
 
-Never delete an archived task or rewrite its artifacts afterwards. A corrected
-conclusion belongs in a new task that references the archive.
+Do not move the task directory, do not append a `journal.md` line, do not delete or
+clear any pointer, and do not write `phase: done` — not because the checks passed,
+not because the review came back clean, and not as part of "finishing".
+
+If the user verifies and finds a problem, treat that as a normal transition: move
+`STATUS` back to `in_progress`, fix, re-run the affected checks, and append a new
+round to `outcome.md` under `## 复验轮次 N`. Leave earlier rounds untouched, so what
+was claimed and when it was corrected stays visible.
+
+Only after the user has accepted and explicitly asked you to archive, run the
+archival steps in order: journal line, move the task directory to
+`.workflow/archive/`, delete this session's pointer file, then clear `CURRENT.md`.
+Confirm `.workflow/tasks/` no longer lists the closed task. Never delete an archived
+task or rewrite its artifacts afterwards; a corrected conclusion belongs in a new
+task that references the archive.

@@ -48,7 +48,7 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 | `.workflow/tasks/<task>/implement.md` | 实施顺序、测试计划、验证命令和回滚点 |
 | `.workflow/tasks/<task>/tickets/NN-<slug>.md` | 跨会话或多 writer 时的工单：covers、blocked_by、state、writer |
 | `.workflow/tasks/<task>/context.md` | 本任务必须读取的规范、代码和研究文件清单（含一句理由） |
-| `.workflow/tasks/<task>/STATUS` | 当前阶段（planning / in_progress / review / done）和时间戳 |
+| `.workflow/tasks/<task>/STATUS` | 当前阶段（planning / in_progress / review / awaiting-acceptance / done）和时间戳 |
 | `.workflow/tasks/<task>/outcome.md` | 实际实现、逐条 AC 结果、RED/GREEN、独立复核、验证结果和剩余风险 |
 | `.workflow/CURRENT.md`、`.workflow/by-session/` | 任务指针：人可读的当前任务，以及每个会话自己的绑定 |
 | `.workflow/spec/` | 跨任务长期有效的规范、约定和踩坑经验 |
@@ -131,6 +131,24 @@ writer；验证命令真正跑过并把证据写进 `outcome.md` 后，才能把
 不要拆的情形：`lightweight` 任务、单一测试接缝、改动集中在一两个文件。拆分本身有
 记账成本，不会自动带来质量。需要更大范围探路时，先走 Matt `wayfinder` 出决策地图，
 再回到 `to-spec` / `to-tickets` 收拢成工单。
+
+
+## 验收和归档由你执行
+
+AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `outcome.md`、把 `STATUS`
+置成 `awaiting-acceptance`、把该验什么列给你，然后**停住**。以下三个动作默认归你：
+
+- 把任务目录 `move` 到 `.workflow/archive/`
+- 往 `.workflow/journal.md` 追加那一行收口记录
+- 删除本会话指针、清空 `CURRENT.md`、写 `phase: done`
+
+具体命令在 governance 的 Acceptance And Archival 一节，可以直接复制执行；你要是
+嫌麻烦，明确说一句“验收通过，归档吧”，AI 才会代跑。
+
+验出问题不算意外，是正常回路：你把问题说出来 → 任务退回 `in_progress` → 修完重跑
+受影响的检查 → 在 `outcome.md` 追加 `## 复验轮次 N`。旧轮次不删不改，什么时间
+声称过什么、后来怎么纠的，都留在文件里。`phase: done` 的含义是“用户已验收”，
+不是“测试通过了”。
 
 
 详细约定随主路由一起打包在
@@ -493,8 +511,10 @@ Get-Command python, python3, py | Select-Object Name, Source
 6. **检查和复核**：先运行仓库自身检查与 Matt `code-review`，再从独立上下文运行
    `review-implementation`，修复 findings 后重新验证。
 7. **证据交付**：把逐条 AC 结果、实际改动、RED/GREEN、命令输出和剩余风险写入
-   `outcome.md`，然后把 `STATUS` 置为 `done`、追加一行 `journal.md`，并归档到
-   `.workflow/archive/`。
+   `outcome.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
+8. **验收与归档（你做）**：你自己跑命令或手工验收；有问题就反馈，任务退回
+   `in_progress` 修完再补一轮复验记录。确认没问题后你自己执行归档（journal 一行 →
+   move 到 `archive/` → 删本会话指针 → 清 `CURRENT.md`），或者明确叫 AI 代跑。
 
 通常只需要调用主路由。只有需要重新执行或单独强化某一阶段时，才直接调用
 `clarify-requirements`、`plan-solution`、`review-implementation` 或
@@ -526,7 +546,7 @@ PRD、ticket、plan 或 outcome。
 | 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 默认在主会话执行；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
 | 质量检查 | Matt `code-review` + 仓库自身检查 | 双轴：规范符合性与需求覆盖；不替代项目自己的测试 |
 | 独立复核 | `review-implementation` + `ponytail-review` | 通过 `workflow-reviewer` 在新上下文执行；主会话负责修复 |
-| 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `outcome.md`，逐条勾 AC，再置 `done` 并归档 |
+| 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `outcome.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
 
 ### 跨客户端和新会话续接
 
@@ -801,7 +821,7 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
 代码和测试完成后使用：
 
 ```text
-使用 $finish-with-evidence 检查当前任务，记录 outcome.md，然后关闭并归档任务记录。
+使用 $finish-with-evidence 检查当前任务，记录 outcome.md，置为待验收并把验证清单给我。
 ```
 
 没有执行的检查必须记录为 `NOT RUN` 或 `UNVERIFIED`，不能根据推测写成 `PASS`。

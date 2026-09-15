@@ -24,6 +24,10 @@ Rules:
 - Split at the smallest level that matches execution: 切片 inside one session,
   `tickets/` across sessions or writers, multiple task directories for separately
   shippable outcomes.
+- Acceptance and archival belong to the user. Agents stop at
+  `awaiting-acceptance`; they never move a task to `archive/`, write the journal
+  line, clear a pointer, or set `phase: done` unless the user explicitly asks in
+  the current session after acceptance.
 - Add or change contract tests before changing workflow behavior.
 - Keep skill bodies concise; put shared governance in
   `skills/run-engineering-workflow/references/` so installed skills retain it.

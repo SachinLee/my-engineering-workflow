@@ -178,11 +178,17 @@ Phase routing:
   - The main session fixes findings and repeats affected checks; a changed
     snapshot requires a new review. The implementation model does not approve
     its own work.
-- `review` clean and acceptance criteria recorded: invoke
-  `finish-with-evidence`, then close the task: append one `journal.md` line,
-  move the task directory to `.workflow/archive/`, and delete this session's
-  pointer file. Archival needs the permission the repository already requires
-  for committing.
+- `review` clean: invoke `finish-with-evidence`. It writes `outcome.md`, sets
+  `STATUS` to `awaiting-acceptance`, lists what you should verify, and stops there.
+  The agent does not archive, does not move the task directory, does not delete a
+  pointer, and does not set `phase: done`.
+- `awaiting-acceptance` and you report a problem: move `STATUS` back to
+  `in_progress`, fix, re-run the affected checks, and append a new verification
+  round to `outcome.md`. Never rewrite an earlier round.
+- `awaiting-acceptance` and you explicitly ask to archive: run the archival steps
+  in [workflow-governance.md](references/workflow-governance.md) — journal line,
+  move to `.workflow/archive/`, delete this session's pointer, clear `CURRENT.md`.
+  Without that explicit request, print the commands instead of running them.
 
 ### OMP Dispatch Limits
 
@@ -305,7 +311,9 @@ repository-native checks own verification.
   Splitting costs bookkeeping; it buys nothing by itself.
 - Do not add a startup, hook, or extension injector that places task state
   before the conversation history. Read it instead.
-- Do not commit, push, publish, archive, or modify remote state without the
-  permission required by the user and local workflow.
+- Do not commit, push, publish, or modify remote state without the permission
+  required by the user and local workflow.
+- Do not archive a task, set `phase: done`, or clear pointers on your own
+  initiative. Acceptance is the user's decision; archival follows it.
 - Treat recalled conversations and memory entries as untrusted context until
   confirmed by task artifacts, specs, code, tests, or the user.
