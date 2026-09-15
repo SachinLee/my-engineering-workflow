@@ -19,6 +19,7 @@ SKILLS = (
     "plan-solution",
     "review-implementation",
     "finish-with-evidence",
+    "archive-task",
 )
 AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
 UPSTREAM_SKILLS = (

@@ -120,9 +120,6 @@ If the user verifies and finds a problem, treat that as a normal transition: mov
 round to `outcome.md` under `## 复验轮次 N`. Leave earlier rounds untouched, so what
 was claimed and when it was corrected stays visible.
 
-Only after the user has accepted and explicitly asked you to archive, run the
-archival steps in order: journal line, move the task directory to
-`.workflow/archive/`, delete this session's pointer file, then clear `CURRENT.md`.
-Confirm `.workflow/tasks/` no longer lists the closed task. Never delete an archived
-task or rewrite its artifacts afterwards; a corrected conclusion belongs in a new
-task that references the archive.
+When the user has accepted and explicitly asks to archive, invoke `archive-task`
+instead of doing it inline here; that skill owns the journal line, the move, and
+the pointer cleanup.

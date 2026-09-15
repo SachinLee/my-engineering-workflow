@@ -98,7 +98,7 @@ main configured model
   -> main-session remediation and evidence
 ```
 
-The workflow installs only its five skills and three provider-independent Pi
+The workflow installs only its six skills and three provider-independent Pi
 agents. Pi agents omit a fixed `model` and inherit the active Pi model; they
 never use OMP `@role` aliases. If `@narumitw/pi-subagents` is not installed,
 planning, bounded implementation, and independent review fall back to the main

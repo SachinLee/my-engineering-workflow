@@ -10,6 +10,7 @@ const skillNames = [
   "plan-solution",
   "review-implementation",
   "finish-with-evidence",
+  "archive-task",
 ];
 const agentNames = [
   "workflow-planner.md",
@@ -167,6 +168,45 @@ test("acceptance and archival belong to the user", () => {
   );
   assert.match(architecture, /\(user\) accept, then archive/);
   assert.match(agents, /Acceptance and archival belong to the user/);
+  assert.match(governance, /archive-task` command performs these steps/);
+});
+
+test("archive-task is gated on user acceptance and owns the move", () => {
+  const skill = read("skills/archive-task/SKILL.md");
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const command = read("commands/archive-task.md");
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+  const overlay = read("config/omp-workflow.yml");
+  const installer = read("scripts/install.ps1");
+  const doctor = read("scripts/doctor.py");
+
+  assert.match(skill, /^name: archive-task$/m);
+  assert.match(skill, /## Verify Acceptance First/);
+  assert.match(skill, /phase: awaiting-acceptance/);
+  assert.match(skill, /ARCHIVE_STATUS: REFUSED/);
+  assert.match(skill, /ARCHIVE_STATUS: ARCHIVED/);
+  assert.match(skill, /ARCHIVE_STATUS: PARTIAL/);
+  assert.match(skill, /Do\nnot run extra checks to earn the archive|do not run extra checks to earn the archive/i);
+  assert.match(skill, /then move the task directory into/);
+  assert.match(skill, /Committing, pushing, publishing, and deleting an archived task stay out of/);
+  assert.match(command, /\/archive-task|archive-task/);
+  assert.match(command, /\$ARGUMENTS/);
+
+  // both entry points delegate; neither duplicates the procedure
+  assert.match(router, /invoke `archive-task`/);
+  assert.match(finish, /invoke `archive-task`/);
+  assert.match(overlay, /^    - archive-task$/m);
+  assert.match(installer, /"archive-task"/);
+  assert.match(installer, /"archive-task\.md"/);
+  assert.match(doctor, /"archive-task",/);
+  assert.match(skill, /Ensure `\.workflow\/archive\/` exists/);
+  assert.match(skill, /rename the source instead of moving it/);
+  assert.match(skill, /force UTF-8/);
+  assert.match(governance, /New-Item -ItemType Directory -Force -Path \.workflow\\archive/);
+  assert.match(governance, /AppendAllText/);
 });
 
 test("solution planning separates design decisions from execution steps", () => {
@@ -398,7 +438,8 @@ test("behavior cases cover bounded context and fallback observability", () => {
     "pointer-and-task-disagree",
     "await-acceptance-after-evidence",
     "user-acceptance-defect-bounces-task",
-    "explicit-user-request-archives",
+    "archive-request-without-acceptance",
+    "archive-request-after-acceptance",
     "incomplete-ac-table-blocks-close",
     "dispatch-without-context-package",
     "multi-ticket-frontier",

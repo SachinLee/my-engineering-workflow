@@ -154,10 +154,18 @@
       "forbidden": ["rewrite earlier outcome rounds", "archive task"]
     },
     {
-      "name": "explicit-user-request-archives",
-      "state": "user_accepted_and_asks_to_archive",
+      "name": "archive-request-without-acceptance",
+      "state": "phase_not_awaiting_acceptance",
+      "expected_stage": "refuse-archive-and-report-gap",
+      "required_status": "ARCHIVE_STATUS: REFUSED",
+      "forbidden": ["move task to archive", "run extra checks to earn the archive", "set phase done"]
+    },
+    {
+      "name": "archive-request-after-acceptance",
+      "state": "user_accepted_and_task_awaits_acceptance",
       "expected_stage": "close-record",
-      "required_artifacts": ["journal.md", "archive", "pointer cleared"]
+      "required_status": "ARCHIVE_STATUS: ARCHIVED",
+      "required_behavior": "journal-line-then-move-then-clear-pointers"
     },
     {
       "name": "incomplete-ac-table-blocks-close",

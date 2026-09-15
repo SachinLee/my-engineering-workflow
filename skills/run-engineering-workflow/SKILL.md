@@ -185,9 +185,9 @@ Phase routing:
 - `awaiting-acceptance` and you report a problem: move `STATUS` back to
   `in_progress`, fix, re-run the affected checks, and append a new verification
   round to `outcome.md`. Never rewrite an earlier round.
-- `awaiting-acceptance` and you explicitly ask to archive: run the archival steps
-  in [workflow-governance.md](references/workflow-governance.md) — journal line,
-  move to `.workflow/archive/`, delete this session's pointer, clear `CURRENT.md`.
+- `awaiting-acceptance` and you explicitly ask to archive: invoke `archive-task`.
+  It re-checks the three acceptance conditions, performs the journal line, move,
+  pointer, and `CURRENT.md` updates in order, and reports `ARCHIVE_STATUS:`.
   Without that explicit request, print the commands instead of running them.
 
 ### OMP Dispatch Limits

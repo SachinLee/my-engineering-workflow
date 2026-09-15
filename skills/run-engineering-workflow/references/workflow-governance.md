@@ -106,11 +106,18 @@ reference `implement.md#切片-N` and its 上下文包 instead.
   visible; nobody rewrites history to make a task look clean.
 - `phase: done` means "the user accepted", not "the checks passed".
 
+The `archive-task` command performs these steps when you ask for it
+(`$archive-task`, `/archive-task`, or `/skill:archive-task`). It re-checks the three
+acceptance conditions, returns `ARCHIVE_STATUS: REFUSED` naming what is missing
+instead of archiving, and on success reports `ARCHIVE_STATUS: ARCHIVED` with both
+resulting paths. Running the commands yourself stays equally valid.
+
 Archival, run by the user (PowerShell):
 
 ```text
 $task = ".workflow\tasks\<id>"
-Add-Content -LiteralPath .workflow\journal.md -Value "<date>  $task  <一句话结果>  <commit or branch>"
+New-Item -ItemType Directory -Force -Path .workflow\archive | Out-Null
+[IO.File]::AppendAllText("$PWD\.workflow\journal.md", "<date>  $task  <一句话结果>  <commit or branch>`r`n", (New-Object Text.UTF8Encoding $false))
 Move-Item -LiteralPath $task -Destination .workflow\archive\
 Remove-Item -LiteralPath .workflow\by-session\<key>.md
 Set-Content -LiteralPath .workflow\CURRENT.md -Value "task: none"
@@ -121,10 +128,17 @@ or in POSIX shells:
 ```text
 task=.workflow/tasks/<id>
 printf '%s  %s  <一句话结果>  <commit or branch>\n' "$(date -F)" "$task" >> .workflow/journal.md
-mv "$task" .workflow/archive/
+mkdir -p .workflow/archive
+mv "$task" .workflow/archive/   # destination must exist, or mv renames instead
 rm -f .workflow/by-session/<key>.md
 printf 'task: none\n' > .workflow/CURRENT.md
 ```
+
+Use the platform's file tools when you can. Shell writes to `.workflow/` need an
+explicit UTF-8: on Windows PowerShell 5.1 `Add-Content` and `Set-Content` default
+to the ANSI codepage, so Chinese text lands in the journal as GBK and reads as
+mojibake everywhere else. The `[IO.File]::AppendAllText` form above writes UTF-8
+without a BOM on any PowerShell version.
 
 Afterwards `.workflow/tasks/` no longer contains the task, and the archived copy is
 read-only from then on.

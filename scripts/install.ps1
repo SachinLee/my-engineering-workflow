@@ -25,7 +25,8 @@ $skillNames = @(
   "clarify-requirements",
   "plan-solution",
   "review-implementation",
-  "finish-with-evidence"
+  "finish-with-evidence",
+  "archive-task"
 )
 $ompAgentNames = @(
   "workflow-planner.md",
@@ -38,7 +39,8 @@ $claudeAgentNames = @(
   "workflow-reviewer.md"
 )
 $claudeCommandNames = @(
-  "engineering-workflow.md"
+  "engineering-workflow.md",
+  "archive-task.md"
 )
 $piAgentNames = @(
   "workflow-planner.md",

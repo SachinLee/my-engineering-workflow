@@ -27,7 +27,7 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
 | Ponytail | YAGNI、复用、stdlib/native 优先 | 只用于复杂度控制，不降低质量要求 |
 
-本仓库目前提供五个 skill：
+本仓库目前提供六个 skill：
 
 | Skill | 用途 |
 | --- | --- |
@@ -36,6 +36,7 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 | `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md` 和 `implement.md`，并给出 `context.md` 读取清单 |
 | `$review-implementation` | 使用独立上下文复核需求覆盖、正确性、测试、安全和复杂度 |
 | `$finish-with-evidence` | 执行最终检查，并把实际实现和验证证据写入 `outcome.md` |
+| `$archive-task` | 你验收通过后，把任务记 journal、移入 `archive/`、清理指针 |
 
 ## 核心产物
 
@@ -143,7 +144,8 @@ AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `outc
 - 删除本会话指针、清空 `CURRENT.md`、写 `phase: done`
 
 具体命令在 governance 的 Acceptance And Archival 一节，可以直接复制执行；你要是
-嫌麻烦，明确说一句“验收通过，归档吧”，AI 才会代跑。
+嫌麻烦，就执行归档指令 `$archive-task`（Claude 里是 `/archive-task`，Pi 里是
+`/skill:archive-task`），它会先复查三个验收条件、不满足就 `ARCHIVE_STATUS: REFUSED`。
 
 验出问题不算意外，是正常回路：你把问题说出来 → 任务退回 `in_progress` → 修完重跑
 受影响的检查 → 在 `outcome.md` 追加 `## 复验轮次 N`。旧轮次不删不改，什么时间
@@ -242,7 +244,7 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 ## 安装本仓库的 Skill
 
-仅克隆本仓库不会自动让 Codex、Claude Code、OMP 或 Pi 发现这五个 skill。使用安装器
+仅克隆本仓库不会自动让 Codex、Claude Code、OMP 或 Pi 发现这六个 skill。使用安装器
 同步，避免升级后残留旧文件。
 
 ### 全局安装到 Codex
@@ -263,8 +265,8 @@ PowerShell 7 `pwsh`）：
 .\scripts\doctor.ps1 -Scope User -Harness Claude
 ```
 
-这会安装五个 skill、`workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个
-agent 和 `/engineering-workflow`。重新启动 Claude Code 后生效。
+这会安装六个 skill、`workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个
+agent 和 `/engineering-workflow` / `/archive-task` 两个命令。重新启动 Claude Code 后生效。
 
 ### 全局安装到 Pi
 
@@ -273,7 +275,7 @@ agent 和 `/engineering-workflow`。重新启动 Claude Code 后生效。
 .\scripts\doctor.ps1 -Scope User -Harness Pi
 ```
 
-这会把五个 skill 安装到 `~/.pi/agent/skills/`，把 provider-independent 的
+这会把六个 skill 安装到 `~/.pi/agent/skills/`，把 provider-independent 的
 `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
 `model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
 `.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
@@ -297,7 +299,7 @@ pi install npm:@narumitw/pi-subagents
 
 安装器会同步：
 
-- 五个 canonical skill 到共享 `.agents/skills/`、`.omp/skills/` 和
+- 六个 canonical skill 到共享 `.agents/skills/`、`.omp/skills/` 和
   `.claude/skills/`；Pi 与 Codex 共用项目 `.agents/skills/`，不制造重复副本。
 - 三个 OMP agent 到 `.omp/agents/`。
 - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
@@ -367,6 +369,10 @@ OMP adapter。也可以一次安装全部四个平台：
 | OMP | 使用下面的全局 launcher | `使用 run-engineering-workflow 处理这个需求：...` | `使用 run-engineering-workflow 继续当前任务。` |
 | Pi | 从受信任的项目根目录运行 `pi` | `/skill:run-engineering-workflow 处理这个需求：...` | `/skill:run-engineering-workflow 继续当前任务。` |
 | 其他 skills-compatible 客户端 | 从项目根目录启动客户端 | 显式加载 `run-engineering-workflow` 并附带需求 | 显式加载同一 skill 并要求继续当前任务 |
+
+验收完成后归档那一个任务：Codex / OMP 用 `$archive-task`（OMP 直接说“用 archive-task
+归档当前任务”也行），Claude Code 用 `/archive-task`，Pi 用
+`/skill:archive-task`。
 
 OMP 全局安装后的启动方式：
 
@@ -514,7 +520,8 @@ Get-Command python, python3, py | Select-Object Name, Source
    `outcome.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
 8. **验收与归档（你做）**：你自己跑命令或手工验收；有问题就反馈，任务退回
    `in_progress` 修完再补一轮复验记录。确认没问题后你自己执行归档（journal 一行 →
-   move 到 `archive/` → 删本会话指针 → 清 `CURRENT.md`），或者明确叫 AI 代跑。
+   move 到 `archive/` → 删本会话指针 → 清 `CURRENT.md`），或者用 `$archive-task` 让
+   AI 在你已验收的前提下代跑。
 
 通常只需要调用主路由。只有需要重新执行或单独强化某一阶段时，才直接调用
 `clarify-requirements`、`plan-solution`、`review-implementation` 或
@@ -577,7 +584,7 @@ skill，再在项目 `AGENTS.md` 中写明任务记录位于 `.workflow/` 即可
 npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
   --global `
   --agent <agent-id> `
-  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence `
+  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence archive-task `
   --yes --copy --full-depth
 ```
 
@@ -870,7 +877,7 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 npm test
 ```
 
-五个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
+六个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
 相对路径提示记录在 [`manifests/upstreams.lock.json`](manifests/upstreams.lock.json) 中。
 升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射、
 Claude Code 与 Pi agent 契约。

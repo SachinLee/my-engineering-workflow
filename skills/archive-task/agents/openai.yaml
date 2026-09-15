@@ -1,0 +1,4 @@
+interface:
+  display_name: "Archive Accepted Task"
+  short_description: "Journal and archive a task the user accepted"
+  default_prompt: "Use $archive-task to archive this accepted task: journal line, move to archive/, clear pointers."
