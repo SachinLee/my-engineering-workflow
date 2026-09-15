@@ -472,7 +472,8 @@ ompw --continue
 
 ```text
 需求澄清 -> 方案规划 -> 等待批准 -> @task TDD 实现
-  -> code-review + 仓库检查 -> @advisor 独立复核 -> 修复并复验 -> 证据交付与归档
+  -> code-review + 仓库检查 -> @advisor 独立复核 -> 修复并复验 -> 证据交付
+  -> awaiting-acceptance ->（你验收）-> 你执行归档或调用 $archive-task
 ```
 
 常用操作如下：

@@ -207,6 +207,7 @@ test("archive-task is gated on user acceptance and owns the move", () => {
   assert.match(skill, /force UTF-8/);
   assert.match(governance, /New-Item -ItemType Directory -Force -Path \.workflow\\archive/);
   assert.match(governance, /AppendAllText/);
+  assert.match(read("commands/engineering-workflow.md"), /Only `\/archive-task`, invoked by the user after they accept,/);
 });
 
 test("solution planning separates design decisions from execution steps", () => {
@@ -478,7 +479,7 @@ test("Claude Code plugin maps planning, implementation, and review", () => {
   assert.match(command, /code-review/);
   assert.match(command, /workflow-reviewer/);
   assert.match(command, /Active task:/);
-  assert.match(command, /\.workflow\/archive\//);
+  assert.match(command, /`STATUS` to `awaiting-acceptance`, then stop/);
 });
 
 test("workflow behavior cases cover every state transition and failure gate", () => {

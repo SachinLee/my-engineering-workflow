@@ -35,9 +35,11 @@ Route work by the active task phase:
    fixes findings, reruns affected checks, and dispatches a new final review
    only after the diff changes. An `INVALID` review has one controlled retry;
    its prompt must contain `Review retry: invalid`.
-6. Use `finish-with-evidence` to record actual results in `outcome.md`, then
-   close the record: `STATUS` to `done`, one `journal.md` line, move the task to
-   `.workflow/archive/`, and delete the session pointer.
+6. Use `finish-with-evidence` to record actual results in `outcome.md` and set
+   `STATUS` to `awaiting-acceptance`, then stop and hand the user the verification
+   list. Do not move the task, write the journal line, clear pointers, or set
+   `phase: done`. Only `/archive-task`, invoked by the user after they accept,
+   performs those steps.
 
 Claude Code has no OMP `@task` or `@advisor` role aliases. The planning and
 review agents use Opus; the implementer inherits the configured worker model.
