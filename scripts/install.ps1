@@ -13,13 +13,15 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
 $ompExtensionsRoot = Join-Path (Split-Path -Parent $repoRoot) "omp-extensions"
 $workflowReviewGateSource = Join-Path $ompExtensionsRoot "workflow-review-gate"
-$piUserRoot = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR)) {
-  Join-Path $HOME ".pi\agent"
+$agentDirOverride = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR)) {
+  $null
 } else {
   $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(
     $env:PI_CODING_AGENT_DIR
   )
 }
+$piUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".pi\agent" }
+$ompUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".omp\agent" }
 $skillNames = @(
   "run-engineering-workflow",
   "clarify-requirements",
@@ -110,8 +112,14 @@ function Copy-ManagedFile {
     [Parameter(Mandatory)] [string]$Target
   )
 
+
   if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) {
     throw "Managed source file was not found: $Source"
+  }
+
+  if ([IO.Path]::GetFullPath($Source) -eq [IO.Path]::GetFullPath($Target)) {
+    Write-Host "Managed workflow file already at target: $Target"
+    return
   }
   $targetRoot = Split-Path -Parent $Target
   Assert-ManagedChild -Root $targetRoot -Child $Target
@@ -134,6 +142,76 @@ function Remove-LegacyManagedFile {
   }
 }
 
+function Add-OmpSkillWhitelist {
+  param(
+    [Parameter(Mandatory)] [string]$Path,
+    [Parameter(Mandatory)] [string[]]$Names
+  )
+
+  # Plain `omp` filters discovered skills through skills.includeSkills in its own
+  # config.yml. A non-empty list that lacks a skill hides it even when installed.
+  # No file, or no includeSkills list, means no filtering: leave it alone.
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    Write-Host "OMP config not found, so skills stay unfiltered: $Path"
+    return
+  }
+  Assert-NotReparsePoint -Path $Path
+
+  $raw = [IO.File]::ReadAllText($Path)
+  $eol = if ($raw -match "\r\n") { "`r`n" } else { "`n" }
+  $lines = @($raw -split "\r?\n")
+
+  $keyIndex = -1
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^skills:\s*(?:#.*)?$') { $keyIndex = $i; break }
+  }
+  if ($keyIndex -lt 0) {
+    Write-Host "OMP config has no skills block, so skills stay unfiltered: $Path"
+    return
+  }
+
+  $listIndent = $null
+  $listIndex = -1
+  for ($i = $keyIndex + 1; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^\S') { break }
+    if ($lines[$i] -match '^(\s+)includeSkills:\s*(?:#.*)?$') {
+      $listIndent = $matches[1]
+      $listIndex = $i
+      break
+    }
+  }
+  if ($listIndex -lt 0) {
+    Write-Host "OMP config has no includeSkills list, so skills stay unfiltered: $Path"
+    return
+  }
+
+  $existing = New-Object System.Collections.Generic.List[string]
+  $entryIndent = $null
+  $lastEntry = $listIndex
+  for ($i = $listIndex + 1; $i -lt $lines.Count; $i++) {
+    $line = $lines[$i]
+    if ($line -match '^\s*$' -or $line -match '^\s*#') { continue }
+    if ($line -notmatch '^(\s*)-\s+(.+?)\s*$') { break }
+    if ($null -eq $entryIndent) { $entryIndent = $matches[1] }
+    $lastEntry = $i
+    [void]$existing.Add(($matches[2] -replace '^["\x27]|["\x27]$', ''))
+  }
+
+  $missing = @($Names | Where-Object { $existing -notcontains $_ })
+  if ($missing.Count -eq 0) {
+    Write-Host "OMP skill whitelist already lists every workflow skill."
+    return
+  }
+  if ($null -eq $entryIndent) { $entryIndent = $listIndent + '  ' }
+
+  if ($PSCmdlet.ShouldProcess($Path, "add $($missing.Count) skill(s) to OMP includeSkills")) {
+    $newLines = @($missing | ForEach-Object { "$entryIndent- $_" })
+    $lines = @($lines[0..$lastEntry]) + $newLines + @($lines[($lastEntry + 1)..($lines.Count - 1)])
+    [IO.File]::WriteAllText($Path, ($lines -join $eol))
+  }
+  Write-Host "Added to OMP skill whitelist: $($missing -join ', ')"
+}
+
 if ($Harness -in @("Codex", "Both", "All")) {
   $codexSkills = if ($Scope -eq "Project") {
     Join-Path $project ".agents\skills"
@@ -147,13 +225,16 @@ if ($Harness -in @("Codex", "Both", "All")) {
       -TargetRoot $codexSkills `
       -Name $name
   }
-}
 
+  Copy-ManagedFile `
+    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
+    -Target (Join-Path $codexSkills "run-engineering-workflow\scripts\openspec_compat.py")
+}
 if ($Harness -in @("OMP", "Both", "All")) {
   $ompRoot = if ($Scope -eq "Project") {
     Join-Path $project ".omp"
   } else {
-    Join-Path $HOME ".omp\agent"
+    $ompUserRoot
   }
   $ompSkills = Join-Path $ompRoot "skills"
   $ompAgents = Join-Path $ompRoot "agents"
@@ -165,6 +246,10 @@ if ($Harness -in @("OMP", "Both", "All")) {
       -TargetRoot $ompSkills `
       -Name $name
   }
+
+  Copy-ManagedFile `
+    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
+    -Target (Join-Path $ompSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $ompAgentNames) {
     Copy-ManagedFile `
@@ -185,6 +270,9 @@ if ($Harness -in @("OMP", "Both", "All")) {
     -Target (Join-Path $ompRoot "start-engineering-workflow.py")
   Remove-LegacyManagedFile `
     -Path (Join-Path $ompRoot "start-engineering-workflow.ps1")
+  Add-OmpSkillWhitelist `
+    -Path (Join-Path $ompRoot "config.yml") `
+    -Names $skillNames
 }
 
 if ($Harness -in @("Claude", "All")) {
@@ -203,6 +291,10 @@ if ($Harness -in @("Claude", "All")) {
       -TargetRoot $claudeSkills `
       -Name $name
   }
+
+  Copy-ManagedFile `
+    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
+    -Target (Join-Path $claudeSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $claudeAgentNames) {
     Copy-ManagedFile `
@@ -236,6 +328,10 @@ if ($Harness -in @("Pi", "All")) {
       -TargetRoot $piSkills `
       -Name $name
   }
+
+  Copy-ManagedFile `
+    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
+    -Target (Join-Path $piSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $piAgentNames) {
     Copy-ManagedFile `

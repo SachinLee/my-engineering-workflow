@@ -1,57 +1,49 @@
 ---
 name: archive-task
-description: Archive an accepted task in .workflow/ - journal line, move to archive/, clear pointers. Use only after the user has verified the work and asked to archive it. Never archive an unaccepted task on your own initiative.
+description: Archive an accepted OpenSpec change after the user explicitly verifies it and asks to archive. Never archive an unaccepted change on the agent's own initiative.
 ---
 
-# Archive Task
+# Archive OpenSpec Change
 
-Close out a task record after the user has accepted it. This is the only place a
-task directory moves, and it runs on the user's instruction — never on the
-agent's own conclusion that the work looks finished.
+Close out an OpenSpec change after the user has accepted it. This is the only
+workflow operation that moves a change into `openspec/changes/archive/`, and it
+runs only on the user's explicit instruction.
 
 ## Verify Acceptance First
 
-Resolve the task: the path the user gave, otherwise this session's pointer under
-`.workflow/by-session/`, otherwise `.workflow/CURRENT.md`. Then read its `STATUS`
-and `outcome.md`. Archive only when all three hold:
+Resolve the change id the user gave, otherwise the active OpenSpec change selected
+by the workflow. Read `proposal.md`, `specs/`, `design.md`, `tasks.md`, and
+`artifacts/verification.md`. Archive only when all three hold:
 
-1. `STATUS` is `phase: awaiting-acceptance`.
-2. `outcome.md` exists and its 验收标准 table has one row for every
-   `- [ ] AC-NNN` in `prd.md`.
-3. The user accepted this task in the current session in their own words
+1. The change handoff is `awaiting-acceptance`.
+2. `artifacts/verification.md` has one result row for every AC in the proposal and
+   relevant specs, with no unverified criterion omitted.
+3. The user accepted this change in the current session in their own words
    ("验收通过", "没问题，归档吧", or an equivalent).
 
-Anything else returns `ARCHIVE_STATUS: REFUSED` naming the missing condition. Do
-not run extra checks to earn the archive; report the gap and the next step to
+Anything else returns `ARCHIVE_STATUS: REFUSED` naming the missing condition. Do not run extra checks to earn the archive; report the gap and the next step to
 invoke — `finish-with-evidence` when evidence is missing, or a fix plus a new
 `## 复验轮次 N` round when the user reported a problem.
 
-When several tasks exist and none is clearly accepted, list each candidate with
-its `phase` and ask which one to archive instead of guessing.
+When several changes exist and none is clearly accepted, list each candidate with
+its OpenSpec status and ask which one to archive instead of guessing.
 
 ## Archive
 
 Run in this order and stop at the first failure:
 
-1. Append the acceptance record to `outcome.md` under 验收: `acceptance:
-   accepted by user`, the date, and the user's verification note if they gave one.
-2. Set `STATUS` to `phase: done` with the current timestamp.
-3. Append one line to `.workflow/journal.md`:
-
-   ```text
-   <date>  <task path>  <one-sentence outcome>  <commit or branch>
-   ```
-
-   Take the outcome from 概述 and the commit from 提交; write `NOT COMMITTED`
-   when that is what the record says. Never invent a hash.
-4. Ensure `.workflow/archive/` exists, then move the task directory into
-   `.workflow/archive/<same-name>/`. A missing destination directory makes
-   `Move-Item` and `mv` rename the source instead of moving it — verify the
-   archived path still carries the task name before continuing.
-5. Delete this session's pointer file, then set `.workflow/CURRENT.md` to
-   `task: none`, or to the next task the user names.
-6. Confirm `.workflow/tasks/` no longer lists the task and `.workflow/archive/`
-   now holds it, and report both paths.
+1. Append the acceptance record to the change's `artifacts/verification.md` under
+   `验收`: `accepted by user`, the date, and the user's verification note if given.
+2. Update the change status to `accepted` in the repository's approved OpenSpec
+   status mechanism.
+3. Move the change directory to `openspec/changes/archive/<same-change-id>/` using
+   the OpenSpec CLI or platform file tools. Verify the archived path still carries
+   the change id before continuing.
+4. Confirm `openspec/changes/` no longer lists the active change and
+   `openspec/changes/archive/` now holds it.
+5. Only after the archive is verified, delete a legacy compatibility pointer when
+   the user explicitly requested that cleanup. Never mutate `.workflow/` or
+   `.trellis/` as part of ordinary new-work archival.
 
 Finish with exactly one status line:
 
@@ -62,13 +54,12 @@ Finish with exactly one status line:
 
 ## Boundaries
 
-- Committing, pushing, publishing, and deleting an archived task stay out of
-  scope; this command only relocates the record inside the repository.
-- Never edit a task that is already archived. A corrected conclusion belongs in a
-  new task that references the archive.
-- Promoting a reusable convention into `.workflow/spec/` or `CONTEXT.md` is
-  separate work, done before this command, not inside it.
-- One invocation archives one task.
-- Write `.workflow/` text through the platform's file tools. If a shell command is
-  unavoidable, force UTF-8: PowerShell 5.1's `Add-Content`/`Set-Content` default to
-  the ANSI codepage and store Chinese journal lines as GBK.
+- Committing, pushing, publishing, and deleting an archived change stay out of
+  scope; this operation only relocates the OpenSpec record inside the repository.
+- Never edit a change that is already archived. A corrected conclusion belongs in a
+  new change that references the archive.
+- Promoting a reusable convention into `openspec/specs/`, `CONTEXT.md`, or an ADR
+  is separate work, done before this operation, not inside it.
+- One invocation archives one change.
+- Write OpenSpec text through the platform's file tools. If a shell command is
+  unavoidable, force UTF-8.

@@ -13,9 +13,9 @@ paths, commands, and severity tokens verbatim.
 
 ## Establish The Contract
 
-1. Read the active `prd.md`, optional `design.md`, optional `implement.md`, and
-   applicable project specs (`.workflow/spec/`, or `.trellis/spec/` in a legacy
-   repository), and ADRs.
+1. Read the active OpenSpec `proposal.md`, relevant `specs/`, optional `design.md`,
+   `tasks.md`, and `artifacts/context.md`/`artifacts/verification.md`; for legacy
+   recovery, read the named `.workflow` or `.trellis` inputs and ADRs.
 2. Inspect `git status`, the complete relevant diff, adjacent code, and tests.
 3. Separate current-task changes from unrelated user or concurrent changes.
 4. Map every required acceptance criterion to code and executable evidence.
@@ -56,5 +56,5 @@ the thin 上下文包 as a process finding: naming the missing field is enough t
 the next plan.
 
 Return findings to the main session. The main session applies fixes, re-runs
-affected checks, and records the final review result in `outcome.md`. A reviewer
-must not commit, push, archive the task, or claim final delivery.
+affected checks, and records the final review result in `artifacts/verification.md`.
+A reviewer must not commit, push, archive the change, or claim final delivery.

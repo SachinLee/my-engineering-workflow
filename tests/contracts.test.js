@@ -36,7 +36,7 @@ test("skills have valid names, useful descriptions, and UI prompts", () => {
 
 test("workflow has no Trellis runtime dependency", () => {
   const forbidden =
-    /trellis-implement|trellis-check|trellis_subagent|trellis init|trellis update|trellis mem|get_context\.py|task\.py|trellis-before-dev|trellis-brainstorm|trellis-update-spec|trellis-session-insight|\.trellis\/workflow\.md/;
+    /trellis-implement|trellis-check|trellis_subagent|trellis init|trellis update|trellis mem|get_context\.py|(?:^|[\\/\\])task\.py|trellis-before-dev|trellis-brainstorm|trellis-update-spec|trellis-session-insight|\.trellis\/workflow\.md/;
   const targets = [
     ...skillNames.map((name) => `skills/${name}/SKILL.md`),
     "skills/run-engineering-workflow/references/workflow-governance.md",
@@ -61,12 +61,12 @@ test("legacy .trellis records are read-only and never executed", () => {
     "skills/run-engineering-workflow/references/workflow-governance.md",
   );
 
-  assert.match(router, /\.trellis\/tasks\//);
-  assert.match(router, /never run a Trellis\n   script|never execute a Trellis script/i);
+  assert.match(router, /\.trellis\//);
+  assert.match(router, /never run a\s+Trellis script|never execute a Trellis script/i);
   assert.match(governance, /## Legacy `\.trellis\/` Repositories/);
   assert.match(governance, /read-only historical format/i);
   assert.match(governance, /never\s+write into `\.trellis\/`/i);
-  assert.match(governance, /implement\.jsonl|check\.jsonl/);
+  assert.match(governance, /read-only historical format|historical recovery/);
 });
 
 test("task state is read on demand, never injected per turn", () => {
@@ -91,31 +91,32 @@ test("workflow policies define one owner for every durable artifact", () => {
   );
 
   for (const artifact of [
-    "prd.md",
+    "proposal.md",
     "design.md",
-    "implement.md",
-    "context.md",
-    "STATUS",
-    "outcome.md",
-    ".workflow/spec/",
-    ".workflow/journal.md",
-    "by-session/",
-    "archive/",
-    "CONTEXT.md",
+    "tasks.md",
+    "artifacts/context.md",
+    "artifacts/verification.md",
+    "openspec/changes/archive/",
+    ".workflow/",
+    ".trellis/",
     "docs/adr/",
   ]) {
-    assert.match(ownership, new RegExp(artifact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.ok(ownership.includes(artifact), `missing artifact ownership: ${artifact}`);
   }
 
-  assert.match(ownership, /\.workflow\/` is the canonical owner/i);
-  assert.match(ownership, /do not duplicate/i);
+  assert.match(ownership, /OpenSpec is the canonical owner/i);
+  assert.match(ownership, /do not dual-write/i);
 });
 
-test("router preserves .workflow state and delegates quality work", () => {
+test("router selects OpenSpec and keeps legacy recovery read-only", () => {
   const router = read("skills/run-engineering-workflow/SKILL.md");
 
-  assert.match(router, /\.workflow\/CURRENT\.md/);
-  assert.match(router, /by-session/);
+  assert.match(router, /openspec\/config\.(?:yaml|yml)/);
+  assert.match(router, /openspec list --json/);
+  assert.match(router, /Active change: openspec\/changes/);
+  assert.match(router, /legacy.*recoverable|recoverable.*legacy/i);
+  assert.match(router, /do not write new state into `\.workflow\/?`/i);
+  assert.match(router, /never run a Trellis script/i);
   assert.match(router, /planning/);
   assert.match(router, /in_progress/);
   assert.match(router, /clarify-requirements/);
@@ -135,7 +136,6 @@ test("router preserves .workflow state and delegates quality work", () => {
   assert.match(router, /After 10 minutes without progress/);
   assert.match(router, /Do not automatically re-dispatch/);
   assert.match(router, /do not poll `hub jobs`, `hub list`/);
-  assert.match(router, /no CLI, no daemon, and no script interpreter dependency/);
   assert.match(router, /do not initialize one silently/i);
 });
 
@@ -154,21 +154,58 @@ test("acceptance and archival belong to the user", () => {
     /The user accepts and archives\. The agent never does it on its own initiative/
   );
   assert.match(governance, /awaiting-acceptance/);
-  assert.match(governance, /phase: done` means "the user accepted"/);
-  assert.match(finish, /## Hand It Back For Acceptance/);
-  assert.match(finish, /You do not accept the work, and you do not archive it/);
-  assert.match(finish, /phase: awaiting-acceptance/);
-  assert.match(finish, /do not write `phase: done`/);
+  assert.match(governance, /Moving a change to `openspec\/archive\//);
+  assert.match(finish, /## Hand Off For Acceptance/);
+  assert.match(finish, /do not archive the OpenSpec change/);
+  assert.match(finish, /awaiting-acceptance/);
+  assert.match(finish, /do not archive the OpenSpec change/);
   assert.match(finish, /复验轮次/);
-  assert.match(router, /does not set `phase: done`/);
-  assert.match(router, /print the commands instead of running them/);
+  assert.match(router, /does not archive (?:the )?(?:OpenSpec )?change/);
+  assert.match(router, /print the command(?:s)? instead of running it|print the command(?:s)? instead of running them/i);
   assert.match(
     router,
-    /Do not archive a task, set `phase: done`, or clear pointers/
+    /Do not archive an OpenSpec change or clear pointers/
   );
   assert.match(architecture, /\(user\) accept, then archive/);
   assert.match(agents, /Acceptance and archival belong to the user/);
-  assert.match(governance, /archive-task` command performs these steps/);
+  assert.match(router, /invoke `archive-task`/);
+});
+
+test("routing recommends and requires confirmation before creating or reusing", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const governance = read(
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  );
+  const command = read("commands/engineering-workflow.md");
+  const compat = read("scripts/openspec_compat.py");
+  const doctor = read("scripts/doctor.py");
+  const installer = read("scripts/install.ps1");
+
+  assert.match(router, /## Match And Confirm Before Creating Or Reusing/);
+  assert.match(router, /never create, reuse, or select without explicit confirmation/);
+  assert.match(router, /是否创建 XXX 任务/);
+  assert.match(router, /已经存在 XXX 任务，是否复用/);
+  assert.match(router, /Never order candidates by recency, name, or model\s+preference/);
+  assert.match(router, /Related but\s+different goals are not a match/);
+  assert.match(router, /create_change/);
+  assert.match(router, /list_changes/);
+  assert.doesNotMatch(router, /select exactly one active change/);
+  assert.match(governance, /not even when exactly one change exists/);
+  assert.match(governance, /Rejecting reuse is not consent to create/);
+  assert.match(governance, /environment errors are never reported as "no match"/);
+  assert.match(command, /read-only discovery of unarchived changes/);
+  assert.match(command, /stop for an explicit user\s+confirmation/);
+  assert.match(compat, /def list_changes\(/);
+  assert.match(compat, /def create_change\(/);
+  assert.match(compat, /Change id must contain lowercase letters, numbers, and hyphens only/);
+  assert.match(doctor, /nothing is auto-selected/);
+  assert.match(installer, /scripts\\openspec_compat\.py/);
+  for (const root of ["codexSkills", "ompSkills", "claudeSkills", "piSkills"]) {
+    assert.match(
+      installer,
+      new RegExp(`Join-Path \\$${root} "run-engineering-workflow\\\\scripts\\\\openspec_compat\\.py"`),
+    );
+  }
 });
 
 test("archive-task is gated on user acceptance and owns the move", () => {
@@ -185,13 +222,13 @@ test("archive-task is gated on user acceptance and owns the move", () => {
 
   assert.match(skill, /^name: archive-task$/m);
   assert.match(skill, /## Verify Acceptance First/);
-  assert.match(skill, /phase: awaiting-acceptance/);
+  assert.match(skill, /awaiting-acceptance/);
   assert.match(skill, /ARCHIVE_STATUS: REFUSED/);
   assert.match(skill, /ARCHIVE_STATUS: ARCHIVED/);
   assert.match(skill, /ARCHIVE_STATUS: PARTIAL/);
-  assert.match(skill, /Do\nnot run extra checks to earn the archive|do not run extra checks to earn the archive/i);
-  assert.match(skill, /then move the task directory into/);
-  assert.match(skill, /Committing, pushing, publishing, and deleting an archived task stay out of/);
+  assert.match(skill, /do not run extra checks to earn the archive/i);
+  assert.match(skill, /Move the change directory to `openspec\/changes\/archive/);
+  assert.match(skill, /Committing, pushing, publishing, and deleting an archived change stay out of/);
   assert.match(command, /\/archive-task|archive-task/);
   assert.match(command, /\$ARGUMENTS/);
 
@@ -202,21 +239,23 @@ test("archive-task is gated on user acceptance and owns the move", () => {
   assert.match(installer, /"archive-task"/);
   assert.match(installer, /"archive-task\.md"/);
   assert.match(doctor, /"archive-task",/);
-  assert.match(skill, /Ensure `\.workflow\/archive\/` exists/);
-  assert.match(skill, /rename the source instead of moving it/);
-  assert.match(skill, /force UTF-8/);
-  assert.match(governance, /New-Item -ItemType Directory -Force -Path \.workflow\\archive/);
-  assert.match(governance, /AppendAllText/);
-  assert.match(read("commands/engineering-workflow.md"), /Only `\/archive-task`, invoked by the user after they accept,/);
+  assert.match(doctor, /def check_skill_whitelist/);
+  assert.match(doctor, /OMP \{label\} skill whitelist is missing/);
+  assert.match(skill, /openspec\/changes\/archive/);
+  assert.match(skill, /verify/i);
+  assert.match(skill, /Write OpenSpec text/);
+  assert.match(governance, /openspec\/changes\/archive/);
+  assert.match(governance, /user-triggered only/);
+  assert.match(read("commands/engineering-workflow.md"), /Only `\/archive-task`.*after acceptance/s);
 });
 
 test("solution planning separates design decisions from execution steps", () => {
   const skill = read("skills/plan-solution/SKILL.md");
 
-  assert.match(skill, /prd\.md/);
+  assert.match(skill, /proposal\.md/);
   assert.match(skill, /design\.md/);
-  assert.match(skill, /implement\.md/);
-  assert.match(skill, /## Write context\.md/);
+  assert.match(skill, /tasks\.md/);
+  assert.match(skill, /## Write artifacts\/context\.md/);
   assert.match(skill, /备选方案/);
   assert.match(skill, /数据流/);
   assert.match(skill, /回滚/);
@@ -228,25 +267,25 @@ test("solution planning separates design decisions from execution steps", () => 
 test("clarification writes observable acceptance criteria into the task record", () => {
   const skill = read("skills/clarify-requirements/SKILL.md");
 
-  assert.match(skill, /prd\.md/);
+  assert.match(skill, /proposal\.md/);
   assert.match(skill, /AC-001/);
   assert.match(skill, /- \[ \] AC-001/);
   assert.match(skill, /范围内/);
   assert.match(skill, /范围外/);
   assert.match(skill, /验证方法/);
   assert.match(skill, /one question at a time/i);
-  assert.match(skill, /STATUS/);
-  assert.match(skill, /by-session/);
+  assert.match(skill, /tasks\.md/);
+  assert.match(skill, /artifacts\/context\.md/);
 });
 
 test("finish skill records actual evidence without inventing results", () => {
   const skill = read("skills/finish-with-evidence/SKILL.md");
 
-  assert.match(skill, /outcome\.md/);
+  assert.match(skill, /artifacts\/verification\.md/);
   assert.match(skill, /RED.*GREEN/s);
   assert.match(skill, /git diff/);
   assert.match(skill, /do not invent/i);
-  assert.match(skill, /\.workflow\/spec\//);
+  assert.match(skill, /openspec\/specs\//);
   assert.match(skill, /one row for every `- \[ \] AC-NNN`/);
   assert.match(skill, /## 独立复核/);
   assert.match(skill, /workflow-reviewer/);
@@ -359,26 +398,26 @@ test("OMP dispatches carry a bounded, explicit task handoff", () => {
   const implementer = read(".omp/agents/workflow-implementer.md");
   const reviewer = read(".omp/agents/workflow-reviewer.md");
 
-  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
-    assert.match(router, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
+    assert.ok(router.includes(field), `router missing ${field}`);
   }
-  assert.match(router, /\.workflow\/tasks\/<task-id>\//);
+  assert.match(router, /openspec\/changes\/<change-id>\//);
   assert.match(router, /requested_model/);
   assert.match(router, /effective_model/);
   assert.match(router, /fallback/);
-  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
-    assert.match(planner, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]) {
+    assert.ok(planner.includes(field), `planner missing ${field}`);
   }
   assert.match(planner, /PLANNING_STATUS: INVALID/);
-  assert.match(planner, /do not[\s\S]{0,40}scan all task directories/i);
-  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]) {
+  assert.match(planner, /do not[\s\S]{0,40}scan all change directories/i);
+  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]) {
     assert.match(implementer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  for (const field of ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]) {
+  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]) {
     assert.match(reviewer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(reviewer, /REVIEW_STATUS: INVALID/);
-  assert.match(reviewer, /do not[\s\S]{0,40}scan all task directories/i);
+  assert.match(reviewer, /do not[\s\S]{0,40}scan all change directories/i);
 });
 
 test("OMP overlay preserves the full quality skill baseline", () => {
@@ -393,7 +432,7 @@ test("behavior cases cover bounded context and fallback observability", () => {
   const fixture = JSON.parse(read("evals/workflow-cases.json"));
   assert.equal(fixture.schema_version, 3);
   const allowedHandoffFields = new Set([
-    "Active task:",
+    "Active change:",
     "Assigned slice:",
     "Phase:",
     "Read:",
@@ -415,9 +454,9 @@ test("behavior cases cover bounded context and fallback observability", () => {
     }
   }
   const expectedHandoffs = new Map([
-    ["planner-with-explicit-task", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]],
-    ["implementation-with-one-slice", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]],
-    ["review-with-diff-evidence", ["Active task:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]],
+    ["planner-with-explicit-task", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]],
+    ["implementation-with-one-slice", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]],
+    ["review-with-diff-evidence", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]],
   ]);
   for (const [name, requiredFields] of expectedHandoffs) {
     const entry = fixture.cases.find((candidate) => candidate.name === name);
@@ -464,7 +503,7 @@ test("Claude Code plugin maps planning, implementation, and review", () => {
   assert.match(planner, /^tools: .*Write.*Edit/m);
   assert.match(planner, /^skills:[\s\S]*run-engineering-workflow[\s\S]*plan-solution/m);
   assert.match(planner, /design\.md/);
-  assert.match(planner, /implement\.md/);
+  assert.match(planner, /tasks\.md/);
   assert.match(planner, /Do not write production code/i);
 
   assert.match(reviewer, /^model: opus$/m);
@@ -478,8 +517,8 @@ test("Claude Code plugin maps planning, implementation, and review", () => {
   assert.match(command, /workflow-implementer/);
   assert.match(command, /code-review/);
   assert.match(command, /workflow-reviewer/);
-  assert.match(command, /Active task:/);
-  assert.match(command, /`STATUS` to `awaiting-acceptance`, then stop/);
+  assert.match(command, /Active change:/);
+  assert.match(command, /`awaiting-acceptance`|awaiting-acceptance/);
 });
 
 test("workflow behavior cases cover every state transition and failure gate", () => {
@@ -552,8 +591,11 @@ test("tooling supports synchronized install, diagnosis, and Python OMP launch", 
   assert.match(doctor, /"Pi", errors/);
   assert.match(doctor, /"@narumitw" \/ "pi-subagents"/);
   assert.match(doctor, /Missing OMP Python launcher/);
-  assert.match(doctor, /OMP overlay skill whitelist is missing/);
+  assert.match(doctor, /check_skill_whitelist\(path, "overlay", errors\)/);
   assert.match(doctor, /workflow-review-gate/);
+  assert.match(doctor, /def skill_whitelist_entries/);
+  assert.match(doctor, /"user config"/);
+  assert.match(installer, /Add-OmpSkillWhitelist/);
   assert.doesNotMatch(doctor, /omp config list/);
   assert.match(installer, /start-engineering-workflow\.py/);
   assert.match(installer, /start-engineering-workflow\.ps1/);
@@ -599,10 +641,10 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /^## 任务怎么拆$/m);
   assert.match(readme, /^## 产物用什么语言$/m);
   assert.match(readme, /^## 需要安装什么$/m);
-  assert.match(readme, /^### 不需要安装：记录系统$/m);
+  assert.match(readme, /^### 记录系统$/m);
   assert.match(readme, /^## 安装本仓库的 Skill$/m);
   assert.match(readme, /^## 使用方法$/m);
-  assert.match(readme, /\.workflow\/tasks\/<task>\/context\.md/);
+  assert.match(readme, /openspec\/changes\/<change-id>\//);
   assert.match(readme, /STATUS/);
   assert.doesNotMatch(readme, /npm install -g @mindfoldhq\/trellis|trellis init/);
   assert.match(readme, /grill-with-docs/);
@@ -627,6 +669,7 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /\/skill:run-engineering-workflow/);
   assert.match(readme, /claude --model sonnet/);
   assert.match(readme, /skills\.includeSkills/);
+  assert.match(readme, /skill whitelist is missing/);
   assert.match(readme, /普通 `omp`.*默认设置/s);
   assert.match(readme, /ompw.*显式指定项目 overlay/s);
   assert.match(readme, /workflow-review-gate/);
@@ -644,14 +687,14 @@ test("task artifacts are written in the user's language", () => {
   const finish = read("skills/finish-with-evidence/SKILL.md");
 
   assert.match(governance, /## Artifact Language/);
-  assert.match(governance, /`STATUS` keys \(`phase`, `updated`\)/);
+  assert.match(governance, /OpenSpec `proposal\.md`|OpenSpec artifacts/);
   assert.match(router, /written in the user's language/);
   for (const body of [clarify, plan, finish]) {
     assert.match(body, /Chinese by default/);
   }
   assert.match(clarify, /- \[ \] AC-001: 拒绝越权导出/);
   assert.match(plan, /### 切片 N：AC-XXX/);
-  assert.match(finish, /# 交付结果/);
+  assert.match(finish, /# 交付验证/);
   assert.match(finish, /NOT RUN/);
 });
 
@@ -670,11 +713,11 @@ test("dispatch carries an inlined context package, not a path list", () => {
   assert.match(plan, /## Write The Context Package/);
   assert.match(plan, /已内联上下文/);
   assert.match(plan, /需要新打开/);
-  assert.match(router, /上下文包/);
+  assert.match(router, /context package|上下文 package/);
   assert.match(router, /must not redo research/);
   assert.match(governance, /Inlining is the point/);
   for (const implementer of implementers) {
-    assert.match(implementer, /上下文包/);
+    assert.match(implementer, /context package|上下文 package/);
   }
 });
 
@@ -690,8 +733,8 @@ test("decomposition exposes slices, tickets, and a recomputable frontier", () =>
   assert.match(plan, /## Decompose The Work/);
   assert.match(plan, /blocked_by: \[T1\]/);
   assert.match(governance, /## Tickets And Decomposition/);
-  assert.match(governance, /frontier is the set of `ready` tickets/);
+  assert.match(governance, /execution frontier|execution frontier/);
   assert.match(router, /recompute the frontier/);
-  assert.match(finish, /tickets\//);
-  assert.match(planner, /tickets\/NN-<slug>\.md/);
+  assert.match(finish, /tasks\.md/);
+  assert.match(planner, /tasks\.md/);
 });

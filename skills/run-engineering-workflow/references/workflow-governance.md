@@ -5,143 +5,86 @@ integrations, or deciding where durable information belongs.
 
 ## Record Layout
 
-`.workflow/` is a convention, not a program. Every file below is written and
-read with the platform's own file tools. There is no CLI, no lock service, and
-no background process; a missing file means the state it would hold was never
-decided, and an unreadable file is an invalid dispatch, not a reason to guess.
+OpenSpec is the canonical record system for new work. It owns requirements,
+change design, tasks, completion status, and archived change history. `.workflow/`
+and `.trellis/` remain compatibility inputs only.
 
 ```text
-.workflow/
-  CURRENT.md                 human-visible pointer: task path + updated (phase lives in STATUS)
-  by-session/<key>.md        per-session pointer; <key> is <platform>-<session id>
-                             or "main" when the harness exposes no session id
-  journal.md                 one append-only line per closed task
-  spec/                      optional durable conventions, package/layer scoped
-  tasks/<MM-DD-slug>/
-    prd.md                   requirements, scope, assumptions, acceptance criteria
-    design.md                optional technical design
-    implement.md             optional ordered vertical slices
-    context.md               the files this task must read, each with a reason
-    STATUS                   exactly two lines: phase and updated
-    outcome.md               written at close: evidence per acceptance criterion
-    tickets/                 one file per 工单 when the task spans sessions or writers
-    research/                optional notes, source excerpts, measurements
-  archive/<MM-DD-slug>/      moved here on close; contents are never edited
-                             written only by a user-requested archival step
+openspec/
+  config.yaml                 OpenSpec schema/configuration
+  changes/<change-id>/        proposal, specs, design, tasks, artifacts/
+  changes/archive/             OpenSpec archive, written only after acceptance
+
+.workflow/                    legacy compatibility records
+  CURRENT.md                  recoverable task pointer
+  tasks/<MM-DD-slug>/         old prd/design/implement/context/outcome records
+  by-session/<key>.md         old session binding
+  archive/                    old archive; never recreated by new work
+
+.trellis/                     read-only legacy records; never write or execute
 ```
 
-`STATUS` holds only:
+The routing invariant is strict:
 
-```text
-phase: planning | in_progress | review | awaiting-acceptance | done
-updated: 2026-09-14T15:40:00Z
-```
+- If `openspec/config.yaml` or `config.yml` exists, OpenSpec is canonical.
+- New work starts from read-only discovery (`scripts/openspec_compat.py`
+  `list_changes`) over the current project's unarchived changes. Nothing is
+  auto-selected, not even when exactly one change exists; multiple candidates
+  are a normal waiting state, not an environment failure.
+- Creating a change or reusing one requires an explicit user confirmation of the
+  current proposal, once. Rejecting reuse is not consent to create; a
+  confirmation expires when the candidate is archived or the goal changes.
+- Same-goal matching judges the work object, expected outcome, compatible
+  scope, and acceptance relationship; related-but-different goals are not a
+  match, and environment errors are never reported as "no match".
+- A legacy `.workflow` task may be read or explicitly migrated, but no new
+  durable state is written there.
+- `.trellis/` may be read for recovery only. Never run Trellis scripts or install
+  Trellis injectors.
+- Do not dual-write equivalent requirements, tasks, status, or evidence into
+  OpenSpec and `.workflow/`.
 
-Rules that keep the layout cheap to read:
-
-- One task, one directory, one `STATUS`. Never store the phase in the pointer
-  file alone, because two concurrent sessions must not overwrite each other.
-- `context.md` replaces automatic spec injection. It lists paths and one-line
-  reasons, not file bodies. Dispatch copies those paths into the handoff `Read:`
-  field.
-- `outcome.md` is the only place delivery claims live. Anything not evidenced
-  there is not delivered.
-- `archive/` is append-only history. Recovering an old decision means reading
-  it, never resurrecting it as current state.
-- The whole layout is optional per repository. When a repository keeps no
-  records, this workflow says so out loud instead of inventing a store.
+`STATUS` and session pointers are still understood when recovering a legacy
+`.workflow` task, but they are not part of the new canonical lifecycle.
 
 ## Artifact Language
 
-Human-facing artifacts — `prd.md`, `design.md`, `implement.md`, `context.md`,
-`outcome.md`, `journal.md`, and ticket bodies — are written in the user's
-language, Chinese by default, including section headings and field labels. Keep
-verbatim and greppable: code identifiers, file paths, commands, log and error
-text, `STATUS` keys (`phase`, `updated`), ticket front-matter keys, and status
-tokens (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`). Do not translate an identifier
-into prose, and do not restate in chat what the artifact already records.
+Human-facing artifacts — OpenSpec `proposal.md`, `design.md`, `tasks.md`,
+change specs, verification artifacts, and legacy records — are written in the
+user's language, Chinese by default, including section headings and field
+labels. Keep verbatim and greppable: code identifiers, file paths, commands, log
+and error text, OpenSpec filenames, and status tokens (`PASS`, `NOT RUN`,
+`REVIEW_STATUS: CLEAN`). Do not translate an identifier into prose, and do not
+restate in chat what the artifact already records.
 
 ## Tickets And Decomposition
 
 Three split levels; use the smallest one that fits how the work gets executed:
 
-| 级别 | 用在什么时候 | 落在哪里 |
+| Level | Use when | Location |
 | --- | --- | --- |
-| 切片 | 同一会话顺序完成、共享模块、单 writer | `implement.md` 的 `### 切片 N` |
-| 工单 | 可独立验收、跨会话续接、或多 writer | `tickets/NN-<slug>.md` |
-| 多任务 | 不同发布单元、不同仓库、可独立收口 | 多个 task 目录，外加一个总控 task |
+| Slice | Same session, shared module, single writer | OpenSpec `tasks.md` |
+| Ticket | Independently accepted, cross-session, or multiple writers | OpenSpec task item plus bounded artifact |
+| Change | Different release unit or independent outcome | Separate OpenSpec change |
 
-A ticket file starts with:
-
-```text
----
-id: T2
-标题：摄像头状态 CAS 更新
-covers: [AC-001]
-blocked_by: [T1]
-state: ready          # ready | in_progress | done | blocked
-writer: main          # main | workflow-implementer
----
-```
-
-The frontier is the set of `ready` tickets whose `blocked_by` are all `done`. One
-ticket, one live writer. `state: done` requires executed verification evidence,
-recorded in `outcome.md`. Never duplicate the slice plan inside a ticket:
-reference `implement.md#切片-N` and its 上下文包 instead.
+OpenSpec `tasks.md` is the execution frontier. One change, one live writer unless
+an explicit ticket handoff says otherwise. A task is complete only with executed
+verification evidence in `artifacts/verification.md` (or the repository's
+approved equivalent). Do not recreate `.workflow/tickets/` for new work.
 
 ## Acceptance And Archival
 
 **The user accepts and archives. The agent never does it on its own initiative.**
 
-- Once evidence is complete, the agent writes `outcome.md`, sets `STATUS` to
-  `awaiting-acceptance`, and stops. It states what to verify: every AC with the
-  command or manual step that proves it, plus every check left `NOT RUN`.
-- Moving a task directory, deleting a pointer, and setting `phase: done` are the
-  user's actions. The agent prints the commands instead of running them, and runs
-  them only when the user explicitly asks in the current session and the task is
-  already in `awaiting-acceptance`.
-- A failed verification is a normal transition, not an exception: the user reports
-  what is wrong, the agent moves `STATUS` back to `in_progress`, fixes, re-runs the
-  affected checks, and appends a new round to `outcome.md`. Earlier rounds stay
-  visible; nobody rewrites history to make a task look clean.
-- `phase: done` means "the user accepted", not "the checks passed".
-
-The `archive-task` command performs these steps when you ask for it
-(`$archive-task`, `/archive-task`, or `/skill:archive-task`). It re-checks the three
-acceptance conditions, returns `ARCHIVE_STATUS: REFUSED` naming what is missing
-instead of archiving, and on success reports `ARCHIVE_STATUS: ARCHIVED` with both
-resulting paths. Running the commands yourself stays equally valid.
-
-Archival, run by the user (PowerShell):
-
-```text
-$task = ".workflow\tasks\<id>"
-New-Item -ItemType Directory -Force -Path .workflow\archive | Out-Null
-[IO.File]::AppendAllText("$PWD\.workflow\journal.md", "<date>  $task  <一句话结果>  <commit or branch>`r`n", (New-Object Text.UTF8Encoding $false))
-Move-Item -LiteralPath $task -Destination .workflow\archive\
-Remove-Item -LiteralPath .workflow\by-session\<key>.md
-Set-Content -LiteralPath .workflow\CURRENT.md -Value "task: none"
-```
-
-or in POSIX shells:
-
-```text
-task=.workflow/tasks/<id>
-printf '%s  %s  <一句话结果>  <commit or branch>\n' "$(date -F)" "$task" >> .workflow/journal.md
-mkdir -p .workflow/archive
-mv "$task" .workflow/archive/   # destination must exist, or mv renames instead
-rm -f .workflow/by-session/<key>.md
-printf 'task: none\n' > .workflow/CURRENT.md
-```
-
-Use the platform's file tools when you can. Shell writes to `.workflow/` need an
-explicit UTF-8: on Windows PowerShell 5.1 `Add-Content` and `Set-Content` default
-to the ANSI codepage, so Chinese text lands in the journal as GBK and reads as
-mojibake everywhere else. The `[IO.File]::AppendAllText` form above writes UTF-8
-without a BOM on any PowerShell version.
-
-Afterwards `.workflow/tasks/` no longer contains the task, and the archived copy is
-read-only from then on.
+- Once evidence is complete, the agent updates the OpenSpec change's verification
+  artifact and stops in `awaiting-acceptance` in the change record/handoff.
+- Moving a change to `openspec/archive/`, deleting compatibility pointers, or
+  declaring final acceptance are the user's actions. The agent prints the command
+  instead of running it unless the user explicitly asks in the current session.
+- A failed verification is a normal transition: keep the failure evidence,
+  update `tasks.md`, fix the implementation, and append a new verification round.
+- Legacy `.workflow` `STATUS` is changed only when recovering that legacy task,
+  never as a shadow status for new OpenSpec work.
 
 ## Prompt Cache Constraint
 
@@ -156,40 +99,39 @@ a defect, not a feature.
 
 ## Artifact Ownership
 
-`.workflow/` is the canonical owner of task state and durable delivery records.
-Store one fact in one authoritative place. Do not duplicate task facts across
-workflow systems.
+OpenSpec is the canonical owner for new task facts. Store one fact in one
+authoritative place; compatibility readers must not create a second state store.
 
 | Artifact | Canonical owner | Purpose |
 | --- | --- | --- |
-| `prd.md` | Active task directory | Requirements, scope, assumptions, acceptance criteria |
-| `design.md` | Active task directory | Technical design, alternatives, compatibility, rollout |
-| `implement.md` | Active task directory | Ordered execution and validation plan |
-| `outcome.md` | Active task directory | Actual delivery, evidence, review, deviations, remaining risk |
-| `STATUS` | Active task directory | Current phase and last transition |
-| `by-session/` | Workflow record | Session-to-task binding only, never requirements |
-| `tickets/` | Active task directory | Scheduling state for cross-session or parallel work; never a second plan |
-| `.workflow/spec/` | Project knowledge | Durable conventions and prevention rules |
-| `.workflow/journal.md` | Project journal | One-line closure record per task |
-| `CONTEXT.md` | Domain glossary | Stable business vocabulary only |
-| `docs/adr/` | Architecture decisions | Hard-to-reverse decisions and rationale |
+| `proposal.md` | OpenSpec change | Why, scope, and user-visible intent |
+| `specs/**/*.md` | OpenSpec change | Normative requirements and scenarios |
+| `design.md` | OpenSpec change | Technical design, alternatives, compatibility, rollout |
+| `tasks.md` | OpenSpec change | Ordered implementation work and checks |
+| `artifacts/context.md` | OpenSpec change | Dispatch context and bounded file map |
+| `artifacts/verification.md` | OpenSpec change | Actual delivery, evidence, review, deviations, remaining risk |
+| `docs/adr/` | Project docs | Accepted hard-to-reverse decisions and rationale |
+| `openspec/changes/archive/` | OpenSpec | Accepted immutable history, user-triggered only |
+| `.workflow/` | Legacy reader/migrator | Recovery and explicit migration input only |
+| `.trellis/` | Legacy reader | Historical read-only input only |
 | Code and tests | Git | Executable implementation and behavioral proof |
+
+## Legacy `.workflow` And `.trellis` Records
+
+- Read legacy `.workflow` `prd.md`, `design.md`, `implement.md`, `context.md`,
+  `outcome.md`, `STATUS`, and pointers when recovery is explicitly requested.
+- Use `scripts/migrate_workflow_task.py` for an explicit, idempotent migration.
+  It copies into an OpenSpec change, writes a migration report, and never deletes
+  or mutates the source task.
+- Never write new requirements, tasks, status, or evidence into `.workflow/` as a
+  shadow of an OpenSpec change.
+- Read `.trellis/` records only for historical recovery. Never execute a Trellis
+  script, install an injector, or write into `.trellis/`.
 
 ## Legacy `.trellis/` Repositories
 
-Some repositories were initialized with Trellis before this workflow dropped it.
-Treat `.trellis/` as a read-only historical format:
-
-- Read `prd.md`, `design.md`, `implement.md`, `outcome.md`,
-  `implement.jsonl`, `check.jsonl`, `research/`, and `task.json` when they are
-  the only record of an active task. Map `task.json` `status` onto `phase`
-  (`planning` → `planning`, `in_progress` → `in_progress`, `completed` → `done`).
-- Convert a `*.jsonl` spec manifest into `context.md` the first time you
-  dispatch for that task.
-- Never execute a Trellis script, never install a Trellis injector, and never
-  write into `.trellis/`. New state goes to `.workflow/`.
-- Global spec directories (`.trellis/spec/`) may still be read; new conventions
-  are written to `.workflow/spec/`.
+`.trellis/` is a read-only historical format. Read its records only for recovery;
+never write into `.trellis/`, run its scripts, or install its injectors.
 
 ## Context Loading Contract
 
@@ -197,53 +139,48 @@ Use three context tiers:
 
 | Tier | When loaded | Contents |
 | --- | --- | --- |
-| Project context | Session start | Project identity, workflow rules, and relevant spec index |
-| Task pointer | Session start or resume | One task path; the phase comes from that task's `STATUS` |
-| Task package | Activation or dispatch | Inlined AC text, the design decisions it rests on, located `file:line` conclusions, invariants, file bounds, and the exact checks |
+| Project context | Session start | Project identity, workflow rules, and OpenSpec change index |
+| Change selection | Session start or resume | Exactly one OpenSpec change id; legacy path only in recovery mode |
+| Change package | Activation or dispatch | Inlined AC text, design decisions, invariants, file bounds, and exact checks |
 
-The task package is derived from the active task artifacts and is not a second
-durable record. Refresh it after requirement clarification, plan approval, slice
-completion, review findings, and cross-session resume. When a harness cannot
-bind a pointer to a session, use explicit task paths and bounded artifact
-sections as the compatibility mode and record the limitation.
+The change package is derived from OpenSpec artifacts and is not a second durable
+record. Refresh it after requirement clarification, plan approval, slice completion,
+Inlining is the point: a fresh worker receives bounded conclusions and exact checks, not only a path list.
+review findings, and cross-session resume. When a harness cannot bind a pointer to a
+session, use explicit change ids and bounded artifact sections as the compatibility
+mode and record the limitation.
 
-Inlining is the point: the package exists so a fresh worker starts from
-conclusions. Paths alone are only acceptable for material the worker genuinely
-has to open itself — usually the two or three files it will edit. When the package
-is thin, the planning was thin; fix `implement.md` rather than letting every
-dispatch re-run the same repository survey.
-
-Issue trackers may link to a task directory, but must not duplicate its design
-and implementation record.
+Paths alone are only acceptable for files the worker genuinely has to open itself.
+The package must carry the conclusions needed for a fresh worker to start cold.
 
 ## Routing Ownership
 
 | Need | Primary capability | Destination |
 | --- | --- | --- |
-| Resume context | pointer + `STATUS` read | Existing task |
-| Clarify intent | Matt `grilling` + observable ACs | `prd.md` |
-| Model domain | Matt domain modeling | `CONTEXT.md`, rare ADR |
-| Design solution | `plan-solution` + relevant specialists | `design.md` |
-| Plan execution | `plan-solution` + test strategy | `implement.md` |
-| Implement behavior | Matt `tdd` / ECC `tdd-workflow` | Code and tests |
-| Review independently | `review-implementation` + Matt `code-review` | Findings returned to main session |
-| Verify and record | repository checks + risk-specific checks | `outcome.md` |
+| Resume context | OpenSpec change id + status read | Existing OpenSpec change |
+| Recover legacy context | compatibility reader | `.workflow` or `.trellis` read-only |
+| Clarify intent | `clarify-requirements` + observable ACs | OpenSpec `proposal.md` and `specs/` |
+| Model domain | domain modeling | OpenSpec specs/design or rare ADR |
+| Design solution | `plan-solution` + relevant specialists | OpenSpec `design.md` |
+| Plan execution | `plan-solution` + test strategy | OpenSpec `tasks.md` |
+| Implement behavior | TDD workflow | Code and tests |
+| Review independently | `review-implementation` + code review | `artifacts/review.md` or bounded review output |
+| Verify and record | repository checks + risk-specific checks | `artifacts/verification.md` |
 | Reduce complexity | Ponytail review | Code, then re-verification |
-| Preserve learning | `finish-with-evidence` promotion step | `.workflow/spec/` |
+| Preserve learning | evidence promotion step | OpenSpec artifacts or project docs |
 
-Do not run Matt `to-spec` or `to-tickets` as a parallel record system: their
-output belongs inside the active task directory. Skip `to-spec` when
-`clarify-requirements` already produced a complete `prd.md`. Do not use Ponytail
-minimal checks to replace required repository checks.
+Do not run Matt `to-spec` or `to-tickets` as a parallel record system. Their output
+belongs in the active OpenSpec change. Do not use Ponytail minimal checks to replace
+required repository checks.
 
 ## Source Trust
 
 When sources disagree, use this order:
 
 1. Running code, tests, and externally verified behavior.
-2. Project specs (`.workflow/spec/`, or `.trellis/spec/` in legacy repos) and
-   accepted ADRs.
-3. Active task PRD, design, implementation plan, and outcome.
+2. Project specs (`openspec/specs/`, or legacy `.workflow/spec/` / `.trellis/spec/`)
+   and accepted ADRs.
+3. Active OpenSpec proposal, specs, design, tasks, and verification artifacts.
 4. Git history and reviewed issue references.
 5. Workflow journal, session pointers, and explicit handoffs.
 6. Raw AI conversations and generated memory entries.

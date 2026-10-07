@@ -2,62 +2,53 @@
 
 ## Layers
 
-1. `.workflow/` is the record system: task state, requirements, design, plan,
-   context read list, evidence, and journal. It is a file convention with no
-   code, no CLI, and no automatic injection.
-2. Matt-style practices improve requirements, domain language, module seams,
-   TDD, and Spec-versus-Standards review.
-3. Ponytail supplies a final pressure against unnecessary complexity.
-4. This repository supplies routing, ownership, profiles, independent review,
-   Codex, OMP, Claude Code, and Pi adapters, and the evidence format.
+1. `openspec/` is the canonical record system for new changes: proposal, specs, design, tasks, bounded context, verification, and archive status. It is a file convention backed by the OpenSpec CLI, with no automatic injection.
+2. `.workflow/` remains a recoverable legacy record system; `.trellis/` remains read-only historical input. Neither is a new-work authority.
+3. Matt-style practices improve requirements, domain language, module seams, TDD, and Spec-versus-Standards review.
+4. Ponytail supplies a final pressure against unnecessary complexity.
+5. This repository supplies routing, ownership, profiles, independent review, Codex, OMP, Claude Code, and Pi adapters, plus migration and evidence tooling.
 
 ## Design Rules
 
-- Store one fact in one authoritative place.
-- Pass file paths between AI sessions instead of copying full context.
-- Load state with reads, never with head-of-input injection. An injector that
-  places volatile content before the conversation history invalidates the
-  prompt cache for the entire session on every turn; the measured cost of one
-  phase-change injection was a full re-bill of a 140k-token history to deliver a
-  few hundred tokens of state.
+- Store one fact in one authoritative place: OpenSpec for new work, legacy records only for recovery.
+- Pass bounded context packages between AI sessions instead of copying full context or passing path lists alone.
+- Load state with reads, never with head-of-input injection. An injector that places volatile content before the conversation history invalidates the prompt cache for the entire session.
 - Treat conversations and generated memories as leads, not policy.
 - Select quality checks by consequence and change shape.
 - Preserve proof of what ran, including failures and unavailable checks.
 - Prefer wrappers and adapters over upstream forks.
-- Every durable artifact must be readable by a fresh session that knows only the
-  pointer file. If a fact cannot be found on disk, it was never decided.
-- Write human-facing artifacts in the user's language, Chinese by default; keep
-  identifiers, paths, commands, log text, `STATUS` keys, and status tokens English.
-- A dispatch is ready only when its 上下文包 inlines what the main session already
-  concluded. Paths alone push the survey onto the worker.
-- Split at the smallest level that matches execution: 切片, then `tickets/`, then
-  multiple task directories.
+- Every durable artifact must be readable by a fresh session that knows only the active change pointer. If a fact cannot be found on disk, it was never decided.
+- Write human-facing artifacts in the user's language, Chinese by default; keep identifiers, paths, commands, log text, OpenSpec filenames, and status tokens English.
+- A dispatch is ready only when its 上下文包 inlines what the main session already concluded. Paths alone push the survey onto the worker.
+- Split at the smallest level that matches execution: 切片 and task items inside a change, then multiple changes for separately shippable outcomes.
 
 ## Workflow
 
 ```text
 request
-  -> read .workflow/CURRENT.md or by-session pointer
-  -> create or resume task directory
-  -> clarify requirements (prd.md with checkboxed ACs)
-  -> plan solution in design.md, implement.md, and context.md
-  -> user approval, STATUS -> in_progress (tickets/ frontier when split)
+  -> read openspec/config.yaml and discover unarchived changes (openspec_compat
+     list_changes, read-only; environment errors are blocked states, not "no match")
+  -> match session intent against the candidates; recommend create or reuse and
+     stop for an explicit user confirmation before creating or reusing
+  -> if absent, recover .workflow or .trellis read-only records without writing them
+  -> clarify requirements (proposal.md with checkboxed ACs and specs/*.md)
+  -> plan solution in design.md, tasks.md, and artifacts/context.md
+  -> user approval, OpenSpec change -> in_progress (task frontier when split)
   -> Matt TDD with an inlined 上下文包 (main session by default,
      workflow-implementer when critical)
   -> repository verification + Matt code-review
   -> independent correctness/security/complexity review
   -> remediation and re-verification
-  -> outcome evidence (one row per AC)
-  -> STATUS -> awaiting-acceptance, hand the verification list to the user
-  -> (user) verify, or bounce back to in_progress with a new outcome round
-  -> (user) accept, then archive: journal line, move, clear pointer, phase: done
+  -> artifacts/verification.md evidence (one row per AC)
+  -> OpenSpec change -> awaiting-acceptance, hand the verification list to the user
+  -> user verify, or bounce back to in_progress with a new verification round
+  -> (user) accept, then archive via /archive-task
 ```
 
 ## Record Layout
 
 See `skills/run-engineering-workflow/references/workflow-governance.md` for the
-authoritative `.workflow/` tree and the legacy `.trellis/` read-only mapping.
-
+canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings.
 ## OMP Roles
 
 ```text

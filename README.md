@@ -1,12 +1,12 @@
 # 我的 AI 工程工作流
 
-这是一个面向个人开发习惯的 AI 工程工作流仓库。它把 `.workflow/` 文件约定、Matt Pocock
-Skills 和 Ponytail 中适合自己的部分组合起来，用于提高需求质量、
-代码质量、验证质量，以及不同 AI 会话之间的上下文连续性。
+这是一个面向个人开发习惯的 AI 工程工作流仓库。它把 OpenSpec 的规格驱动变更记录、Matt Pocock
+Skills 和 Ponytail 中适合自己的部分组合起来，用于提高需求质量、代码质量、验证质量，以及不同
+AI 会话之间的上下文连续性。
 
-本仓库不是上述项目的完整替代品，也不复制它们的源码。它是一个轻量编排层，
-负责规定：任务状态保存在哪里（纯文件，无 CLI 和注入）、需求和方案写到哪里、何时使用
-TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保留什么证据。
+本仓库不是上述项目的完整替代品，也不复制它们的源码。它是一个轻量编排层，负责规定：新任务的
+事实源（OpenSpec change）、何时使用 TDD、需要执行哪些验证、不同 AI harness 如何接入，以及旧
+`.workflow/` / `.trellis/` 记录如何只读恢复或显式迁移。
 
 ## 这个仓库是做什么的
 
@@ -14,7 +14,7 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 
 - AI 没有充分理解需求就开始实现。
 - 需求、方案和实现过程只存在于聊天记录中，后续难以追踪。
-- 切换 Codex、Claude Code 或新的 AI 会话后，需要重新解释项目背景。
+- 切换 Codex、Claude Code、OMP、Pi 或新的 AI 会话后，需要重新解释项目背景。
 - 代码虽然能运行，但缺少 TDD、回归测试、类型检查、安全检查等证据。
 - AI 容易增加不必要的抽象、依赖、配置和文件。
 - 计划中的方案和最终实际实现存在偏差，但没有被记录。
@@ -23,49 +23,48 @@ TDD、需要执行哪些验证，以及任务结束后要为后续 AI 会话保�
 
 | 组件 | 职责 | 本仓库如何使用 |
 | --- | --- | --- |
-| `.workflow/` 约定 | 任务状态、需求、设计、上下文清单、证据、日志 | 唯一记录系统；纯文件，由 skill 用读写工具维护，无 CLI、无 hook、无每轮注入 |
+| OpenSpec | 新任务的 proposal、spec、design、tasks 和变更生命周期 | 新工作唯一事实源；通过 CLI 查询和校验 |
+| `.workflow/` | 旧任务状态和产物 | 仅用于旧记录恢复；新任务不再写入 |
+| `.trellis/` | 更早的历史记录 | 只读；不运行脚本、不安装 injector |
 | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
 | Ponytail | YAGNI、复用、stdlib/native 优先 | 只用于复杂度控制，不降低质量要求 |
-
 本仓库目前提供六个 skill：
 
 | Skill | 用途 |
 | --- | --- |
-| `$run-engineering-workflow` | 读取 `.workflow/` 中的当前任务状态，按风险等级路由整个开发流程 |
-| `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前任务的 `prd.md` |
-| `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md` 和 `implement.md`，并给出 `context.md` 读取清单 |
+| `$run-engineering-workflow` | 读取 OpenSpec 当前 change，按风险等级路由整个开发流程，并保留 legacy 恢复 |
+| `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前 change 的 `proposal.md` 和 `specs/` |
+| `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md`、`tasks.md` 和 `artifacts/context.md` |
 | `$review-implementation` | 使用独立上下文复核需求覆盖、正确性、测试、安全和复杂度 |
-| `$finish-with-evidence` | 执行最终检查，并把实际实现和验证证据写入 `outcome.md` |
-| `$archive-task` | 你验收通过后，把任务记 journal、移入 `archive/`、清理指针 |
+| `$finish-with-evidence` | 执行最终检查，并把实际实现和验证证据写入 `artifacts/verification.md` |
+| `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
 
 ## 核心产物
 
-在使用本工作流的项目中，`.workflow/` 是任务记录的唯一来源：
+在使用本工作流的项目中，`openspec/changes/<change-id>/` 是新任务记录的唯一来源：
 
 | 文件 | 内容 |
 | --- | --- |
-| `.workflow/tasks/<task>/prd.md` | 需求、范围、非目标、假设和带复选框的验收标准 |
-| `.workflow/tasks/<task>/design.md` | 技术方案、接口、数据流、兼容性和取舍 |
-| `.workflow/tasks/<task>/implement.md` | 实施顺序、测试计划、验证命令和回滚点 |
-| `.workflow/tasks/<task>/tickets/NN-<slug>.md` | 跨会话或多 writer 时的工单：covers、blocked_by、state、writer |
-| `.workflow/tasks/<task>/context.md` | 本任务必须读取的规范、代码和研究文件清单（含一句理由） |
-| `.workflow/tasks/<task>/STATUS` | 当前阶段（planning / in_progress / review / awaiting-acceptance / done）和时间戳 |
-| `.workflow/tasks/<task>/outcome.md` | 实际实现、逐条 AC 结果、RED/GREEN、独立复核、验证结果和剩余风险 |
-| `.workflow/CURRENT.md`、`.workflow/by-session/` | 任务指针：人可读的当前任务，以及每个会话自己的绑定 |
-| `.workflow/spec/` | 跨任务长期有效的规范、约定和踩坑经验 |
-| `.workflow/journal.md`、`.workflow/archive/` | 一行一次收口记录，以及已归档任务的只读历史 |
+| `proposal.md` | 需求、范围、非目标、假设和带复选框的验收标准 |
+| `specs/<capability>/spec.md` | 可验证的规范增量和场景 |
+| `design.md` | 技术方案、接口、数据流、兼容性和取舍 |
+| `tasks.md` | 实施切片、依赖、测试计划、验证命令和回滚点 |
+| `artifacts/context.md` | 每个 dispatchable slice 的内联上下文包和最小读取清单 |
+| `artifacts/verification.md` | 实际实现、逐条 AC 结果、RED/GREEN、独立复核、验证结果和剩余风险 |
+| `openspec/` CLI 状态 | 当前 change 的 planning / in_progress / review / awaiting-acceptance 生命周期 |
+| `.workflow/`、`.trellis/` | 旧记录的只读恢复输入；不作为新任务事实源 |
 | `CONTEXT.md` | 可选的领域词汇表，不存放技术方案 |
 | `docs/adr/` | 少量难以逆转且存在真实权衡的架构决策 |
 
-旧项目里已有的 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
-Trellis 脚本、不再安装它的注入扩展，新状态一律写入 `.workflow/`。
+旧项目里已有的 `.workflow/` 和 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
+Trellis 脚本、不再安装它的注入扩展，新状态一律写入当前 OpenSpec change。
 
 ## 产物用什么语言
 
-所有面向人的产物（`prd.md`、`design.md`、`implement.md`、`context.md`、`outcome.md`、
-`journal.md`、工单正文）用中文书写，包括小标题和字段名；代码标识符、文件路径、
-命令、日志原文，以及状态记号（`PASS`、`NOT RUN`、`REVIEW_STATUS: CLEAN`）和 `STATUS`
-的键名保持英文原样，方便 grep 与脚本解析。
+所有面向人的产物（`proposal.md`、`specs/`、`design.md`、`tasks.md`、`artifacts/context.md`、
+`artifacts/verification.md`、迁移报告和工单正文）用中文书写，包括小标题和字段名；代码标识符、
+文件路径、命令、日志原文，以及状态记号（`PASS`、`NOT RUN`、`REVIEW_STATUS: CLEAN`）和 OpenSpec
+状态键名保持英文原样，方便 grep 与脚本解析。
 
 ## 为什么不自动注入任务上下文
 
@@ -80,8 +79,8 @@ INVALID 派发，不允许进入实现）。
 
 ## 子代理拿到的上下文包
 
-规划阶段每写一个切片，就同时把它对应的 **上下文包** 写进 `implement.md`。派发给
-`workflow-implementer` / `workflow-planner` / `workflow-reviewer` 时整段贴进去：
+规划阶段每写一个切片，就同时把它对应的 **上下文包** 写进当前 change 的 `artifacts/context.md`。
+派发给 `workflow-implementer` / `workflow-planner` / `workflow-reviewer` 时整段贴进去：
 
 ```text
 已内联上下文（子代理不需要再读原文）：
@@ -98,7 +97,7 @@ INVALID 派发，不允许进入实现）。
 
 原则是：**主会话读过并据此做过判断的内容，一律内联**，只给路径就等于让子代理把
 调研重做一遍。预算约每片 1500 token；超了就摘录决定性的那几行并标注出处，不要贴
-整份文件。上下文包缺字段时，正确做法是回 `implement.md` 补全再派发，而不是放任子
+整份文件。上下文包缺字段时，正确做法是回 `tasks.md` 补全再派发，而不是放任子
 代理自己扩大搜索——reviewer 会把这种情况作为流程问题报出来。
 
 ## 任务怎么拆
@@ -107,7 +106,7 @@ INVALID 派发，不允许进入实现）。
 
 | 档位 | 用在什么时候 | 写在哪里 |
 | --- | --- | --- |
-| 切片 | 同一会话内顺序完成、共享模块、只有一个 writer | `implement.md` 的 `### 切片 N` |
+| 切片 | 同一会话内顺序完成、共享模块、只有一个 writer | `tasks.md` 的 `### 切片 N` |
 | 工单 | 每片能独立验收、需要跨会话续接、或多 writer 并行 | `tickets/NN-<slug>.md` |
 | 多任务 | 不同发布单元、不同仓库、可各自独立收口 | 多个 task 目录 + 一个总控 task |
 
@@ -125,9 +124,9 @@ writer: main          # main | workflow-implementer
 ```
 
 调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；一次工单只给一个
-writer；验证命令真正跑过并把证据写进 `outcome.md` 后，才能把 `state` 改成 `done`。
+writer；验证命令真正跑过并把证据写进 `artifacts/verification.md` 后，才能把 `state` 改成 `done`。
 换会话或换客户端续接时，重新读 `tickets/` 算 frontier，不靠上一段聊天回忆进度。
-工单正文不重写切片计划，直接引用 `implement.md#切片-N` 和它的上下文包。
+工单正文不重写切片计划，直接引用 `tasks.md#切片-N` 和它的上下文包。
 
 不要拆的情形：`lightweight` 任务、单一测试接缝、改动集中在一两个文件。拆分本身有
 记账成本，不会自动带来质量。需要更大范围探路时，先走 Matt `wayfinder` 出决策地图，
@@ -136,7 +135,7 @@ writer；验证命令真正跑过并把证据写进 `outcome.md` 后，才能把
 
 ## 验收和归档由你执行
 
-AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `outcome.md`、把 `STATUS`
+AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `artifacts/verification.md`、把 `STATUS`
 置成 `awaiting-acceptance`、把该验什么列给你，然后**停住**。以下三个动作默认归你：
 
 - 把任务目录 `move` 到 `.workflow/archive/`
@@ -148,7 +147,7 @@ AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `outc
 `/skill:archive-task`），它会先复查三个验收条件、不满足就 `ARCHIVE_STATUS: REFUSED`。
 
 验出问题不算意外，是正常回路：你把问题说出来 → 任务退回 `in_progress` → 修完重跑
-受影响的检查 → 在 `outcome.md` 追加 `## 复验轮次 N`。旧轮次不删不改，什么时间
+受影响的检查 → 在 `artifacts/verification.md` 追加 `## 复验轮次 N`。旧轮次不删不改，什么时间
 声称过什么、后来怎么纠的，都留在文件里。`phase: done` 的含义是“用户已验收”，
 不是“测试通过了”。
 
@@ -167,24 +166,46 @@ AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `outc
 - Codex App / Codex CLI、Claude Code 2.1、Pi 0.84 或更高版本，按实际使用的平台安装
 - 需要供应商无关的多模型角色映射时，可选 OMP 17.3.3 或更高版本
 
-### 不需要安装：记录系统
+### 记录系统
 
-任务状态就是 `.workflow/` 目录约定，由 skill 用平台自带的读写工具维护，不需要安装
-CLI、插件或 hook。第一次在某个项目使用时，主路由会先征求同意再创建最小骨架：
+OpenSpec 是新任务的唯一记录系统，需要安装 OpenSpec CLI 1.14.0 或更高版本。第一次在某个项目中使用时，先初始化项目并指定中文产物：
 
-```text
-.workflow/
-  CURRENT.md
-  journal.md
-  tasks/<MM-DD-slug>/
-    prd.md
-    STATUS
-    context.md
+```bash
+openspec init --language Chinese
 ```
 
-如果项目里已有旧的 `.trellis/`，主路由会以只读方式接着使用它的任务产物，但不会执行
-Trellis 脚本，也不会继续保留它的每轮上下文注入扩展。
+如果不希望初始化过程安装其他 AI 工具集成，可以使用：
 
+```bash
+openspec init --language Chinese --tools none
+```
+
+初始化后不需要手动创建 change：工作流每次会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
+
+```bash
+openspec new change add-user-authentication --description "增加用户认证"
+openspec list
+openspec status --change add-user-authentication
+```
+
+匹配候选只包含当前项目未归档的 changes（归档、`.workflow/`、`.trellis/` 和其他项目的记录不参与复用推荐）；未归档不等于未完成，复用建议会说明已有状态。OpenSpec CLI 缺失、版本过旧或输出无效时会报告阻塞，不会伪装成"无匹配任务"。`scripts/openspec_compat.py` 提供只读发现（`list_changes`）和显式创建（`create_change`）两个入口，安装时会随 skill 分发到各 harness 的 `run-engineering-workflow/scripts/` 下。
+
+`openspec init --language Chinese` 会在 `openspec/config.yaml` 写入语言上下文。对于已经初始化的项目，直接在该文件中维护 `context` 和 `rules`，不需要重复执行 `init`。CLI 生成的固定结构标题可能仍然是英文；提交前应根据配置把说明文字和面向人的字段翻译成中文，同时保留路径、命令、标识符和状态键名的英文形式。
+
+本仓库的工作流会读取选定的 OpenSpec change，再把需求澄清、方案设计、实现、复核和验证写入：
+
+```text
+openspec/changes/<change-id>/
+├── proposal.md
+├── specs/
+├── design.md
+├── tasks.md
+└── artifacts/
+    ├── context.md
+    └── verification.md
+```
+
+如果项目里已有旧的 `.workflow/`，主路由只以兼容方式恢复或显式迁移；如果存在 `.trellis/`，则只读恢复，不执行 Trellis 脚本，也不写入该目录。
 ### 可选安装：Matt Pocock Skills
 
 本仓库已经吸收了基础需求澄清方法，因此不安装 Matt Skills 也能运行。需要更深入的
@@ -353,8 +374,8 @@ OMP adapter。也可以一次安装全部四个平台：
   tasks/
 ```
 
-之后每个任务一个目录，产物（`prd.md`、`STATUS`、`context.md`、收口后的
-`outcome.md`）由 skill 直接用读写工具维护。需要把适配文件固定在仓库里的团队，改用
+之后每个任务一个目录，产物（`proposal.md`、`STATUS`、`context.md`、收口后的
+`artifacts/verification.md`）由 skill 直接用读写工具维护。需要把适配文件固定在仓库里的团队，改用
 `-Scope Project -Harness All` 安装即可，记录目录本身仍然按需创建。
 
 旧项目里已有的 `.trellis/` 不需要迁移或删除：主路由以只读方式接着使用它的任务产物，
@@ -482,8 +503,8 @@ ompw --continue
 | --- | --- |
 | 开始新需求 | `使用 run-engineering-workflow 处理这个需求：...` |
 | 只澄清需求 | `使用 clarify-requirements 澄清当前需求，不要写代码。` |
-| 只规划方案 | `使用 plan-solution 为当前任务生成 design.md、implement.md 和 context.md，不要实现。` |
-| 批准后继续实现 | `继续当前任务，按已批准的 implement.md 使用 TDD 实现。` |
+| 只规划方案 | `使用 plan-solution 为当前任务生成 design.md、tasks.md 和 context.md，不要实现。` |
+| 批准后继续实现 | `继续当前任务，按已批准的 tasks.md 使用 TDD 实现。` |
 | 继续已有任务 | `使用 run-engineering-workflow 继续当前任务。` |
 | 方案仍有争议 | `使用 grilling 逐项追问当前方案，并把结论写回当前任务。` |
 | 需要领域建模 | `使用 domain-modeling 统一当前任务的领域术语和实体关系。` |
@@ -509,16 +530,16 @@ Get-Command python, python3, py | Select-Object Name, Source
 ### 一次完整任务的阶段
 
 1. **进入主路由**：读取 `.workflow/CURRENT.md` 或本会话指针和当前 task，确认是否需要创建任务。
-2. **需求澄清**：把目标、范围、非目标、假设和带复选框的 AC（`- [ ] AC-001`）写入 `prd.md`。
+2. **需求澄清**：把目标、范围、非目标、假设和带复选框的 AC（`- [ ] AC-001`）写入 `proposal.md`。
 3. **方案规划**：把技术决策写入 `design.md`，把 vertical slice、RED/GREEN 和验证命令
-   写入 `implement.md`，并把后续 dispatch 必须读取的规范与研究文件写进 `context.md`。
+   写入 `tasks.md`，并把后续 dispatch 必须读取的规范与研究文件写进 `context.md`。
 4. **批准执行**：用户批准后把 `STATUS` 从 `planning` 改为 `in_progress`，不能由 AI 默认为
    已批准。
 5. **TDD 实现**：先 RED，再最小 GREEN，然后重构；实现不得创建第二套计划记录。
 6. **检查和复核**：先运行仓库自身检查与 Matt `code-review`，再从独立上下文运行
    `review-implementation`，修复 findings 后重新验证。
 7. **证据交付**：把逐条 AC 结果、实际改动、RED/GREEN、命令输出和剩余风险写入
-   `outcome.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
+   `artifacts/verification.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
 8. **验收与归档（你做）**：你自己跑命令或手工验收；有问题就反馈，任务退回
    `in_progress` 修完再补一轮复验记录。确认没问题后你自己执行归档（journal 一行 →
    move 到 `archive/` → 删本会话指针 → 清 `CURRENT.md`），或者用 `$archive-task` 让
@@ -532,11 +553,11 @@ Get-Command python, python3, py | Select-Object Name, Source
 
 | 场景 | 使用能力 | 结果写到哪里 |
 | --- | --- | --- |
-| 需求或方案仍含模糊决策 | Matt `grilling` | 结论整理回 `prd.md` 或 `design.md` |
+| 需求或方案仍含模糊决策 | Matt `grilling` | 结论整理回 `proposal.md` 或 `design.md` |
 | 统一业务术语和实体关系 | Matt `domain-modeling` | 稳定词汇写入 `CONTEXT.md`，真实架构决策写 ADR |
 | 设计模块边界和测试 seam | Matt `codebase-design` | 方案写入当前 task 的 `design.md` |
-| 功能或 bug fix | Matt `tdd` / `diagnosing-bugs` | 测试和代码；证据最终写 `outcome.md` |
-| 发布前综合验证 | 仓库自身测试、lint、typecheck、build | 实际命令结果写 `outcome.md` |
+| 功能或 bug fix | Matt `tdd` / `diagnosing-bugs` | 测试和代码；证据最终写 `artifacts/verification.md` |
+| 发布前综合验证 | 仓库自身测试、lint、typecheck、build | 实际命令结果写 `artifacts/verification.md` |
 | 安全敏感改动 | 项目自身安全工具和检查 | findings 返回主会话，修复后记录结果 |
 | 正确性检查完成后压缩复杂度 | Ponytail review/audit | 修改代码并重新运行受影响检查 |
 
@@ -549,12 +570,12 @@ PRD、ticket、plan 或 outcome。
 
 | 阶段 | 默认调用 | 说明 |
 | --- | --- | --- |
-| 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论写入当前任务 `prd.md` |
-| 方案设计 | `plan-solution` + Matt `codebase-design` | 生成 `design.md`、`implement.md` 和 `context.md` 读取清单 |
+| 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论写入当前任务 `proposal.md` |
+| 方案设计 | `plan-solution` + Matt `codebase-design` | 生成 `design.md`、`tasks.md` 和 `context.md` 读取清单 |
 | 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 默认在主会话执行；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
 | 质量检查 | Matt `code-review` + 仓库自身检查 | 双轴：规范符合性与需求覆盖；不替代项目自己的测试 |
 | 独立复核 | `review-implementation` + `ponytail-review` | 通过 `workflow-reviewer` 在新上下文执行；主会话负责修复 |
-| 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `outcome.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
+| 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `artifacts/verification.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
 
 ### 跨客户端和新会话续接
 
@@ -565,7 +586,7 @@ Codex、Claude Code、OMP、Pi 和其他客户端通过同一个工作树和 `.w
 新会话必须重新读取：
 
 1. `.workflow/CURRENT.md`（或本会话指针）与当前 task 的 `STATUS`。
-2. 当前 task 的 `prd.md`、`context.md`、`design.md`、`implement.md` 和已有 `outcome.md`。
+2. 当前 task 的 `proposal.md`、`context.md`、`design.md`、`tasks.md` 和已有 `artifacts/verification.md`。
 3. 适用的 `.workflow/spec/`、代码、测试和 `git status` / `git diff`。
 
 聊天摘要、自动 memory 和旧会话只可作为线索。它们与任务文件或代码冲突时，以任务
@@ -681,6 +702,14 @@ ompw --help
 `doctor` 的主实现为 `scripts/doctor.py`，PowerShell 文件只负责转发参数。它会检查已安装
 文件、overlay 的 skill 白名单、角色映射和 review gate；检查通过就不需要修改其他文件。
 
+skill 可发现性受两层白名单控制：launcher 用的 overlay，以及普通 `omp` 读取的
+`~/.omp/agent/config.yml`。后者是手工维护的，新增 skill 时容易漏，症状是会话里
+`Unknown skill: <name>` 或提示词中看不到它，而文件其实已经装好。
+
+`install.ps1 -Harness OMP` 会把缺失条目追加进该 `includeSkills` 列表：只追加，不重排、
+不改行尾；配置里没有该键时视为不过滤，保持原样。doctor 同时校验两层，遗漏时报
+`ERROR: OMP user config skill whitelist is missing: <name>`。
+
 不要用 `omp --config <overlay> config list` 验证 overlay：OMP 17.3.8 的 `config`
 子命令不会转发该参数，会错误地显示默认配置。Python doctor 因此不调用该接口；正常启动仍
 由启动器传入 `--config`。
@@ -708,7 +737,7 @@ OMP 更新和记录系统无关：如果使用的是项目级安装，还要对�
 
 三个自定义 agent 都用 `autoloadSkills` 强制加载方法 skill 正文。实现由 `workflow-implementer`
 承担，任务上下文通过 dispatch prompt 显式传递（含 `context.md` 的读取清单）；主路由会要求
-它遵循 `implement.md` 中的 TDD 切片。实现使用 `@task` 不代表降低标准；遇到认证、资金、
+它遵循 `tasks.md` 中的 TDD 切片。实现使用 `@task` 不代表降低标准；遇到认证、资金、
 迁移、公共接口等 `critical` 风险，或目标测试反复失败时，必须停止猜测并升级到
 `@default` / `@slow`。overlay 同时关闭 `prewalk`，避免实现过程中意外切换到 `@smol`。
 
@@ -751,7 +780,7 @@ claude --model sonnet
 
 `workflow-planner`、`workflow-implementer`、`workflow-reviewer` 都由本仓库安装，没有项目
 hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因此不能宣称它会自动加载
-外部 skill；TDD 由 `implement.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、
+外部 skill；TDD 由 `tasks.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、
 `code-review` 和最终独立 review 共同约束。
 
 ## 使用方法
@@ -773,7 +802,7 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因�
 需求复杂、模糊或涉及多个系统时使用：
 
 ```text
-使用 $clarify-requirements 澄清这个需求，并把结果写入当前任务的 prd.md。
+使用 $clarify-requirements 澄清这个需求，并把结果写入当前任务的 proposal.md。
 ```
 
 它会先读取代码和已有文档，再一次询问一个真正影响范围或行为的问题，并生成
@@ -784,22 +813,22 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因�
 需求确认后、写代码之前使用：
 
 ```text
-使用 $plan-solution 为当前任务设计方案，生成 design.md、implement.md 和 context.md。
+使用 $plan-solution 为当前任务设计方案，生成 design.md、tasks.md 和 context.md。
 ```
 
 它会先分析现有代码、测试、Spec 和 ADR，再设计模块边界、接口、数据流、错误处理、
-备选方案、迁移与回滚。`implement.md` 按 vertical slice 将每个 AC 映射到代码边界、
+备选方案、迁移与回滚。`tasks.md` 按 vertical slice 将每个 AC 映射到代码边界、
 test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
 
-`lightweight` 任务可以保持 PRD-only，但必须在 `prd.md` 中记录方案草图、预计修改文件、
-验证方法，以及不创建独立 `design.md` / `implement.md` 的原因。
+`lightweight` 任务可以保持 PRD-only，但必须在 `proposal.md` 中记录方案草图、预计修改文件、
+验证方法，以及不创建独立 `design.md` / `tasks.md` 的原因。
 
 ### 4. 实现
 
 需求确认后继续调用主路由：
 
 ```text
-使用 $run-engineering-workflow 继续当前任务，按照 implement.md 和 Matt TDD 实现。
+使用 $run-engineering-workflow 继续当前任务，按照 tasks.md 和 Matt TDD 实现。
 ```
 
 正常行为变更应经历：
@@ -809,8 +838,8 @@ RED 测试 -> 最小实现 -> GREEN -> 重构 -> code-review + 仓库验证
 ```
 
 在 OMP 中，只有 `critical` 任务才会把已批准的切片交给 `workflow-implementer`，默认使用
-`@task`，并要求它遵循 `implement.md` 中的 TDD 切片；普通任务留在主会话实现。在 Claude
-Code 中调用本仓库的 `workflow-implementer`，同样按已批准的 `implement.md` 执行 RED/GREEN
+`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务留在主会话实现。在 Claude
+Code 中调用本仓库的 `workflow-implementer`，同样按已批准的 `tasks.md` 执行 RED/GREEN
 slice。主会话继续负责范围、升级和最终决策。
 
 ### 5. 独立复核
@@ -863,7 +892,7 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 
 1. 用户和 AI 平台的上级指令。
 2. 项目 `AGENTS.md` 和 `.workflow/spec/`。
-3. 当前任务目录的 `prd.md`、`design.md`、`implement.md` 与 `outcome.md`。
+3. 当前任务目录的 `proposal.md`、`design.md`、`tasks.md` 与 `artifacts/verification.md`。
 4. 本仓库的路由和质量策略。
 5. Matt Skills、Ponytail 的通用默认规则。
 

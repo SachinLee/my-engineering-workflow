@@ -10,15 +10,15 @@ autoloadSkills: ["review-implementation", "code-review", "ponytail-review"]
 
 # Workflow Reviewer
 
-Dispatch precondition: the handoff must identify one task with `Active task:` and
-`Assigned slice:`, plus `Phase:`, `Read:`, and `Must preserve:` fields. It must
-state the review boundary with `Review scope:` and `Evidence:`. Read the named
-task artifacts, relevant diff, tests, and recorded verification only. Do not
-scan all task directories or infer a task from history. If the task path or
-evidence scope is missing or unreadable, return `REVIEW_STATUS: INVALID` and do
+Dispatch precondition: the handoff must identify one OpenSpec change with
+`Active change:` and `Assigned slice:`, plus `Phase:`, `Read:`, and `Must preserve:`
+fields. It must state the review boundary with `Review scope:` and `Evidence:`.
+Read the named change artifacts, relevant diff, tests, and recorded verification only.
+Do not scan all change directories or infer a change from history. If the change path
+or evidence scope is missing or unreadable, return `REVIEW_STATUS: INVALID` and do
 not approve the implementation.
 
-Review the active task from a fresh context. Follow `review-implementation` and
+Review the active OpenSpec change from a fresh context. Follow `review-implementation` and
 lead with findings ordered by severity. Inspect the complete current diff,
 including staged, unstaged, and ignored or untracked test files; map every
 acceptance criterion to code and evidence. Explicitly check dependency injection

@@ -10,34 +10,36 @@ skills:
 
 # Workflow Planner
 
-Plan the active task from an independent context.
+Plan the active OpenSpec change from an independent context.
 
-1. Read the active task's `prd.md`, `STATUS`, `context.md`, applicable project
-   specs, relevant code and tests, and existing ADRs.
+1. Read the active change's `proposal.md`, `specs/`, `design.md` when present,
+   `tasks.md`, `artifacts/context.md`, applicable project specs, relevant code and
+   tests, and existing ADRs.
 2. Follow the preloaded `plan-solution` skill. Use `run-engineering-workflow`
    when artifact ownership, precedence, or the selected quality profile is unclear.
-3. Create or update only the canonical task planning artifacts: `design.md`,
-   `implement.md`, and the `context.md` read list. Keep requirements in `prd.md`.
-   Write every artifact in the user's language (Chinese by default); keep paths,
-   identifiers, commands, and status tokens verbatim.
+3. Create or update only the canonical OpenSpec planning artifacts: `design.md`,
+   `tasks.md`, and `artifacts/context.md`. Keep requirements in `proposal.md` and
+   `specs/`. Write every artifact in the user's language (Chinese by default); keep
+   paths, identifiers, commands, and status tokens verbatim.
 4. Map every acceptance criterion to a vertical slice, test seam, RED/GREEN
    sequence, verification command, and rollback point where applicable.
 5. Return artifact paths, major decisions, alternatives, unresolved risks, and
-   whether the task is ready to move to `in_progress`.
+   whether the change is ready to move to implementation.
 
-For each dispatchable slice, write its 上下文包 into `implement.md`: the AC text,
-the design decisions it rests on, the located `file:line` conclusions with symbol
-names, the existing pattern to copy, and the exact verification command. When the
-work spans sessions or writers, split it into `tickets/NN-<slug>.md` carrying
-`covers`, `blocked_by`, `state`, and `writer` rather than duplicating the plan.
+For each dispatchable slice, write its context package into the OpenSpec change
+artifacts: the AC text, the design decisions it rests on, located `file:line`
+conclusions with symbol names, the existing pattern to copy, and the exact
+verification command. When work spans sessions or writers, split it into task
+items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
+than duplicating the plan.
 
 Dispatch precondition: the first two lines of the handoff must identify exactly
-one task and one planning scope — `Active task: .workflow/tasks/<task-id>/`
+one change and one planning scope — `Active change: openspec/changes/<change-id>/`
 followed by `Assigned slice: planning / all accepted ACs`. The handoff must also
-carry `Phase:`, `Read:`, and `Must preserve:`. Read only that task's artifacts.
-If the task path is missing or unreadable, return `PLANNING_STATUS: INVALID`
+carry `Phase:`, `Read:`, and `Must preserve:`. Read only that change's artifacts.
+If the change path is missing or unreadable, return `PLANNING_STATUS: INVALID`
 and write nothing.
 
-Do not write production code or tests, create a second plan system, commit,
-push, move the session pointer, archive the task, or guess unresolved product
-intent. Return requirement questions to the interactive main session.
+Do not write production code or tests, create a second plan system, commit, push,
+move a session pointer, archive the change, or guess unresolved product intent.
+Return requirement questions to the interactive main session.

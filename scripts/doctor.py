@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -12,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+
+from openspec_compat import detect_project_mode
 
 SKILLS = (
     "run-engineering-workflow",
@@ -61,11 +64,37 @@ def check_agents(root: Path, label: str, errors: list[str]) -> None:
             errors.append(f"Missing {label} agent: {agent}")
 
 
-def overlay_skill_names(body: str) -> set[str]:
+def skill_whitelist_entries(body: str) -> set[str]:
     match = re.search(r"(?ms)^skills:\s*^\s{2}includeSkills:\s*(.*?)(?=^\S|\Z)", body)
     if not match:
         return set()
-    return set(re.findall(r"(?m)^\s*-\s+([^\s#]+)", match.group(1)))
+    raw = re.findall(r"(?m)^\s*-\s+([^\s#]+)", match.group(1))
+    return {re.sub(r'^["\']|["\']$', "", entry) for entry in raw}
+
+
+def whitelist_covers(entries: set[str], skill: str) -> bool:
+    # includeSkills holds glob patterns, so "*-tdd" and "*" both cover a skill.
+    return any(fnmatch.fnmatchcase(skill, entry) for entry in entries)
+
+
+def omp_user_root(home: Path) -> Path:
+    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    return home / ".omp" / "agent"
+
+
+def check_skill_whitelist(path: Path, label: str, errors: list[str]) -> None:
+    """OMP hides skills that a non-empty includeSkills allowlist does not cover.
+    An absent file, absent key, or empty list means "no filtering", which is healthy."""
+    if not path.is_file():
+        return
+    included = skill_whitelist_entries(path.read_text(encoding="utf-8"))
+    if not included:
+        return
+    for skill in SKILLS:
+        if not whitelist_covers(included, skill):
+            errors.append(f"OMP {label} skill whitelist is missing: {skill}")
 
 
 def check_omp_overlay(path: Path, errors: list[str]) -> None:
@@ -73,10 +102,7 @@ def check_omp_overlay(path: Path, errors: list[str]) -> None:
         errors.append(f"Missing OMP workflow overlay: {path}")
         return
     body = path.read_text(encoding="utf-8")
-    included = overlay_skill_names(body)
-    for skill in SKILLS:
-        if skill not in included:
-            errors.append(f"OMP overlay skill whitelist is missing: {skill}")
+    check_skill_whitelist(path, "overlay", errors)
     for required, label in (
         ('workflow-planner: "@plan"', "workflow-planner"),
         ('workflow-implementer: "@task"', "workflow-implementer"),
@@ -116,8 +142,28 @@ def check_review_gate(root: Path, errors: list[str]) -> None:
             errors.append("OMP workflow review gate contract tests failed.")
 
 
-def check_record_layout(project: Path, warnings: list[str]) -> None:
-    """A repository may legitimately keep no records, so this only warns."""
+def check_record_layout(project: Path, warnings: list[str], errors: list[str]) -> None:
+    """Check the canonical OpenSpec record system and legacy read-only fallbacks."""
+    has_openspec = any((project / "openspec" / name).is_file() for name in ("config.yaml", "config.yml"))
+    if has_openspec:
+        result = detect_project_mode(project)
+        if result["mode"] != "openspec" or result["status"] == "blocked":
+            errors.append(f"OpenSpec record system is not usable: {result.get('reason', 'unknown error')}")
+            return
+        if result["status"] == "unselected":
+            candidates = result.get("available_changes") or []
+            if candidates:
+                warnings.append(
+                    f"OpenSpec is initialized under {project}/openspec with unarchived changes "
+                    f"{', '.join(candidates)}. The routing flow recommends one and asks for "
+                    "confirmation; nothing is auto-selected."
+                )
+            else:
+                warnings.append(
+                    f"OpenSpec is initialized under {project}/openspec but has no active change selected."
+                )
+        return
+
     if (project / ".workflow").is_dir():
         tasks = project / ".workflow" / "tasks"
         if not tasks.is_dir():
@@ -127,18 +173,21 @@ def check_record_layout(project: Path, warnings: list[str]) -> None:
                 warnings.append(f"Task without prd.md: {task}")
             if not (task / "STATUS").is_file():
                 warnings.append(f"Task without STATUS (treated as planning): {task}")
+        warnings.append(
+            f"Legacy .workflow record found under {project}/.workflow. It is recoverable and read-only; "
+            "new state must be written under OpenSpec after explicit migration."
+        )
         return
     if (project / ".trellis" / "tasks").is_dir():
         warnings.append(
             f"Legacy Trellis record found under {project}/.trellis. Read-only mode applies; "
-            "new state is written under .workflow/ and no Trellis script may run."
+            "new state is written under OpenSpec and no Trellis script may run."
         )
     else:
         warnings.append(
             f"No durable record system under {project}. The workflow will ask for consent "
-            "before creating .workflow/."
+            "before creating OpenSpec records."
         )
-
 
 def check_injectors(project: Path, warnings: list[str]) -> None:
     """Head-of-input per-turn injection destroys the prompt cache; flag it."""
@@ -169,12 +218,17 @@ def check_injectors(project: Path, warnings: list[str]) -> None:
 
 def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
     executable_exists("omp", errors)
-    root = project / ".omp" if scope == "Project" else home / ".omp" / "agent"
+    root = project / ".omp" if scope == "Project" else omp_user_root(home)
     check_skills(root / "skills", "OMP", errors)
     check_agents(root / "agents", "OMP", errors)
     if not (root / "start-engineering-workflow.py").is_file():
         errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
     check_omp_overlay(root / "engineering-workflow.yml", errors)
+    # Plain `omp` discovers skills through the user config.yml allowlist; the overlay
+    # only reaches sessions started by the launcher.
+    check_skill_whitelist(omp_user_root(home) / "config.yml", "user config", errors)
+    if scope == "Project" and project is not None:
+        check_skill_whitelist(project / ".omp" / "config.yml", "project config", errors)
     check_review_gate(root, errors)
     if scope == "Project" and project is not None:
         candidates = (
@@ -227,7 +281,7 @@ def main() -> int:
             if not project.is_dir():
                 errors.append(f"Project path was not found: {project}")
             else:
-                check_record_layout(project, warnings)
+                check_record_layout(project, warnings, errors)
                 check_injectors(project, warnings)
     if args.scope == "Project" and project is None:
         for error in errors:

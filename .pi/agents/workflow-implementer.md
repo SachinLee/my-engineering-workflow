@@ -18,24 +18,24 @@ capabilityManifest:
 
 # Workflow Implementer
 
-Implement exactly one approved slice from the active task, test-first.
+Implement exactly one approved slice from the active OpenSpec change, test-first.
 
-1. Require `Active task:`, `Assigned slice:`, `Phase:`, `Read:`,
-   `Must preserve:`, `May modify:`, `Verification:`, and the slice's 上下文包. If any
-   is missing or the task path is unreadable, return `IMPLEMENT_STATUS: INVALID` and
-   edit nothing.
-2. Read only the named artifacts and the `Read:` paths, including `context.md`.
-   Work from the package's inlined conclusions rather than repeating the planning
-   survey; open a file only to edit it or when a load-bearing conclusion looks
-   stale, and report any drift against disk.
-   Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
+1. Require `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
+   `Must preserve:`, `May modify:`, `Verification:`, and the slice's context package.
+   If any is missing or the change path is unreadable, return
+   `IMPLEMENT_STATUS: INVALID` and edit nothing.
+2. Read only the named artifacts and the `Read:` paths, including
+   `artifacts/context.md`. Work from the package's inlined conclusions rather than
+   repeating the planning survey; open a file only to edit it or when a load-bearing
+   conclusion looks stale, and report any drift against disk.
+3. Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
    seam.
-3. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
+4. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
    change lies outside it.
-4. Run the declared `Verification:` commands and report real outcomes, including
+5. Run the declared `Verification:` commands and report real outcomes, including
    failures. Return files changed, RED and GREEN evidence, checks not run, and
    remaining risk, then close with `IMPLEMENT_STATUS: COMPLETE`.
 
-Do not change `STATUS` or the session pointer, edit requirements or design,
+Do not change OpenSpec status or the session pointer, edit requirements or design,
 commit, push, archive, or claim final delivery. The main session integrates,
 reviews, and records evidence.

@@ -1,102 +1,142 @@
 ---
 name: run-engineering-workflow
-description: Route software work through durable .workflow records, Matt-style clarification and design, TDD, independent review, and Ponytail complexity checks. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
+description: Route software work through OpenSpec change records, legacy recovery, Matt-style clarification and design, TDD, independent review, and Ponytail complexity checks. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
 ---
 
 # Run Engineering Workflow
 
-Use `.workflow/` as the workflow state and durable record. Use upstream skills
-as methods inside that workflow; never create a competing task or plan system.
+Use OpenSpec as the canonical workflow record for new work. Use upstream skills as
+methods inside that change record; never create a competing task or plan system.
+Legacy `.workflow/` records remain recoverable inputs, and `.trellis/` remains a
+read-only historical input.
 
-All state is plain files read and written with the platform's file tools. This
-workflow has no CLI, no daemon, and no script interpreter dependency.
+All state is plain files read and written with the platform's file tools. OpenSpec
+CLI calls are restricted to the compatibility boundary in `scripts/openspec_compat.py`
+and the explicit migration command; never add a per-turn injector or hidden writer.
 
-Task artifacts (`prd.md`, `design.md`, `implement.md`, `context.md`, `outcome.md`,
-`journal.md`, and tickets) are written in the user's language — Chinese by default.
-Keep code identifiers, paths, commands, log text, `STATUS` keys, and status tokens
+OpenSpec artifacts (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, and
+`artifacts/`) are written in the user's language — Chinese by default. Keep code
+identifiers, paths, commands, log text, OpenSpec filenames, and status tokens
 (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`) verbatim so they stay greppable.
-
 ## Bounded Context And Dispatch Contract
 
-`.workflow/` remains the only durable source of task state. Treat the pointer
-file as a task path plus phase, not as a dump of every active task or the full
-conversation history. Load task artifacts on demand for the current phase and
-assigned slice.
+OpenSpec remains the only durable source of new task state. Treat a change id as
+the active pointer, not as a dump of every active change or the full conversation
+history. Load the selected change artifacts on demand for the current phase and
+assigned slice. A legacy task path is allowed only during explicit recovery.
 
-Never install or emulate a per-turn context injector (hook, extension, or
-startup prompt block) for this workflow. Read state with file tools at phase
-boundaries instead: a file read appends to the end of the outgoing request and
-keeps the prompt-cache prefix intact, while anything injected before the
-existing conversation history invalidates the cache for the whole session on
-every following turn. A phase reminder must never cost more than one read.
+Never install or emulate a per-turn context injector (hook, extension, or startup
+prompt block) for this workflow. Read state with file tools at phase boundaries;
+a file read appends to the end of the outgoing request and keeps the prompt-cache
+prefix intact, while anything injected before existing conversation history
+invalidates the cache for the whole session.
 
-Before any planner, implementation, check, or review dispatch, resolve exactly
-one task path and pass a bounded handoff. The handoff must begin with:
+Before any planner, implementation, check, or review dispatch, resolve exactly one
+OpenSpec change id and pass a bounded handoff. The handoff must begin with:
 
 ```text
-Active task: .workflow/tasks/<task-id>/
+Active change: openspec/changes/<change-id>/
 Assigned slice: <slice-or-stage>
 ```
-
-That block is the boundary, not the whole payload. Paste the slice's 上下文包 from
-`implement.md` into the dispatch: the AC text verbatim, the design decisions that
-slice rests on, the located `file:line` conclusions with the symbol names, the
+That block is the boundary, not the whole payload. Paste the slice's context package
+from OpenSpec `design.md`, `tasks.md`, the relevant `specs/` files, and
+`artifacts/context.md` into the dispatch: the AC text verbatim, the design decisions
+that the slice rests on, the located `file:line` conclusions with symbol names, the
 existing pattern the worker should copy, and the exact verification command. The
 worker must not redo research the main session already finished. If something is
-missing from the package, stop and complete it in `implement.md`; do not widen the
-subagent's own investigation to compensate.
+missing from the package, stop and complete the OpenSpec context artifact; do not
+widen the subagent's own investigation to compensate.
 
-For planning, use `Assigned slice: planning / all accepted ACs`; for
-implementation, use `Assigned slice: Slice N / AC-XXX`; for review, use
-`Assigned slice: review / changed scope`.
+For planning, use `Assigned slice: planning / all accepted ACs`; for implementation,
+use `Assigned slice: Slice N / AC-XXX`; for review, use `Assigned slice: review /
+changed scope`.
 
-For planning, implementation, and review handoffs also include `Phase:`,
-`Read:`, `Must preserve:`, and the role-appropriate scope. Implementation
-handoffs must include `May modify:` and `Verification:`. Review handoffs must
-include `Review scope:` and `Evidence:`. Never ask a subagent to infer the task
-by scanning `.workflow/tasks/`. A missing or unreadable task path is an invalid
-dispatch; return the appropriate `*_STATUS: INVALID` result and stop.
+For planning, implementation, and review handoffs also include `Phase:`, `Read:`,
+`Must preserve:`, and the role-appropriate scope. Implementation handoffs must
+include `May modify:` and `Verification:`. Review handoffs must include `Review
+scope:` and `Evidence:`. Never ask a subagent to infer the change by scanning
+`openspec/changes/`. A missing or unreadable change is an invalid dispatch; return
+the appropriate `*_STATUS: INVALID` result and stop.
 
-Subagents receive task artifacts and file paths, not the parent conversation.
-They must not change the session pointer, create a second handoff store, or
-modify files outside the declared boundary. The main session owns task
-selection, integration, remediation, and delivery claims.
+Subagents receive change artifacts and file paths, not the parent conversation. They
+must not change canonical records outside the declared change, create a second
+handoff store, or modify files outside the declared boundary. The main session owns
+change selection, integration, remediation, and delivery claims.
 
-Record dispatch metadata when the harness exposes it: `task_path`, `phase`,
-`slice`, `role`, `requested_model`, `effective_model`, `fallback`, context
-size, duration, and returned status. Do not record credentials, full prompts,
-or full session history. If the harness cannot bind a pointer to a session,
-write `by-session/main.md`, warn, and fall back to explicit paths; do not
-silently widen the context or share one pointer between concurrent sessions.
-Read [workflow-governance.md](references/workflow-governance.md) when deciding
-artifact ownership, the record layout, source trust, or harness model routing.
+Record dispatch metadata when the harness exposes it: `change_id`, `phase`, `slice`,
+`role`, `requested_model`, `effective_model`, `fallback`, context size, duration,
+and returned status. Do not record credentials, full prompts, or full session
+history. Legacy session pointers may be read for recovery, but new state is not
+written there.
+Read [workflow-governance.md](references/workflow-governance.md) when deciding artifact ownership, the record layout, source trust, or harness model routing.
 Read [quality-profiles.md](references/quality-profiles.md) before selecting or
 changing a risk profile.
 
 ## Start
 
-1. Find the repository root and read `.workflow/CURRENT.md`. If it is absent,
-   read this session's `.workflow/by-session/<key>.md`.
-2. If neither exists but `.trellis/tasks/` does, use legacy read-only mode:
-   the same artifact names (`prd.md`, `design.md`, `implement.md`, `outcome.md`)
-   live under `.trellis/tasks/<task-id>/`, and `task.json` supplies `status`
-   (`planning` or `in_progress`). Read them directly; never run a Trellis
-   script. New or changed records are still written under `.workflow/`, and the
-   session pointer stores the legacy path so the next resume is unambiguous.
-3. If no record system exists, do not initialize one silently. Ask the user
-   once whether this repository should keep durable task records. On yes,
-   create `.workflow/tasks/<MM-DD-slug>/`; on no, follow the repository's
-   existing workflow and state that cross-session task routing is unavailable.
-4. Read the active task's `STATUS` file and its existing artifacts before
-   deciding what to do next. A missing `STATUS` means `phase: planning`.
-5. Do not start implementation while the pointer and the task directory
-   disagree; resolve the disagreement first and record the resolution in
-   `implement.md`.
+1. Find the repository root and inspect `openspec/config.yaml` or `config.yml`.
+   If present, run `openspec list --json` through `scripts/openspec_compat.py`
+   (`list_changes`) for a read-only discovery of unarchived changes. A missing
+   CLI, unsupported version, malformed JSON response, or root mismatch is a
+   blocked state; do not guess, and never treat an environment error as "no
+   match". Discovery alone selects nothing.
+2. Match the user's session intent against the discovered candidates and propose
+   one action; never create, reuse, or select without explicit confirmation.
+   Follow "Match And Confirm Before Creating Or Reusing" below.
+3. If OpenSpec is absent, inspect `.workflow/CURRENT.md` and
+   `.workflow/by-session/<key>.md` for an explicitly recoverable legacy task.
+   Read legacy artifacts directly and offer `scripts/migrate_workflow_task.py`; do not write new state into `.workflow/`.
+4. If only `.trellis/tasks/` exists, use legacy read-only recovery. Never run a Trellis script, install a Trellis injector, or write into `.trellis/`.
+5. If no record system exists, do not initialize one silently. Ask the user once
+   whether this repository should keep durable task records. On yes, initialize
+   OpenSpec and create the requested change after the confirmation rule below; on
+   no, state that durable routing is unavailable.
+6. Read the selected OpenSpec change's status and artifacts before deciding what to
+   do next. For a legacy task, read `STATUS` and existing artifacts without changing
+   them. Do not start implementation while the selected record and its artifacts
+   disagree; resolve the disagreement first and record the resolution in OpenSpec.
+## Match And Confirm Before Creating Or Reusing
+
+Every task-routing request triggers the same loop: read-only discovery, semantic
+match, one recommendation, and one explicit confirmation. Clarification answers
+and sub-steps of an already-confirmed request do not re-trigger the loop; a
+genuinely new request re-runs it. Pure consultation or analysis creates no task.
+
+Candidate scope is only the current project's unarchived OpenSpec changes
+(`scripts/openspec_compat.py` `list_changes`). Archived changes, `.workflow/`,
+`.trellis/`, and other projects' records never enter a reuse recommendation.
+Unarchived is not the same as unfinished: recommend reuse with the change's
+actual status (`detect_project_mode(project, change=<id>)`), and keep its
+existing work — never clear requirements, execution state, or prior verification
+evidence when reusing.
+
+Same-goal means the candidate targets the same work object, the same expected
+outcome, a compatible scope, and the same acceptance relationship. Related but
+different goals are not a match; if the goal is unclear, clarify first instead
+of treating it as "no match".
+
+- No same-goal candidate → propose creating one change: state the Chinese task
+  name, the change id (lowercase letters, numbers, hyphens), a one-line goal
+  summary, and why no candidate matches. Ask "是否创建 XXX 任务？" and stop
+  until the user confirms. Creation runs only through `create_change` in
+  `scripts/openspec_compat.py`; it never overwrites an existing change id.
+- One same-goal candidate → propose reuse with the change's current status. Ask
+  "已经存在 XXX 任务，是否复用？" and stop until the user confirms.
+- Several plausible candidates → show each candidate's goal, scope, and status
+  plus the differences, then let the user pick one to reuse, create a new
+  change, or cancel. Never order candidates by recency, name, or model
+  preference and act without the user's choice.
+
+A confirmation authorizes exactly the current proposal, once. Rejecting reuse is
+not consent to create; renaming or rescoping the proposal requires a new
+confirmation; a confirmation expires when the candidate disappears, is
+archived, or the goal materially changes — stop and re-match. Confirming create
+or reuse is not plan approval, acceptance, or archival.
 
 ## Assess Profile First
 
 Before any routing or dispatch decision, explicitly assess the task's risk
-profile by reading `prd.md` and the task scope:
+profile by reading the selected OpenSpec `proposal.md`, affected `specs/`, and change scope:
 
 1. **Is this critical?** Does the task touch authentication, authorization,
    money, secrets, persistent data, migrations, public contracts, destructive
@@ -132,12 +172,13 @@ risk level. The profile controls dispatch, not just the checklist:
 
 Phase routing:
 
-- No active task: create one only with the consent rule in `Start`. Write
-  `prd.md` first, then route as `planning`.
+- No active task: create one only after the match-and-confirm rule in `Start`
+  ("Match And Confirm Before Creating Or Reusing"). Write
+  OpenSpec `proposal.md` and `specs/` first, then route as `planning`.
 - Something is broken: route bug work through Matt `diagnosing-bugs` first — it must
   build a tight red command before any fix; then treat the result as `in_progress`
   work with a regression test.
-- `planning` without a complete `prd.md`: invoke `clarify-requirements` in the
+- `planning` without complete OpenSpec `proposal.md` and `specs/`: invoke `clarify-requirements` in the
   main session. Only dispatch `workflow-planner` if the task is assessed as
   `critical` or the user explicitly requests planning delegation.
 - `planning` with accepted requirements but no reviewed solution:
@@ -148,13 +189,13 @@ Phase routing:
     context.
   - Only dispatch a planner if the task is assessed as `critical` or when the
     main session cannot resolve a material design uncertainty.
-- `planning` with complete artifacts: update `STATUS` to `in_progress` only
-  after the user approves the plan (or the repository's own gate says so).
-  Planning completion is not permission to start implicitly. Record the
-  approval in `implement.md`.
-- `in_progress`: read `prd.md`, `context.md`, optional `design.md`, optional
-  `implement.md`, and the listed spec and research files before editing. Use
-  ECC `tdd-workflow` or Matt `tdd` for behavior changes and regression fixes.
+- `planning` with complete OpenSpec artifacts: start implementation only after the
+  user approves the plan (or the repository's own gate says so). Planning completion
+  is not permission to start implicitly; record the approval in `tasks.md` or the
+  change's verification context.
+- `in_progress`: read OpenSpec `proposal.md`, the relevant `specs/`, `design.md`,
+  `tasks.md`, and `artifacts/context.md` before editing. Use ECC `tdd-workflow`
+  or Matt `tdd` for behavior changes and regression fixes.
   - For `lightweight` or `standard`: implement in the main session. Only use a
     single bounded worker if explicitly justified by the need for fresh
     context.
@@ -178,17 +219,15 @@ Phase routing:
   - The main session fixes findings and repeats affected checks; a changed
     snapshot requires a new review. The implementation model does not approve
     its own work.
-- `review` clean: invoke `finish-with-evidence`. It writes `outcome.md`, sets
-  `STATUS` to `awaiting-acceptance`, lists what you should verify, and stops there.
-  The agent does not archive, does not move the task directory, does not delete a
-  pointer, and does not set `phase: done`.
-- `awaiting-acceptance` and you report a problem: move `STATUS` back to
-  `in_progress`, fix, re-run the affected checks, and append a new verification
-  round to `outcome.md`. Never rewrite an earlier round.
-- `awaiting-acceptance` and you explicitly ask to archive: invoke `archive-task`.
-  It re-checks the three acceptance conditions, performs the journal line, move,
-  pointer, and `CURRENT.md` updates in order, and reports `ARCHIVE_STATUS:`.
-  Without that explicit request, print the commands instead of running them.
+- `review` clean: write or update `artifacts/verification.md` with executed evidence,
+  - Use `finish-with-evidence` to record the executed verification artifact before handoff.
+  set the OpenSpec change handoff to `awaiting-acceptance`, list what the user must
+  verify, and stop there. The agent does not archive the change or delete legacy
+  pointers.
+- `awaiting-acceptance` and the user reports a problem: keep the prior verification
+  round, fix the implementation, and append a new round to the verification artifact.
+- `awaiting-acceptance` and the user explicitly asks to archive: invoke `archive-task`
+  only after acceptance. Without that explicit request, print the command instead of running it.
 
 ### OMP Dispatch Limits
 
@@ -290,30 +329,28 @@ describe fresh context alone as cross-model independence.
 Resolve conflicts in this order:
 
 1. User and platform instructions.
-2. Repository `AGENTS.md` and `.workflow/` conventions.
-3. Active task artifacts and applicable `.workflow/spec/` rules.
+2. Repository `AGENTS.md` and OpenSpec governance conventions.
+3. Active OpenSpec change artifacts and applicable project specs.
 4. This routing skill.
 5. Upstream skill defaults.
 
-`.workflow/` owns state and records. Matt-style skills provide clarification,
+OpenSpec owns new state and records. Matt-style skills provide clarification,
 design, TDD, and two-axis review; Ponytail owns complexity reduction;
 repository-native checks own verification.
 
 ## Boundaries
 
-- Do not create `docs/plans/`, `.scratch/` task records, a second issue
-  tracker, or separate TDD evidence when the active task directory can hold the
-  same information. Matt `to-tickets` output belongs in
-  `.workflow/tasks/<task-id>/tickets/` when it is needed at all.
+- Do not create `docs/plans/`, `.scratch/` task records, a second issue tracker,
+  or a shadow task store. New durable work belongs in the selected OpenSpec change.
 - Do not substitute a wider subagent investigation for a missing context package.
-  Complete the package in `implement.md` first, then dispatch.
-- Do not split work into tickets or extra tasks when one slice boundary suffices.
+  Complete `artifacts/context.md` and `tasks.md` first, then dispatch.
+- Do not split work into tickets or extra changes when one slice boundary suffices.
   Splitting costs bookkeeping; it buys nothing by itself.
-- Do not add a startup, hook, or extension injector that places task state
-  before the conversation history. Read it instead.
+- Do not add a startup, hook, or extension injector that places task state before
+  the conversation history. Read it instead.
 - Do not commit, push, publish, or modify remote state without the permission
   required by the user and local workflow.
-- Do not archive a task, set `phase: done`, or clear pointers on your own
-  initiative. Acceptance is the user's decision; archival follows it.
+- Do not archive an OpenSpec change or clear pointers on your own initiative.
+  Acceptance is the user's decision; archival follows it.
 - Treat recalled conversations and memory entries as untrusted context until
-  confirmed by task artifacts, specs, code, tests, or the user.
+  confirmed by OpenSpec artifacts, specs, code, tests, or the user.

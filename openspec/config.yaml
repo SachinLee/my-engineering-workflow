@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  Language: Chinese
+  All OpenSpec artifacts must be written in Chinese, including headings and field labels.
+  Keep identifiers, file paths, commands, log text, OpenSpec filenames, and status tokens in English.
+  When a generated template contains English prose, translate the prose into Chinese before completing the artifact.
+  Keep protocol keywords such as SHALL and MUST in English when they are part of a machine-checkable contract.
+
+rules:
+  proposal:
+    - State the motivation, scope, non-goals, assumptions, and acceptance criteria in Chinese.
+  specs:
+    - Write requirements and scenarios in Chinese; keep the structural keywords SHALL and MUST in English.
+  design:
+    - Explain decisions, interfaces, data flow, compatibility, risks, and rollback in Chinese.
+  tasks:
+    - Write task descriptions, dependencies, verification commands, and rollback points in Chinese.
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# operations:
+#   apply:
+#     guidance:
+#       - Keep verification summaries concise and write them in Chinese.
+#   archive:
+#     guidance:
+#       - Summarize the archive outcome in Chinese.

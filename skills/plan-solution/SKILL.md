@@ -1,15 +1,15 @@
 ---
 name: plan-solution
-description: Design a traceable technical solution and execution plan for an active .workflow task. Use after requirements are clarified and before implementation, especially for behavior changes, multi-file work, public interfaces, data flow, migrations, security-sensitive work, or tasks another AI session must execute.
+description: Design a traceable technical solution and execution plan for an active OpenSpec change. Use after requirements are clarified and before implementation, especially for behavior changes, multi-file work, public interfaces, data flow, migrations, security-sensitive work, or tasks another AI session must execute.
 ---
 
 # Plan Solution
 
-Turn an accepted `prd.md` into an implementation-ready solution. Keep
-technical decisions in `design.md`, ordered execution in `implement.md`, and the
-dispatch context in `context.md`. Do not implement production code while using
-this skill. Write the artifacts in the user's language (Chinese by default);
-keep code identifiers, paths, commands, and log text verbatim.
+Turn an accepted OpenSpec `proposal.md` and `specs/` into an implementation-ready
+solution. Keep technical decisions in the change's `design.md`, ordered execution
+in `tasks.md`, and dispatch context in `artifacts/context.md`. Do not implement
+production code while using this skill. Write the artifacts in the user's language
+(Chinese by default); keep code identifiers, paths, commands, and log text verbatim.
 
 When OMP is available, run this skill in the `workflow-planner` agent on the
 `@plan` role. In Claude Code, use this repository's `workflow-planner` agent on
@@ -18,10 +18,10 @@ planning agent must not guess product intent.
 
 ## Confirm Readiness
 
-1. Read `prd.md`, related code and tests, applicable project specs
-   (`.workflow/spec/`, or `.trellis/spec/` in a legacy repository), and prior
-   ADRs before designing.
-2. Verify that 目标, 范围内, 范围外, 假设, and 验收标准 are explicit.
+1. Read OpenSpec `proposal.md`, relevant `specs/`, related code and tests, and prior
+   ADRs before designing. For a legacy repository, read `.workflow` and `.trellis`
+   only as compatibility inputs.
+2. Verify that 目标, 范围内, 范围外, 假设, and 验收标准 are explicit in OpenSpec.
 3. If a decision still changes required behavior or scope, return to
    `clarify-requirements`. Do not hide a requirement question inside a technical
    plan.
@@ -66,10 +66,10 @@ Do not copy acceptance criteria into `design.md`; reference their IDs. Create an
 ADR only for a hard-to-reverse and surprising decision produced by a real
 tradeoff, then link it instead of duplicating its rationale.
 
-## Write implement.md
+## Write tasks.md
 
-For standard and critical work, create an ordered `implement.md`. Organize work
-as vertical slices that leave the repository verifiable after each slice. Use
+For standard and critical work, create ordered OpenSpec tasks in `tasks.md`. Organize
+work into vertical slices that leave the repository verifiable after each slice. Use
 this shape per slice:
 
 ```markdown
@@ -99,7 +99,7 @@ already read and reasoned about gets inlined; only files the worker must newly
 open stay as paths.**
 
 ```text
-Active task: .workflow/tasks/<task-id>/
+Active change: openspec/changes/<change-id>/
 Assigned slice: 切片 N / AC-XXX
 Phase: implement
 
@@ -119,7 +119,7 @@ Phase: implement
 - path/to/production-file
 - path/to/test-file
 禁止修改：
-- 实体注解、mapper/XML、配置、数据库、其他 task 目录、STATUS 与指针文件
+- 未声明的生产模块、其他 OpenSpec change、legacy `.workflow` 状态与指针文件
 升级条件：
 - 需要越出允许范围，或内联结论与磁盘不符时，停止并报告差异
 返回证据：
@@ -138,9 +138,9 @@ executed:
 
 | 级别 | 用在什么时候 | 落在哪里 |
 | --- | --- | --- |
-| 切片 | 同一会话内顺序完成，共享模块，一个 writer | `implement.md` 的 `### 切片 N` |
-| 工单 | 每片可独立验收、需要跨会话续接、或多 writer 并行推进 | `.workflow/tasks/<task-id>/tickets/NN-<slug>.md` |
-| 多任务 | 不同发布单元、不同仓库、或可独立交付收口的成果 | 各自 `.workflow/tasks/<id>/`，由一个总控 task 记 `prd.md` 与子任务清单 |
+| 切片 | 同一会话内顺序完成，共享模块，一个 writer | `tasks.md` 的 `### 切片 N` |
+| 工单 | 每片可独立验收、需要跨会话续接、或多 writer 并行推进 | 当前 OpenSpec change 的 `tasks.md` 分组 |
+| 多任务 | 不同发布单元、不同仓库、或可独立交付收口的成果 | 各自 `openspec/changes/<change-id>/`，由用户显式选择 active change |
 
 Do not split `lightweight` work, a single test seam, or a change confined to one
 or two files. Splitting is a scheduling decision, not a documentation goal.
@@ -157,21 +157,20 @@ state: ready          # ready | in_progress | done | blocked
 writer: main          # main | workflow-implementer
 ---
 
-范围、入口文件、验收与验证命令；细节直接引用 `implement.md#切片-3` 与其上下文包。
+范围、入口文件、验收与验证命令；细节直接引用 `tasks.md#切片-3` 与其上下文包。
 ```
 
-The frontier is the set of `ready` tickets whose `blocked_by` are all `done`.
-Advance one ticket per writer; on completion set `state: done`, then record the
-evidence in `outcome.md`. Use Matt `to-tickets` to draft this list, but write the
-result inside the task directory — never into `.scratch/` or a second tracker.
-
-## Write context.md
+The frontier is the set of `ready` tasks whose `blocked_by` are all `done`.
+Advance one task per writer; on completion set `state: done`, then record the
+证据 in `artifacts/verification.md`. Keep the result inside the OpenSpec change —
+never in `.scratch/` or a second tracker.
+## Write artifacts/context.md
 
 Nothing is injected into a subagent automatically, so record the read list that
 dispatch depends on. One row per file, with a one-line Chinese reason:
 
 ```text
-- .workflow/spec/gateway/billing.md — 价格规则只增不改；迁移不重写历史
+- openspec/specs/billing/spec.md — 价格规则只增不改；迁移不重写历史
 - docs/adr/0012-cost-source.md — provider 实际费用优先于本地估算
 - crates/service/src/quota/model_pricing.rs — 当前价格解析入口
 ```
@@ -182,9 +181,10 @@ stale, and a reader can read the source. When resuming a legacy task that has an
 
 ## Lightweight Planning
 
-For documentation, configuration, or an isolated low-risk change, the task may
-remain PRD-only. Record an explicit solution sketch, affected files, runnable
-check, and the reason `design.md` / `implement.md` are unnecessary in `prd.md`.
+For documentation, configuration, or an isolated low-risk change, the change may
+remain proposal-only. Record an explicit solution sketch, affected files, runnable
+check, and the reason `design.md` is unnecessary in `proposal.md`. Use `tasks.md`
+and `artifacts/context.md` whenever the change needs ordering or dispatch evidence.
 Skipping files is allowed; skipping the planning decision is not.
 
 ## Review The Plan
@@ -202,5 +202,5 @@ Before handing off:
 - Record unresolved technical risk instead of presenting guesses as decisions.
 
 Finish by summarizing the selected profile, artifacts written, major decisions,
-and whether the task is ready to enter `in_progress`. List `context.md` among the
-artifacts written; a plan without a read list cannot be dispatched safely.
+and whether the change is ready to enter `in_progress`. List `artifacts/context.md`
+among the artifacts written; a plan without a read list cannot be dispatched safely.
