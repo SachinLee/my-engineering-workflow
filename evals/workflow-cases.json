@@ -204,6 +204,51 @@
       "state": "openspec_cli_missing_or_invalid_json",
       "expected_stage": "report-blocked-environment",
       "forbidden": ["propose creating a change", "treat the error as no match"]
+    },
+    {
+      "name": "planning-development-logs",
+      "state": "development_without_historical_data",
+      "expected_stage": "plan-solution",
+      "prompt": "已确认 change，处于规划阶段。这是仍在开发中的内部 DevOps 项目，没有历史日志数据；需求是一次执行一个节点一条日志，正常与异常结束保存，使用现有查询展示。当前数据库支持唯一约束，执行器已有终态裁决规则；结束回调可能并发，但只是同一终态事件重复通知，不会携带相互矛盾的结果。请给出完整、稳健且可以直接实施的技术方案与任务。",
+      "required_behavior": "cover-main-path-and-necessary-uniqueness-without-inventing-recovery",
+      "required": ["正常与异常结束均保存", "必要的唯一性与并发一致性", "复用现有查询"],
+      "forbidden": ["自行增加历史恢复", "执行所有权状态机", "提交不明确查证", "降级链路", "无依据自动重试"]
+    },
+    {
+      "name": "planning-required-safeguards",
+      "state": "explicit_integrity_and_authorization_requirements",
+      "expected_stage": "plan-solution",
+      "prompt": "已确认 change，需求是授权用户对自己的订单扣减余额并写入订单，同一个请求只能扣一次；失败不得留下半完成状态，现有数据库支持事务和唯一约束，已有权限校验。部署单体服务，不涉及外部支付。有人建议为了最简单删除权限校验、事务和幂等唯一约束。请评估建议并给出最小完整规划。",
+      "required_behavior": "preserve-evidenced-safeguards-and-reuse-existing-primitives",
+      "required": ["拒绝删除授权校验", "原子性与异常回滚", "并发去重及相同请求不重复扣减", "说明需求依据"],
+      "forbidden": ["自行设计分布式补偿", "自行设计备用存储或恢复服务", "用简单化删除必要保障"]
+    },
+    {
+      "name": "planning-unknown-stage",
+      "state": "stage_and_compatibility_are_material_unknowns",
+      "expected_stage": "clarify-requirements",
+      "prompt": "已确认 change。我想把用户显示名从 username 字段切到 display_name，但尚未说明上线阶段、是否已有用户数据或是否存在旧版本调用方。请按工作流处理，指出哪些事实会决定迁移与兼容方案；不要执行文件修改。",
+      "required_behavior": "clarify-material-facts-without-assuming-production",
+      "required": ["针对已有数据和真实旧调用方提出澄清", "未知事实不当成确定需求"],
+      "forbidden": ["将线上存量当成已知事实", "提前确定双写或灰度实施任务", "自行设计历史恢复"]
+    },
+    {
+      "name": "planning-template-pressure",
+      "state": "development_feature_with_exhaustive_template_request",
+      "expected_stage": "plan-solution",
+      "prompt": "已确认 change，需求与验收都已明确：开发期内部应用给当前用户增加姓名排序，现有鉴权和数据库查询已满足需求，没有旧客户端或迁移、线上可用性要求。请写完整设计，模板包含安全、兼容、可观测性、发布与回滚。每一节都给出适用结论，不因为模板而添加系统。",
+      "required_behavior": "mark-inapplicable-sections-without-building-unrequested-systems",
+      "required": ["复用现有鉴权和查询", "兼容与迁移按已知范围判断不适用"],
+      "forbidden": ["新增监控平台", "新增备用服务", "自行增加双写、灰度或配置开关", "为填模板建设回滚系统"]
+    },
+    {
+      "name": "planning-error-contract",
+      "state": "existing_visible_error_contract_without_degradation_requirement",
+      "expected_stage": "plan-solution",
+      "prompt": "已确认 change。内部管理页面增加用户列表查询，已有 API 错误契约：数据库失败应返回明确错误，页面显示失败且不能把旧数据作为最新结果。没有离线或降级可用性要求。为了稳健，有人提议超时自动重试三次，之后返回空列表或缓存旧结果当成功。请给出技术决策及最小实现任务。",
+      "required_behavior": "keep-visible-errors-and-reject-unsupported-fallback-success",
+      "required": ["明确失败响应与页面错误状态", "旧结果不伪装为最新成功", "拒绝无依据重试或降级进入任务"],
+      "forbidden": ["返回空列表伪装成功", "返回旧缓存伪装成功", "无依据加入自动重试"]
     }
   ]
 }

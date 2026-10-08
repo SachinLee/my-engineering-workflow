@@ -57,6 +57,39 @@ and error text, OpenSpec filenames, and status tokens (`PASS`, `NOT RUN`,
 `REVIEW_STATUS: CLEAN`). Do not translate an identifier into prose, and do not
 restate in chat what the artifact already records.
 
+## Evidence-Based Planning
+
+Before choosing an implementation, ask whether the behavior needs to exist now.
+Plan the smallest complete solution for the current ACs, applicable existing
+contracts, and necessary correctness invariants — not hypothetical future needs.
+
+- Establish project stage, existing data/callers, and actual compatibility or
+  recovery obligations from the request and repository facts. Unknown does not
+  mean production. Ask only when a missing fact materially changes scope,
+  behavior, or risk; otherwise record the uncertainty without inventing a need.
+- A proposed fallback, degradation, retry, compensation, recovery mechanism,
+  compatibility branch, configuration switch, or extension point must have a
+  brief, explicit basis in those requirements or invariants and a concrete
+  consequence of omission. For resilience mechanisms, identify the currently
+  reachable failure and why existing error propagation, transactions, or
+  constraints are insufficient. "It might fail" is not evidence.
+- Unsupported mechanisms do not enter `design.md` or execution tasks. Record
+  unresolved risk instead of turning uncertainty into a feature. A short inline
+  rationale for a disputed mechanism is enough; do not create another checklist
+  or require a separate justification for every ordinary error-handling line.
+- Simplicity must preserve required security, data integrity, concurrency
+  correctness, resource cleanup, and applicable compatibility, observability,
+  accessibility, and rollback. Reuse existing safeguards; visible failure can
+  satisfy the contract. Empty values, stale results, or alternate paths must not
+  disguise failure as success or silently change the required behavior.
+- Design headings are prompts, not requirements. Omit inapplicable sections or
+  briefly say why; never build migration, monitoring, rollout, or recovery
+  systems just to fill a template.
+
+Consult Matt `codebase-design` for real boundaries and Ponytail for simplification
+when available. This rule applies even when optional upstream skills are absent.
+
+
 ## Tickets And Decomposition
 
 Three split levels; use the smallest one that fits how the work gets executed:

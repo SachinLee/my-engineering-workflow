@@ -27,14 +27,19 @@ planning agent must not guess product intent.
    plan.
 4. Select the `lightweight`, `standard`, or `critical` quality profile.
 
+Read [Evidence-Based Planning](../run-engineering-workflow/references/workflow-governance.md#evidence-based-planning)
+before designing; it governs necessity, unknown facts, and required safeguards.
+
 ## Find The Smallest Sound Design
 
 Before proposing new code, check in order:
 
-1. Existing project behavior, helpers, modules, and conventions.
-2. Standard library and native platform capabilities.
-3. Already-installed dependencies.
-4. The smallest new module or interface that owns the behavior correctly.
+1. Does this behavior need to exist for the current ACs, applicable contracts, or
+   necessary correctness invariants? If not, exclude it before choosing a design.
+2. Existing project behavior, helpers, modules, and conventions.
+3. Standard library and native platform capabilities.
+4. Already-installed dependencies.
+5. The smallest new module or interface that owns the behavior correctly.
 
 Use Matt-style deep-module reasoning when a boundary is changing: identify the
 public interface, invariants, error modes, and test seam. Prefer one deep module
@@ -61,6 +66,9 @@ the sections that apply:
 - 发布与回滚
 - 未决技术风险
 - 验收追溯（AC → 设计点）
+
+These headings do not create requirements. Omit inapplicable sections or briefly
+explain why existing mechanisms suffice; do not add systems to fill the template.
 
 Do not copy acceptance criteria into `design.md`; reference their IDs. Create an
 ADR only for a hard-to-reverse and surprising decision produced by a real
@@ -197,8 +205,10 @@ Before handing off:
 - Confirm dependency ordering, migration, rollout, and rollback where relevant.
 - Confirm every dispatchable slice has a context package with inlined AC text,
   located code, and the exact verification command.
-- Challenge speculative abstractions, dependencies, configuration, and fallback
-  paths through Ponytail's simplicity ladder.
+- Check proposed extra mechanisms against the shared Evidence-Based Planning
+  rule. Remove unsupported mechanisms from both the design and execution tasks;
+  preserve necessary safeguards. Use Ponytail's simplicity ladder when available,
+  not as a substitute for establishing necessity.
 - Record unresolved technical risk instead of presenting guesses as decisions.
 
 Finish by summarizing the selected profile, artifacts written, major decisions,

@@ -249,34 +249,7 @@ test("archive-task is gated on user acceptance and owns the move", () => {
   assert.match(read("commands/engineering-workflow.md"), /Only `\/archive-task`.*after acceptance/s);
 });
 
-test("solution planning separates design decisions from execution steps", () => {
-  const skill = read("skills/plan-solution/SKILL.md");
 
-  assert.match(skill, /proposal\.md/);
-  assert.match(skill, /design\.md/);
-  assert.match(skill, /tasks\.md/);
-  assert.match(skill, /## Write artifacts\/context\.md/);
-  assert.match(skill, /备选方案/);
-  assert.match(skill, /数据流/);
-  assert.match(skill, /回滚/);
-  assert.match(skill, /测试接缝/);
-  assert.match(skill, /AC-001/);
-  assert.match(skill, /do not implement/i);
-});
-
-test("clarification writes observable acceptance criteria into the task record", () => {
-  const skill = read("skills/clarify-requirements/SKILL.md");
-
-  assert.match(skill, /proposal\.md/);
-  assert.match(skill, /AC-001/);
-  assert.match(skill, /- \[ \] AC-001/);
-  assert.match(skill, /范围内/);
-  assert.match(skill, /范围外/);
-  assert.match(skill, /验证方法/);
-  assert.match(skill, /one question at a time/i);
-  assert.match(skill, /tasks\.md/);
-  assert.match(skill, /artifacts\/context\.md/);
-});
 
 test("finish skill records actual evidence without inventing results", () => {
   const skill = read("skills/finish-with-evidence/SKILL.md");

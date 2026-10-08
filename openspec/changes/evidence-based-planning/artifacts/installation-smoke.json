@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-10-08T11:09:12+08:00",
+  "scope": "Project All; Codex/Pi share .agents/skills",
+  "scenario": "import installed helpers; list_changes without selection; compare four installed rule hashes",
+  "roots": [
+    {
+      "root": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.agents\\skills",
+      "list_changes": {
+        "mode": "openspec",
+        "source": "openspec",
+        "change": null,
+        "status": "ready",
+        "reason": null,
+        "openspec_version": "1.14.1",
+        "available_changes": [
+          "evidence-based-planning",
+          "confirm-intent-based-change-routing",
+          "openspec-compatibility"
+        ]
+      },
+      "matching_rule_paths": [
+        "skills/clarify-requirements/SKILL.md",
+        "skills/plan-solution/SKILL.md",
+        "skills/run-engineering-workflow/references/workflow-governance.md",
+        "skills/run-engineering-workflow/SKILL.md"
+      ]
+    },
+    {
+      "root": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.omp\\skills",
+      "list_changes": {
+        "mode": "openspec",
+        "source": "openspec",
+        "change": null,
+        "status": "ready",
+        "reason": null,
+        "openspec_version": "1.14.1",
+        "available_changes": [
+          "evidence-based-planning",
+          "confirm-intent-based-change-routing",
+          "openspec-compatibility"
+        ]
+      },
+      "matching_rule_paths": [
+        "skills/clarify-requirements/SKILL.md",
+        "skills/plan-solution/SKILL.md",
+        "skills/run-engineering-workflow/references/workflow-governance.md",
+        "skills/run-engineering-workflow/SKILL.md"
+      ]
+    },
+    {
+      "root": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.claude\\skills",
+      "list_changes": {
+        "mode": "openspec",
+        "source": "openspec",
+        "change": null,
+        "status": "ready",
+        "reason": null,
+        "openspec_version": "1.14.1",
+        "available_changes": [
+          "evidence-based-planning",
+          "confirm-intent-based-change-routing",
+          "openspec-compatibility"
+        ]
+      },
+      "matching_rule_paths": [
+        "skills/clarify-requirements/SKILL.md",
+        "skills/plan-solution/SKILL.md",
+        "skills/run-engineering-workflow/references/workflow-governance.md",
+        "skills/run-engineering-workflow/SKILL.md"
+      ]
+    }
+  ]
+}

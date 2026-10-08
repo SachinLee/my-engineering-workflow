@@ -10,12 +10,18 @@ Combine codebase discovery, Matt-style grilling, and observable acceptance
 criteria. Write the artifact in the user's language (Chinese by default); keep
 code identifiers, paths, commands, and log text verbatim.
 
+Read [Evidence-Based Planning](../run-engineering-workflow/references/workflow-governance.md#evidence-based-planning)
+before establishing the requirement boundary.
+
 ## Clarify
 
 1. Read the current request, active OpenSpec change, related code, tests, specs, and prior
    decisions before asking technical questions.
 2. Separate discovered technical facts from product assumptions. Never infer a
-   business rule only from code or naming.
+   business rule only from code or naming. Establish the actual project stage,
+   existing data/callers, and compatibility or recovery obligations when they
+   affect behavior. Record known facts and material unknowns under 假设与约束;
+   do not presume production or expand scope to cover hypothetical failures.
 3. Ask one question at a time. Ask only when the answer materially changes
    behavior, scope, risk, compatibility, or verification.
 4. Challenge overloaded domain terms. If a stable glossary exists, use it; if

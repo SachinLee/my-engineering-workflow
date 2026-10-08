@@ -68,7 +68,7 @@ Record dispatch metadata when the harness exposes it: `change_id`, `phase`, `sli
 and returned status. Do not record credentials, full prompts, or full session
 history. Legacy session pointers may be read for recovery, but new state is not
 written there.
-Read [workflow-governance.md](references/workflow-governance.md) when deciding artifact ownership, the record layout, source trust, or harness model routing.
+Read [workflow-governance.md](references/workflow-governance.md) when deciding requirement boundaries, planning necessity, artifact ownership, the record layout, source trust, or harness model routing.
 Read [quality-profiles.md](references/quality-profiles.md) before selecting or
 changing a risk profile.
 
