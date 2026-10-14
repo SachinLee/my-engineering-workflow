@@ -1,0 +1,836 @@
+--- baseline/skills/run-engineering-workflow/references/quality-profiles.md
++++ current/skills/run-engineering-workflow/references/quality-profiles.md
+@@ -21,14 +21,11 @@
+ - Use exactly one independent `workflow-reviewer` in a fresh context, through
+   `review-implementation`, for the complete relevant workspace. It reports both
+   Standards and Spec, plus correctness, security, tests, and complexity.
+-- Do not run both by default: `review-implementation` is the dispatch procedure,
++- Do not run both by default: `review-implementation` is the review procedure,
+   not another review added after `workflow-reviewer`.
+ - The reviewer is the default sole worker. Any implementation delegation needs
+   explicit justification and user authorization; it never removes independent
+-  final review. No hidden nested dispatch or default Matt `code-review` stage.
+-- Reuse a valid same-change/same-material review; after material fixes, rerun
+-  affected checks and review the new snapshot. Merely appending review or
+-  delivery evidence does not invalidate that review.
++  final review. Apply the Delivery Review Budget below across all entry points.
+ - If independent review is unavailable, record `UNVERIFIED` and hand off the
+   gap; do not claim normal delivery completion or `REVIEW_STATUS: CLEAN`.
+ 
+@@ -44,6 +41,48 @@
+   and affected critical-path E2E checks.
+ - Escalate uncertain implementation from `@task` to `@default` or `@slow` in OMP.
+ 
++## Delivery Review Budget
++
++The main router is the only review scheduler. For each approved delivery scope,
++allow exactly one full review and at most one focused follow-up. Lightweight
++keeps its main-session check without default independent review. Standard and
++Critical use `workflow-reviewer` only; do not append `code-reviewer`, a generic
++reviewer, native Matt `code-review`, or nested review dispatch by default.
++
++- Complete slices with targeted checks, not a full review per slice. Dispatch
++  `Review mode: full` only after the delivery scope is complete and relevant
++  repository checks pass; an independently shippable slice may be the approved scope.
++- A blocking finding needs a violated AC, project rule, or correctness/security/data
++  invariant, plus a concrete failure scenario and impact. Severity alone is not
++  the gate. Optional simplification and preference suggestions are non-blocking;
++  they do not trigger repairs or another review by default. `CLEAN` means no
++  blocking findings with required coverage/evidence, not no suggestions at all.
++- Batch blocking repairs in the main session and rerun affected checks. Use
++  `Review mode: focused` for original blocking findings, the repair diff, and
++  directly affected paths only, preferably in the original reviewer context.
++  Do not solicit a new whole-scope optimization list during this follow-up.
++- If blocking findings remain or new blocking defects appear after the follow-up,
++  record `blocked` and let the user decide the next step. An exhausted budget
++  never grants `CLEAN` or permission to skip required checks.
++- Record the approved scope, full/focused rounds, reviewed inputs, reports,
++  findings and repair checks in existing `artifacts/review.md` or
++  `artifacts/verification.md`. On resume, reread that record; session changes and
++  snapshot changes do not reset the budget. Missing round history is a gap to
++  resolve, not permission to start again.
++- Reuse a real same-change/same-material result. Appending the report or delivery
++  evidence does not invalidate it unless substantive reviewed inputs change.
++  Local blocking repairs use the focused follow-up, not another full review.
++- Changed ACs, interfaces, security boundaries, implementation approach, or modules
++  outside reviewed coverage require a user decision. Obtain explicit user approval
++  for a new full review or restart with a newly approved delivery scope; preserve
++  prior rounds and record the changed boundary. Never restart on snapshot change alone.
++- Allow one controlled replacement for `INVALID` per approved scope, only when
++  there is no valid report, after repairing the handoff with `Review retry: invalid`.
++  It does not consume a valid full/focused round or reset their budget. A genuine
++  findings report is not `INVALID`; another invalid result stops at `UNVERIFIED`.
++- Finish consumes valid evidence; gaps return to the main router for affected
++  checks or a budgeted review. Merely entering finish never adds verification or review.
++
+ ## Explicit Native Review
+ 
+ Matt `code-review` is only a user-requested native mode, not the workflow default.
+--- baseline/skills/run-engineering-workflow/SKILL.md
++++ current/skills/run-engineering-workflow/SKILL.md
+@@ -53,9 +53,10 @@
+ 
+ For planning, implementation, and review handoffs also include `Phase:`, `Read:`,
+ `Must preserve:`, and the role-appropriate scope. Implementation handoffs must
+-include `May modify:` and `Verification:`. Review handoffs must include `Review
+-scope:` and `Evidence:`. Never ask a subagent to infer the change by scanning
+-`openspec/changes/`. A missing or unreadable change is an invalid dispatch; return
++include `May modify:` and `Verification:`. Review handoffs must include
++`Review mode: full | focused`, `Review scope:`, and `Evidence:`; focused mode also
++needs the prior report and original blocking findings. Never ask a subagent to infer
++its change by scanning `openspec/changes/`. A missing or unreadable change is invalid; return
+ the appropriate `*_STATUS: INVALID` result and stop.
+ 
+ Subagents receive change artifacts and file paths, not the parent conversation. They
+@@ -207,23 +208,26 @@
+   that ticket's `state: done` only after its verification command has executed
+   evidence. Resuming after a session break means recomputing the frontier from the
+   ticket files, never rereading the previous chat.
+-- Code changed: run the smallest check that proves the changed behavior.
++- Code changed: complete each slice with targeted checks, not a full review per slice.
++  The main session is the only review scheduler. Follow the Delivery Review Budget
++  in `references/quality-profiles.md`, including persisted rounds on resume.
+   - For `lightweight`: run one focused check before delivery.
+-  - For `standard` and `critical`: follow `references/quality-profiles.md`, the
+-    single review budget. After repository checks, use exactly one independent
+-    `workflow-reviewer` through `review-implementation` for both Standards and
+-    Spec plus correctness, security, tests, and complexity. Critical adds relevant
+-    validation depth, not an extra generic or Matt native review stage.
+-  - Reuse valid same-change/same-material results. Only material changes to the
+-    review scope, requirements, or supporting evidence require fresh review;
+-    appending the review or delivery record itself does not invalidate it.
+-  - Matt `code-review` is an explicit user-requested native committed-diff mode
+-    only, with a valid fixed point and nonempty diff to HEAD. It does not cover
+-    staged, unstaged, or untracked contents; never add it by default.
+-  - The main session fixes findings and repeats affected checks; material
+-    snapshot changes require a new review. If independent review is unavailable,
+-    record `UNVERIFIED`, disclose the gap, and stop before normal completion.
+-    The implementation model does not approve its own work.
++  - For `standard` and `critical`: wait until the approved delivery scope is
++    complete and repository checks pass, then dispatch the one full review via
++    `review-implementation` and `workflow-reviewer`. Cover Standards / Spec,
++    correctness, security, tests, and complexity in the same report.
++  - Default to `workflow-reviewer` only, not `code-reviewer`, a generic reviewer,
++    native Matt `code-review`, or nested dispatch. Critical adds relevant checks,
++    not extra reviewers. Explicit native review needs a valid fixed point and
++    nonempty committed diff to HEAD; it does not certify uncommitted workspace contents.
++  - Reuse valid same-change/same-material evidence. Appending reports or delivery
++    records does not invalidate it unless substantive inputs change.
++  - Batch blocking repairs and rerun affected checks; use at most the budgeted
++    focused follow-up on original findings and repair impact. Do not repeat the
++    full review for local repairs or reset the budget on a changed snapshot.
++  - Exhausted budget with blockers, expanded scope, missing history, or unavailable
++    independent review: report `blocked` / `UNVERIFIED` and the precise gap; ask
++    the user for the next decision as the shared budget requires. Never self-approve.
+ - `review` clean: write or update `artifacts/verification.md` with executed evidence,
+   - Use `finish-with-evidence` to record the executed verification artifact before handoff.
+   set the OpenSpec change handoff to `awaiting-acceptance`, list what the user must
+@@ -289,15 +293,13 @@
+ 
+ ### OMP Review Idempotency
+ 
+-The workflow contract calls for one final review per task, profile, and
+-worktree snapshot. The project-installed `workflow-review-gate` currently keys
+-its runtime decision from `Active task:` and profile data; it does not verify
+-the `Active change:` field or prove that a handoff matches the current snapshot. A final reviewer that
+-returns `REVIEW_STATUS: INVALID` may be replaced once on the same snapshot only
+-when the new dispatch contains `Review retry: invalid`; escalate instead of
+-dispatching further retries. Material findings require remediation, affected
+-checks, and a new final review after the diff changes. The only separate
+-profiles are an explicitly requested `security` or `data-integrity` review.
++The Delivery Review Budget in `references/quality-profiles.md` governs approved
++scope and full/focused rounds, not one new full review per snapshot. The installed
++`workflow-review-gate` still keys its runtime decision from `Active task:` and
++profile data; it does not enforce the `Active change:` handoff or this round budget.
++Treat it as a limited legacy guard, not proof of runtime deduplication. Record
++rounds in OpenSpec artifacts and enforce the shared budget in the main router;
++repairing the external extension is a separate change.
+ 
+ ## Pi Roles
+ 
+--- baseline/skills/run-engineering-workflow/references/workflow-governance.md
++++ current/skills/run-engineering-workflow/references/workflow-governance.md
+@@ -207,9 +207,9 @@
+ | Design solution | `plan-solution` + relevant specialists | OpenSpec `design.md` |
+ | Plan execution | `plan-solution` + test strategy | OpenSpec `tasks.md` |
+ | Implement behavior | TDD workflow | Code and tests |
+-| Review independently | `review-implementation` + code review | `artifacts/review.md` or bounded review output |
+-| Verify and record | repository checks + risk-specific checks | `artifacts/verification.md` |
+-| Reduce complexity | Ponytail review | Code, then re-verification |
++| Review independently | `review-implementation` via one `workflow-reviewer` | `artifacts/review.md` or bounded review output |
++| Verify changed behavior | repository checks + risk-specific checks in main router | `artifacts/verification.md` |
++| Reduce complexity | Ponytail lens in the same review | Non-blocking suggestions unless a concrete required invariant is violated |
+ | Preserve learning | evidence promotion step | OpenSpec artifacts or project docs |
+ 
+ Do not run Matt `to-spec` or `to-tickets` as a parallel record system. Their output
+@@ -277,9 +277,10 @@
+ re-verification, and the final delivery claim. A model never approves its own
+ unverified work merely because no separate reviewer is available.
+ 
+-`quality-profiles.md` is the single review budget. Standard and Critical use one
+-`workflow-reviewer` through `review-implementation`, with Standards and Spec in
+-one report. Do not add native Matt `code-review` by default or permit nested
+-review dispatch. Reuse a valid same-material review at finish; only material
+-scope, requirements, or evidence changes invalidate it, not appending the report.
+-Unavailable independent review stays `UNVERIFIED`, never clean completion.
++`quality-profiles.md` is the single review budget. The main router alone schedules
++one full independent `workflow-reviewer` report covering Standards / Spec, and at
++most one focused repair follow-up per approved delivery scope. Native Matt review,
++`code-reviewer`, and nested review dispatch are not default stages. Finish consumes
++valid evidence; gaps return to the main router. Persist rounds across resume and
++snapshot changes in existing change artifacts; exhausted budget or expanded scope
++requires a user decision, never self-approval. Unavailable review stays `UNVERIFIED`.
+--- baseline/skills/review-implementation/SKILL.md
++++ current/skills/review-implementation/SKILL.md
+@@ -13,20 +13,23 @@
+ 
+ ## Establish The Contract
+ 
+-1. Read the active OpenSpec `proposal.md`, relevant `specs/`, optional `design.md`,
+-   `tasks.md`, and `artifacts/context.md`/`artifacts/verification.md`; for legacy
+-   recovery, read the named `.workflow` or `.trellis` inputs and ADRs.
+-2. Inspect `git status`, the complete relevant diff, adjacent code, and tests.
+-3. Separate current-task changes from unrelated user or concurrent changes.
+-4. Map every required acceptance criterion to code and executable evidence.
+-
++1. Read the declared change artifacts and `Review mode: full | focused` from the
++   handoff. Missing mode, scope, or evidence is `REVIEW_STATUS: INVALID`.
++2. For full mode, inspect the complete relevant workspace, adjacent code and tests;
++   map every required acceptance criterion to implementation and executed evidence.
++3. For focused mode, consume the prior full report and original blocking findings,
++   inspect the repair diff and directly affected paths/tests, and confirm the repair
++   checks. Preserve original coverage for unchanged inputs; do not redo the full survey.
++4. Keep current-task changes separate from unrelated user or concurrent changes.
+ 
+ ## One Workspace Review
+ 
+-Follow `../run-engineering-workflow/references/quality-profiles.md`. Standard and
+-Critical use one independent `workflow-reviewer`; Lightweight has no default
+-review dispatch. Do not perform nested dispatch or invoke native Matt
+-`code-review` as a default substep. Ponytail is a complexity lens in this review.
++Follow `../run-engineering-workflow/references/quality-profiles.md`, the sole
++Delivery Review Budget. The main router schedules the full review and any focused
++follow-up; this skill is its review procedure, not a second scheduler. Standard and
++Critical use `workflow-reviewer` only, never default `code-reviewer` or nested
++native Matt `code-review`. Lightweight has no default review dispatch. Ponytail
++is a complexity lens in the same report.
+ 
+ Capture the complete relevant workspace: committed changes from the declared
+ base, staged (`git diff --cached`), unstaged (`git diff`), and explicitly named
+@@ -36,7 +39,7 @@
+ unrelated user changes identifiable and untouched.
+ 
+ The handoff carries `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
+-`Must preserve:`, `Review scope:`, and `Evidence:`. Inline the known ACs, design
++`Must preserve:`, `Review mode:`, `Review scope:`, and `Evidence:`. Inline the known ACs, design
+ and verification conclusions; identify the base, file list, diff/current contents,
+ requirements and actual check results. The selected proposal/specs own Spec;
+ do not seek another issue or `.scratch/` requirement to override them. A Pi
+@@ -47,16 +50,18 @@
+ two agents. It is not a certification of staged/unstaged/untracked work. Do not
+ silently add a third review; report missing workspace coverage instead.
+ 
+-Reuse only a real same-change/same-material independent result: the reviewed
+-file contents/diff, base, applicable requirements and supporting checks must
+-still match, scope must be complete, and material findings must be resolved.
+-Changes to those inputs require remediation, affected checks, and a new review.
+-Appending the report or delivery evidence does not invalidate the result unless
+-it changes a substantive reviewed input. Allow one controlled replacement for
+-`INVALID` using `Review retry: invalid`, never a hidden retry loop. If an
+-independent context or complete evidence is unavailable, record `UNVERIFIED`
+-and stop at the gap, not `CLEAN` or normal completion.
+-## Review In Order
++Reuse only real same-change/same-material independent evidence with complete
++coverage. After local blocking repairs, combine the prior full report with the
++budgeted focused follow-up and affected check results to cover the final contents;
++never treat the old report alone as approval of unaudited repairs. Expanded inputs
++return to the main router for a user decision under the shared budget, not an
++automatic full review. Appending the report or delivery evidence does not invalidate
++coverage unless substantive reviewed inputs change. Allow one controlled replacement
++for `INVALID` with no valid report as the shared budget specifies, using
++`Review retry: invalid`. Missing independent context, round history or coverage
++stays `UNVERIFIED`, not `CLEAN` or normal completion.
++
++## Full Review In Order
+ 
+ 1. Correctness: find missed ACs, regressions, boundary errors, concurrency
+    hazards, failure-path defects, and incorrect assumptions.
+@@ -73,6 +78,14 @@
+ 6. Evidence: run the smallest commands needed to confirm or reject material
+    findings. Never turn an unexecuted check into a PASS.
+ 
++## Focused Follow-Up
++
++Check original blocking findings, the repair diff, and directly affected behavior
++only. Report each original finding as resolved or remaining with evidence; report
++new blocking regressions caused by the repairs. Record optional observations
++separately without widening into a whole-scope optimization review. Return the
++combined coverage and any gap to the main router; it owns the budget and next step.
++
+ ## Report Findings
+ 
+ Lead with actionable findings ordered by severity. For each finding include:
+@@ -82,6 +95,8 @@
+ complexity, residual risk, and unexecuted checks in the same report.
+ 
+ - Severity: `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`.
++- Blocking: `yes | no`, justified by the concrete violated contract/invariant,
++  failure scenario and impact; severity or preference alone does not block.
+ - File and tight line reference.
+ - Violated requirement, invariant, or project rule.
+ - Concrete failure scenario and impact.
+@@ -95,6 +110,12 @@
+ the thin 上下文包 as a process finding: naming the missing field is enough to fix
+ the next plan.
+ 
++Return one closing status: `REVIEW_STATUS: FINDINGS` for blocking defects;
++`REVIEW_STATUS: CLEAN` for no blocking defects with sufficient evidence and
++coverage (non-blocking suggestions may remain); `REVIEW_STATUS: INVALID` only
++when no valid review was possible. State the full/focused mode, prior report,
++reviewed inputs, resolved/remaining finding IDs, checks and coverage gaps.
++
+ Return findings to the main session. The main session applies fixes, re-runs
+ affected checks, and records the final review result in `artifacts/verification.md`.
+ A reviewer must not commit, push, archive the change, or claim final delivery.
+--- baseline/skills/finish-with-evidence/SKILL.md
++++ current/skills/finish-with-evidence/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: finish-with-evidence
+-description: Verify a completed software task and record factual implementation evidence in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
++description: Consume existing verification and independent review evidence, record factual delivery results in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
+ ---
+ 
+ # Finish With Evidence
+@@ -12,38 +12,35 @@
+ `NOT APPLICABLE`, `NOT CAPTURED`, `NOT COMMITTED`) stay in English so they remain
+ greppable.
+ 
+-## Verify
++## Consume Evidence
+ 
+-1. Read the active OpenSpec change's `proposal.md`, `specs/`, `design.md`,
+-   `tasks.md`, `artifacts/context.md`, and the selected quality profile.
+-2. Inspect `git status` and `git diff`. Identify unrelated changes and leave them
+-   untouched.
+-3. Follow `../run-engineering-workflow/references/quality-profiles.md`; no default
+-   native Matt `code-review` stage. Check the complete relevant workspace, including
+-   staged, unstaged, and explicitly listed untracked files, against the selected
+-   proposal/specs and project standards; do not read unrelated or sensitive files.
+-4. Run relevant repository verification: targeted tests, type checking, lint, build,
+-   security/data checks or E2E based on risk and available tools.
+-5. For Standard / Critical, consume a valid same-change/same-material independent
+-   `workflow-reviewer` report through `review-implementation`. It must separately
+-   cover Standards / Spec and correctness/security/tests/complexity. Confirm scope,
+-   requirements and executed check evidence still match; do not dispatch again
+-   merely because finish was invoked. Material input changes or findings need
+-   fixes, affected checks and one new review. Appending the report or delivery
+-   evidence does not invalidate an otherwise matching result. Preserve the one
+-   controlled `INVALID` replacement (`Review retry: invalid`), not a retry loop.
+-   Lightweight uses main-session checks without default independent dispatch.
+-   If independent review is unavailable or its scope incomplete, record
+-   `UNVERIFIED` and hand off the gap; do not claim CLEAN or normal completion.
+-6. For behavior changes, capture real RED and GREEN evidence from the relevant test
+-   target when available. Mark missing RED evidence explicitly.
+-7. Use Ponytail as the complexity lens of the same independent report, not an
+-   additional dispatch. Re-run affected checks after substantive simplification.
+-8. Confirm every task marked `done` in `tasks.md` matches the diff and evidence, and
+-   state which tasks remain on the frontier.
+-9. Decide whether a reusable convention, prevention rule, or non-obvious lesson
+-   belongs in `openspec/specs/`, `GLOSSARY.md` (or a user-confirmed existing `CONTEXT.md`), or `docs/adr/`. Record a pointer in
+-   the verification artifact instead of copying the text.
++The main router is the only scheduler. Do not dispatch reviewers and do not run
++repository verification directly from this skill; consume recorded evidence.
++
++1. Read the selected change's proposal/specs, tasks and verification/review records
++   with the shared `quality-profiles.md` budget. Read design/context only as needed
++   to resolve a traceability gap, not to repeat the design or implementation review.
++2. Inspect `git status` and the relevant `git diff` to identify final input changes and
++   unrelated user work. Match the evidence's staged, unstaged and explicitly named
++   untracked scope to final contents; do not perform a second full code review.
++3. Consume same-change/same-material executed tests, lint, typecheck, build and
++   risk-specific evidence. For Standard / Critical require the independent
++   `workflow-reviewer` report with Standards / Spec, correctness/security/tests/
++   complexity coverage; local repairs also require the budgeted focused follow-up
++   and affected checks. The prior full report alone cannot approve unaudited repairs.
++   Lightweight consumes its main-session focused check, without default dispatch.
++4. Check full/focused rounds, unresolved blockers and the final coverage chain.
++   Missing or stale evidence, unavailable independent review, incomplete scope or
++   conflicting round history: record `UNVERIFIED` and return the precise gap to
++   the main router for affected checks or a budgeted/user-authorized next step.
++   Do not claim `CLEAN` or normal completion while a required gate is unsatisfied.
++   Appending the report or delivery evidence does not invalidate matching evidence
++   unless a substantive reviewed input changes. Entering finish adds no review.
++5. Record existing RED/GREEN evidence, commands/results and all AC outcomes; mark
++   missing RED evidence `NOT CAPTURED`, not an invented execution.
++6. Confirm completed tasks match evidence and identify the remaining frontier.
++   Record reusable conventions by pointer in `openspec/specs/`, `GLOSSARY.md` (or
++   a user-confirmed existing `CONTEXT.md`) or `docs/adr/` only when warranted.
+ 
+ Do not invent commands, output, coverage, commits, or PASS results. Use `NOT RUN`,
+ `UNVERIFIED`, or `NOT APPLICABLE` when evidence is unavailable.
+@@ -77,9 +74,10 @@
+ - 确切命令与结果
+ 
+ ## 独立复核
+-- 复核者角色或模型上下文
+-- 已解决的 findings
+-- 修复后重复执行的检查
++- 已批准交付范围、完整/定向审核轮数及模式
++- 复核者角色或模型上下文、报告与最终材料的覆盖关系
++- 阻断 findings 的解决情况与非阻断建议
++- 修复检查的既有执行证据；缺口返回主路由，不在收尾补跑
+ 
+ ## 提交
+ - 工作提交哈希，或 NOT COMMITTED
+@@ -118,10 +116,11 @@
+ Do not move the OpenSpec change into `openspec/changes/archive/`, do not append a
+ journal line, do not delete compatibility pointers, and do not archive the change.
+ 
+-If the user verifies and finds a problem, treat that as a normal transition: update
+-`tasks.md`, fix the implementation, re-run the affected checks, and append a new
+-round to `artifacts/verification.md` under `## 复验轮次 N`. Leave earlier rounds
+-untouched, so what was claimed and when it was corrected stays visible.
++If the user verifies and finds a problem, return it to the main router: preserve
++prior rounds, update `tasks.md`, apply fixes and affected checks through that router,
++and follow the shared budget's focused/reauthorization rules rather than resetting
++rounds. Record the new evidence under `## 复验轮次 N` in
++`artifacts/verification.md`; leave earlier rounds untouched.
+ 
+ When the user has accepted and explicitly asks to archive, invoke `archive-task`
+ instead of doing it inline here; that skill owns the archive move and compatibility
+--- baseline/agents/workflow-reviewer.md
++++ current/agents/workflow-reviewer.md
+@@ -11,29 +11,32 @@
+ 
+ Review the active OpenSpec change from a fresh context after implementation and repository checks are complete.
+ 
+-Follow the single budget in `skills/run-engineering-workflow/references/quality-profiles.md`.
+-Review Standards / Spec separately in the same report. Include relevant committed,
+-staged, unstaged, and explicitly named untracked contents from the handoff, not
+-unrelated or sensitive files. Do not perform nested dispatch or load native Matt
+-`code-review`; Ponytail is a complexity lens, not another agent. A real valid
+-same-material report can be reused at finish; only material input changes
+-require fresh review, not appending the report or delivery evidence.
+-1. Read the named change's `proposal.md`, `specs/`, `artifacts/context.md`,
+-   optional `design.md` and `tasks.md`, applicable project specs, the complete diff,
+-   surrounding code, and relevant tests.
+-2. Follow the preloaded `review-implementation` skill as the review contract. Use
+-   verification and security checks when they are installed and relevant.
+-3. Lead with evidence-backed findings ordered by severity. Cite a file and tight
+-   line reference for every finding.
+-4. Report acceptance-criterion coverage, checks actually run, residual risk, and
+-   checks not run. If no findings remain, say so explicitly.
++Follow the Delivery Review Budget in `skills/run-engineering-workflow/references/quality-profiles.md`.
++Consume `Review mode: full | focused` from the handoff. Full mode reviews the complete
++relevant committed, staged, unstaged, and explicitly named untracked workspace;
++report Standards / Spec and correctness/security/tests/complexity together.
++Focused mode checks the prior report's blocking findings, repair diff and directly
++affected paths/checks only, preserving original coverage for unchanged inputs.
++Keep unrelated or sensitive files out of scope. Do not perform nested dispatch or
++append `code-reviewer` or native Matt `code-review`; Ponytail is a lens in this report.
++Finish consumes the coverage chain, not a second review. The main router owns
++rounds, repairs and user decisions; snapshot changes do not restart full review.
+ 
++1. Read the named change artifacts and applicable rules for the declared mode.
++2. Follow the preloaded `review-implementation` contract; consume the prior report
++   and repair evidence in focused mode rather than surveying every AC again.
++3. Lead with evidence-backed findings, severity, `Blocking: yes | no`, violated
++   contracts/invariants, concrete impact and tight file references.
++4. Return mode, reviewed inputs, AC/finding coverage, executed checks, gaps and risk.
++   Use `REVIEW_STATUS: FINDINGS` for blockers, `REVIEW_STATUS: CLEAN` when no blockers
++   remain with sufficient coverage/evidence (suggestions may remain), or
++   `REVIEW_STATUS: INVALID` when no valid review was possible.
+ Write findings in the user's language (Chinese by default); keep identifiers,
+ paths, commands, and the `REVIEW_STATUS` tokens verbatim.
+ 
+ Dispatch precondition: the handoff must identify one change with
+ `Active change: openspec/changes/<change-id>/` and `Assigned slice:`, plus `Phase:`,
+-`Read:`, and `Must preserve:`, and must state the boundary with `Review scope:`
++`Read:`, `Review mode:`, and `Must preserve:`, and must state the boundary with `Review scope:`
+ and `Evidence:`. Do not scan `openspec/changes/` or infer a change from conversation
+ history. If the change path or evidence scope is missing or unreadable, return
+ `REVIEW_STATUS: INVALID`.
+--- baseline/.omp/agents/workflow-reviewer.md
++++ current/.omp/agents/workflow-reviewer.md
+@@ -12,34 +12,35 @@
+ 
+ Dispatch precondition: the handoff must identify one OpenSpec change with
+ `Active change:` and `Assigned slice:`, plus `Phase:`, `Read:`, and `Must preserve:`
+-fields. It must state the review boundary with `Review scope:` and `Evidence:`.
++fields. It must state the mode and boundary with `Review mode:`, `Review scope:` and `Evidence:`.
+ Read the named change artifacts, relevant diff, tests, and recorded verification only.
+ Do not scan all change directories or infer a change from history. If the change path
+ or evidence scope is missing or unreadable, return `REVIEW_STATUS: INVALID` and do
+ not approve the implementation.
+ 
+-Review the active OpenSpec change from a fresh context. Follow `review-implementation` and
+-lead with findings ordered by severity. Inspect the complete current diff,
+-including staged, unstaged, and explicitly named untracked test/file contents;
+-never sweep ignored, unrelated, or sensitive files. Map every acceptance
+-criterion to code and evidence. Explicitly check dependency injection
+-lifecycle, asynchronous listener ordering and rejection, persistence mapping and
+-null update behavior, and test delivery visibility when those areas are touched.
+-
+-Follow `skills/run-engineering-workflow/references/quality-profiles.md`. Report
+-Standards / Spec separately in this same review. Do not perform nested dispatch
+-or invoke native Matt `code-review`; Ponytail is the complexity lens. Finish
+-reuses valid same-material results; material input changes require fresh review,
+-not appending the report or delivery evidence.
++Review the active OpenSpec change from a fresh context under the Delivery Review
++Budget in `skills/run-engineering-workflow/references/quality-profiles.md` and
++`review-implementation`, using `Review mode: full | focused`.
++Full mode inspects the complete relevant committed, staged, unstaged and explicitly
++named untracked contents, reporting Standards / Spec and correctness/security/tests/
++complexity together. Check DI lifecycle, async ordering/rejection, persistence/null
++mapping and test visibility when those areas are touched.
++Focused mode checks original blocking findings, the repair diff and directly affected
++paths/checks, preserving prior coverage of unchanged inputs rather than repeating
++all ACs. Never sweep ignored, unrelated or sensitive files. Do not perform nested dispatch
++or append `code-reviewer` or native Matt `code-review`; Ponytail is the lens.
++Return severity and `Blocking: yes | no` justified by concrete contract/invariant
++violations and impact, mode, reviewed inputs and coverage gaps. The main router owns
++rounds and next steps; finish consumes evidence instead of starting another review.
+ Run focused read-only checks when useful, but do not edit files, commit, push,
+ move the session pointer, archive, or approve unexecuted evidence. Return
+ findings to the main session for remediation and re-verification. Use exactly one
+ closing status line:
+ 
+-- `REVIEW_STATUS: FINDINGS` when a material finding remains.
+-- `REVIEW_STATUS: CLEAN` when no material finding remains.
+-- `REVIEW_STATUS: INVALID` only when this was not a real review of the active
+-  task and current patch.
++- `REVIEW_STATUS: FINDINGS` when a blocking finding remains.
++- `REVIEW_STATUS: CLEAN` when no blocking finding remains with sufficient coverage
++  and evidence; non-blocking suggestions may remain.
++- `REVIEW_STATUS: INVALID` only when no valid review of the declared mode was possible.
+ 
+ For `CLEAN`, list residual risk and checks not run. Never mark a check PASS
+ without executed evidence.
+--- baseline/.pi/agents/workflow-reviewer.md
++++ current/.pi/agents/workflow-reviewer.md
+@@ -22,18 +22,23 @@
+ Review the active OpenSpec change from a fresh context. Load and follow
+ `review-implementation`; lead with findings ordered by severity and cite tight
+ file references. Require `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
+-`Must preserve:`, `Review scope:`, and `Evidence:` in the handoff; if any is
++`Must preserve:`, `Review mode:`, `Review scope:`, and `Evidence:` in the handoff; if any is
+ missing or unreadable, return `REVIEW_STATUS: INVALID`. Do not scan all change
+ directories or infer a change from conversation history.
+ 
+-Follow `skills/run-engineering-workflow/references/quality-profiles.md`. Report
+-Standards / Spec separately in the same review. Inspect the complete relevant
+-committed, staged, unstaged, and explicitly named untracked file contents carried
+-in the handoff, never unrelated or sensitive files. Do not perform nested dispatch
+-or load native Matt `code-review`; Ponytail is a complexity lens. Use the main
+-session's recorded commands/results for verification; do not expand shell rights.
+-Finish reuses valid same-material reports; material input changes require fresh
+-review, not appending the report or delivery evidence.
++Follow `skills/run-engineering-workflow/references/quality-profiles.md`, the Delivery
++Review Budget, with `Review mode: full | focused`. Full mode reports Standards /
++Spec and correctness/security/tests/complexity for the complete relevant committed,
++staged, unstaged and explicitly named untracked workspace. Focused mode checks the
++prior blocking findings, repair diff and directly affected paths using recorded
++repair checks; preserve prior coverage of unchanged inputs, not a new full survey.
++Keep unrelated or sensitive files out of scope. Do not perform nested dispatch or
++append `code-reviewer` or native Matt `code-review`; Ponytail is a lens in this report.
++Use the main session's recorded verification; do not expand shell rights. Return
++`Blocking: yes | no` with concrete violations/impact, mode, reviewed inputs and
++coverage gaps. `REVIEW_STATUS: CLEAN` requires no blockers and sufficient evidence;
++non-blocking suggestions may remain. Finish consumes this evidence; only the main
++router schedules rounds and decides gaps under the shared budget.
+ This agent is read-only: do not edit files, run shell commands, commit, push,
+ move a session pointer, archive, or approve unexecuted evidence. Return findings
+ to the main session for remediation and re-verification. If no issues remain,
+--- baseline/commands/engineering-workflow.md
++++ current/commands/engineering-workflow.md
+@@ -33,17 +33,22 @@
+    Require it to follow the approved RED/GREEN slices in `tasks.md`. Ordinary work
+    is implemented in the main session.
+ 5. Follow `skills/run-engineering-workflow/references/quality-profiles.md` as the
+-   single budget. For lightweight work, run a focused check with no default dispatch.
+-   For standard and critical work, run repository checks and use exactly one
+-   independent `workflow-reviewer` through `review-implementation` against the
+-   complete relevant workspace for Standards / Spec and correctness/complexity.
+-   Critical adds risk-specific verification, not duplicate final reviewers.
+-6. Reuse valid same-change/same-material independent review at finish. No default
+-   native Matt `code-review`, nested dispatch, or appended generic review tasks.
+-   Review again after material fixes and re-verification, not after merely
+-   appending delivery evidence. An `INVALID` review has one controlled replacement;
+-   its prompt must contain `Review retry: invalid`. Unavailable review stays
+-   `UNVERIFIED`; stop and disclose the gap instead of claiming normal completion.
++   single budget. The main session is the only review scheduler. Complete slices
++   with targeted checks, not a full review per slice; wait until the approved
++   delivery scope is complete and checks pass before the full review.
++   For lightweight work, run a focused check with no default dispatch.
++   For standard and critical work, use exactly one independent `workflow-reviewer`
++   through `review-implementation` covering the complete relevant workspace,
++   Standards / Spec, correctness, security, tests and complexity. Critical adds
++   risk-specific checks, not reviewers.
++6. Reuse valid same-change/same-material reports. Default to `workflow-reviewer`
++   only, not `code-reviewer`, native Matt `code-review`, nested dispatch, or an
++   appended generic reviewer. Batch blocking repairs, rerun affected checks, and
++   use at most the budgeted focused follow-up; do not restart full review on repair
++   snapshots or appended delivery evidence. Persist rounds in change artifacts.
++   For `INVALID`, unavailable review, exhausted budget or scope drift, follow the
++   shared budget's replacement/stop/user-decision rules; disclose `UNVERIFIED`
++   gaps rather than claiming normal completion.
+ 7. Use `finish-with-evidence` to record actual results in
+    `artifacts/verification.md`, set the OpenSpec change to `awaiting-acceptance`,
+    then stop and hand the user the verification list. Do not archive the change.
+--- baseline/README.md
++++ current/README.md
+@@ -35,8 +35,8 @@
+ | `$run-engineering-workflow` | 读取 OpenSpec 当前 change，按风险等级路由整个开发流程，并保留 legacy 恢复 |
+ | `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前 change 的 `proposal.md` 和 `specs/` |
+ | `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md`、`tasks.md` 和 `artifacts/context.md` |
+-| `$review-implementation` | 使用独立上下文复核需求覆盖、正确性、测试、安全和复杂度 |
+-| `$finish-with-evidence` | 执行最终检查，并把实际实现和验证证据写入 `artifacts/verification.md` |
++| `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
++| `$finish-with-evidence` | 核对并复用已有证据，写入 `artifacts/verification.md`；不再派审核或直接重跑检查 |
+ | `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
+ 
+ ## 核心产物
+@@ -246,9 +246,12 @@
+ 
+ 默认使用 `tdd` 和 `diagnosing-bugs`；审查预算以
+ [quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md) 为唯一来源。
+-Standard / Critical 通过 `review-implementation` 调用一个独立 `workflow-reviewer`，
+-在同一报告中分别检查 Standards / Spec、正确性、安全、测试和复杂度。
+-Matt `code-review` 仅供用户显式请求原生提交范围审查，不默认叠加到工作流。
++Standard / Critical 在交付范围完成并通过相关检查后，通过 `review-implementation`
++调用一次完整独立 `workflow-reviewer`，同一报告覆盖 Standards / Spec、正确性、安全、测试和复杂度。
++有阻断项时集中修复、运行受影响检查，最多一次定向复核；仍有阻断问题就停止自动循环，交给你决定。
++普通切片只做相关检查，不逐片完整审核。`finish-with-evidence` 只核对和记录已有证据，不再审一次。
++默认不叠加 `code-reviewer`、通用 reviewer 或 Matt `code-review`；原生审查仅按你的明确请求运行。
++预算跨会话和修复快照保留；重大范围变化需要你批准重新审核或拆分交付。
+ 
+ Matt 的 `to-spec`、`to-tickets`、`implement` 只作为方法使用，产物必须落在当前任务目录里
+ （例如票写到 `.workflow/tasks/<task-id>/tickets/`），不要让它们在 `.scratch/` 另起一套记录。
+@@ -702,9 +705,10 @@
+ 
+ 项目安装同时会从同级的
+ `D:\my-works\claude-skills\omp-extensions\workflow-review-gate` 同步 OMP extension 到
+-`.omp/extensions/workflow-review-gate`。它只阻止同一 `Active task + review profile +
+-worktree snapshot` 的重复最终审查；仓库检查和 `code-review` 不受它约束，修复产生新快照后仍
+-必须进行新的独立审查。扩展的短期状态写入 `.omp/.runtime/`，不替代 `.workflow/` 记录。
++`.omp/extensions/workflow-review-gate`。当前扩展只识别旧的 `Active task + review profile +
++worktree snapshot`，未覆盖新的 `Active change:` 或交付级审核轮数；不能据此宣称运行时已阻止重复审核。
++新规则由主路由读取 OpenSpec 中的轮数与证据执行，修复快照不自动重置预算；外部 gate 修复需另立 change。
++扩展短期状态 `.omp/.runtime/` 不替代 OpenSpec 记录。
+ 
+ ### OMP 升级后的检查
+ 
+--- baseline/ARCHITECTURE.md
++++ current/ARCHITECTURE.md
+@@ -39,8 +39,9 @@
+   -> repository verification (budget: quality-profiles.md)
+   -> one independent workflow-reviewer for Standards / Spec and
+      correctness/security/complexity (standard and critical)
+-  -> remediation and re-verification
+-  -> artifacts/verification.md evidence (one row per AC)
++  -> batch blocking repairs, affected checks, at most one focused follow-up
++     (remaining blockers or expanded scope -> user decision, not an automatic loop)
++  -> artifacts/verification.md evidence reuse (finish adds no tests or reviewers)
+   -> OpenSpec change -> awaiting-acceptance, hand the verification list to the user
+   -> user verify, or bounce back to in_progress with a new verification round
+   -> (user) accept, then archive via /archive-task
+--- baseline/tests/contracts.test.js
++++ current/tests/contracts.test.js
+@@ -72,6 +72,81 @@
+     assert.doesNotMatch(body, /Only dispatch for critical/);
+   }
+   assert.doesNotMatch(read(".omp/agents/workflow-reviewer.md"), /autoloadSkills:.*"code-review"/);
++});
++
++test("delivery review budget bounds rounds rather than only reviewer count", () => {
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const budget = profiles.split("## Delivery Review Budget")[1];
++  assert.ok(budget, "missing delivery-level budget");
++  assert.match(budget, /exactly one full review and at most one focused follow-up/i);
++  assert.match(budget, /original blocking findings.*repair diff.*directly affected/is);
++  assert.match(budget, /non-blocking.*(?:do not|never).*trigger/is);
++  assert.match(budget, /resume.*snapshot.*do not reset/is);
++  assert.match(budget, /blocked.*user.*(?:decide|decision)/is);
++  assert.match(budget, /user approval.*(?:new full review|restart)/is);
++  assert.match(budget, /one controlled.*INVALID.*no valid report/is);
++  assert.match(budget, /artifacts\/review\.md.*artifacts\/verification\.md/is);
++  assert.doesNotMatch(profiles, /after material fixes,[\s\S]{0,90}review the new snapshot/i);
++});
++
++test("routing reviews the delivery scope once and never adds code-reviewer", () => {
++  for (const file of ["skills/run-engineering-workflow/SKILL.md", "commands/engineering-workflow.md"]) {
++    const body = read(file);
++    assert.match(body, /delivery scope.*complete.*full review/is, file);
++    assert.match(body, /(?:slice|slices).*checks.*not.*full review/is, file);
++    assert.match(body, /code-reviewer/, file);
++    assert.match(body, /focused.*follow-up/is, file);
++    assert.match(body, /main (?:session|router).*only.*schedul/is, file);
++    assert.doesNotMatch(body, /snapshot changes require a new review|checks, and a new final review|Review again after material fixes/i, file);
++  }
++});
++
++test("behavior fixtures distinguish focused repair, exhaustion, scope drift and finish reuse", () => {
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  for (const [name, stage] of [
++    ["remediated-diff-needs-focused-follow-up", "focused-review"],
++    ["review-budget-exhausted", "handoff-review-blocker"],
++    ["nonblocking-review-suggestions", "finish-with-evidence"],
++    ["review-resume-preserves-budget", "handoff-review-blocker"],
++    ["review-scope-drift-needs-user-decision", "request-review-reauthorization"],
++    ["finish-evidence-gap-returns-to-router", "return-verification-gap"],
++    ["slice-complete-not-delivery-complete", "targeted-checks"],
++    ["valid-review-no-extra-code-reviewer", "finish-with-evidence"],
++  ]) {
++    const entry = cases.find((candidate) => candidate.name === name);
++    assert.ok(entry, `missing scenario ${name}`);
++    assert.equal(entry.expected_stage, stage);
++    assert.ok(entry.forbidden.length > 0, `${name}: missing negative boundary`);
++  }
++  assert.ok(!cases.some((entry) => entry.name === "remediated-diff-needs-fresh-final-review"));
++});
++
++test("review procedure and all reviewer adapters distinguish full and focused modes", () => {
++  const review = read("skills/review-implementation/SKILL.md");
++  assert.match(review, /Review mode:.*full.*focused/is);
++  assert.match(review, /focused.*original blocking findings.*repair diff.*directly affected/is);
++  assert.match(review, /Blocking:.*yes.*no/is);
++  assert.match(review, /REVIEW_STATUS: CLEAN.*no blocking/is);
++  assert.doesNotMatch(review, /Changes to those inputs require.*a new review/is);
++  for (const file of ["agents/workflow-reviewer.md", ".omp/agents/workflow-reviewer.md", ".pi/agents/workflow-reviewer.md"]) {
++    const body = read(file);
++    assert.match(body, /Review mode:.*full.*focused/is, file);
++    assert.match(body, /code-reviewer/, file);
++    assert.match(body, /focused.*(?:repair|findings)/is, file);
++    assert.doesNotMatch(body, /material input changes\s+require fresh review/i, file);
++  }
++});
++
++test("finish consumes evidence and returns gaps without scheduling or running checks", () => {
++  const finish = read("skills/finish-with-evidence/SKILL.md");
++  assert.match(finish, /## Consume Evidence/);
++  assert.match(finish, /do not dispatch.*do not.*run.*verification/is);
++  assert.match(finish, /(?:missing|stale).*main router/is);
++  assert.match(finish, /(?:full|focused).*round/is);
++  assert.doesNotMatch(finish, /\d\. Run relevant repository verification|fixes, affected checks and one new review|Re-run affected checks after substantive simplification/i);
++  assert.match(finish, /awaiting-acceptance/);
++  const metadata = read("skills/finish-with-evidence/agents/openai.yaml");
++  assert.match(metadata, /consume.*(?:existing|recorded).*evidence/i);
+ });
+ 
+ test("vocabulary ownership preserves legacy files and OpenSpec context", () => {
+@@ -463,7 +538,7 @@
+   for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]) {
+     assert.match(implementer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+   }
+-  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]) {
++  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]) {
+     assert.match(reviewer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+   }
+   assert.match(reviewer, /REVIEW_STATUS: INVALID/);
+@@ -489,6 +564,7 @@
+     "Must preserve:",
+     "May modify:",
+     "Verification:",
++    "Review mode:",
+     "Review scope:",
+     "Evidence:",
+   ]);
+@@ -506,7 +582,7 @@
+   const expectedHandoffs = new Map([
+     ["planner-with-explicit-task", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]],
+     ["implementation-with-one-slice", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]],
+-    ["review-with-diff-evidence", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]],
++    ["review-with-diff-evidence", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]],
+   ]);
+   for (const [name, requiredFields] of expectedHandoffs) {
+     const entry = fixture.cases.find((candidate) => candidate.name === name);
+--- baseline/evals/workflow-cases.json
++++ current/evals/workflow-cases.json
+@@ -1,6 +1,50 @@
+ {
+   "schema_version": 3,
+   "cases": [
++    {
++      "name": "review-budget-exhausted",
++      "state": "blocking_findings_after_one_full_and_one_focused_review",
++      "expected_stage": "handoff-review-blocker",
++      "required_status": "blocked",
++      "forbidden": ["another automatic review", "REVIEW_STATUS: CLEAN"]
++    },
++    {
++      "name": "nonblocking-review-suggestions",
++      "state": "complete_independent_review_with_only_optional_suggestions",
++      "expected_stage": "finish-with-evidence",
++      "forbidden": ["repair optional suggestions by default", "dispatch another reviewer"]
++    },
++    {
++      "name": "review-resume-preserves-budget",
++      "state": "resumed_change_with_exhausted_review_budget_and_remaining_blockers",
++      "expected_stage": "handoff-review-blocker",
++      "forbidden": ["reset rounds on resume", "restart full review"]
++    },
++    {
++      "name": "review-scope-drift-needs-user-decision",
++      "state": "changed_acceptance_criteria_or_interface_outside_prior_review_coverage",
++      "expected_stage": "request-review-reauthorization",
++      "forbidden": ["automatic full review", "discard prior rounds"]
++    },
++    {
++      "name": "finish-evidence-gap-returns-to-router",
++      "state": "finish_invoked_with_missing_or_stale_verification_evidence",
++      "expected_stage": "return-verification-gap",
++      "required_evidence_status": "UNVERIFIED",
++      "forbidden": ["finish runs tests directly", "finish dispatches reviewer", "claim normal completion"]
++    },
++    {
++      "name": "slice-complete-not-delivery-complete",
++      "state": "one_slice_complete_in_shared_approved_delivery_scope",
++      "expected_stage": "targeted-checks",
++      "forbidden": ["full review per slice"]
++    },
++    {
++      "name": "valid-review-no-extra-code-reviewer",
++      "state": "complete_valid_workflow_reviewer_report_and_repository_evidence",
++      "expected_stage": "finish-with-evidence",
++      "forbidden": ["dispatch code-reviewer", "dispatch native code-review", "finish reruns unchanged checks"]
++    },
+     {
+       "name": "review-evidence-append-does-not-self-invalidate",
+       "state": "same_change_same_reviewed_material_with_appended_report",
+@@ -90,11 +134,13 @@
+       "forbidden": ["dispatch code-reviewer", "dispatch generic reviewer"]
+     },
+     {
+-      "name": "remediated-diff-needs-fresh-final-review",
+-      "state": "material_finding_fixed_with_changed_snapshot",
+-      "expected_stage": "review-implementation",
++      "name": "remediated-diff-needs-focused-follow-up",
++      "state": "material_finding_fixed_with_changed_snapshot_after_one_full_review",
++      "expected_stage": "focused-review",
+       "omp_agent": "workflow-reviewer",
+-      "omp_role": "@advisor"
++      "omp_role": "@advisor",
++      "required_behavior": "Review mode: focused; original blocking findings, repair diff and directly affected paths only",
++      "forbidden": ["restart full review", "reset budget on changed snapshot"]
+     },
+     {
+       "name": "verification-command-unavailable",
+@@ -169,7 +215,7 @@
+       "name": "review-with-diff-evidence",
+       "state": "code_changed_with_evidence",
+       "expected_stage": "review-implementation",
+-      "required_handoff": ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]
++      "required_handoff": ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]
+     },
+     {
+       "name": "missing-task-path",
+--- baseline/skills/finish-with-evidence/agents/openai.yaml
++++ current/skills/finish-with-evidence/agents/openai.yaml
+@@ -1,4 +1,4 @@
+ interface:
+   display_name: "Finish With Evidence"
+-  short_description: "Verify delivery and preserve implementation evidence"
+-  default_prompt: "Use $finish-with-evidence to verify and record this completed task."
++  short_description: "Consume evidence and record delivery without another review"
++  default_prompt: "Use $finish-with-evidence to consume existing verification and review evidence, record results, and hand off for acceptance."

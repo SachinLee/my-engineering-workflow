@@ -1,0 +1,83 @@
+{
+  "changeName": "limit-delivery-review-rounds",
+  "changeDir": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds",
+  "schemaName": "spec-driven",
+  "contextFiles": {
+    "proposal": [
+      "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\proposal.md"
+    ],
+    "specs": [
+      "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\specs\\delivery-review-budget\\spec.md"
+    ],
+    "design": [
+      "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\design.md"
+    ],
+    "tasks": [
+      "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md"
+    ]
+  },
+  "progress": {
+    "total": 7,
+    "complete": 5,
+    "remaining": 2
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "description": "1.1 添加预算/身份/停止条件断言与场景并记录 RED。",
+      "done": true,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 20
+    },
+    {
+      "id": "2",
+      "description": "1.2 更新共享预算和入口规则，记录 GREEN。",
+      "done": true,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 21
+    },
+    {
+      "id": "3",
+      "description": "2.1 添加 reviewer/finish 断言并记录 RED。",
+      "done": true,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 32
+    },
+    {
+      "id": "4",
+      "description": "2.2 更新技能和三个 reviewer 源定义，记录 GREEN。",
+      "done": true,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 33
+    },
+    {
+      "id": "5",
+      "description": "2.3 完成全套测试、隔离安装验证和本项目安装同步。",
+      "done": true,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 34
+    },
+    {
+      "id": "6",
+      "description": "3.1 派发一次完整独立 `workflow-reviewer`，记录报告；若有阻断项只集中修复并最多一次定向复核。",
+      "done": false,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 37
+    },
+    {
+      "id": "7",
+      "description": "3.2 记录逐条 AC、运行限制和用户验证步骤，交接 `awaiting-acceptance`；不接受或归档。",
+      "done": false,
+      "sourcePath": "D:\\my-works\\claude-skills\\my-engineering-workflow\\openspec\\changes\\limit-delivery-review-rounds\\tasks.md",
+      "line": 38
+    }
+  ],
+  "taskTrackingConfigured": true,
+  "state": "ready",
+  "instruction": "Read context files, work through pending tasks, mark complete as you go.\nPause if you hit blockers or need clarification.",
+  "context": "Language: Chinese\nAll OpenSpec artifacts must be written in Chinese, including headings and field labels.\nKeep identifiers, file paths, commands, log text, OpenSpec filenames, and status tokens in English.\nWhen a generated template contains English prose, translate the prose into Chinese before completing the artifact.\nKeep protocol keywords such as SHALL and MUST in English when they are part of a machine-checkable contract.\n",
+  "root": {
+    "path": "D:\\my-works\\claude-skills\\my-engineering-workflow",
+    "source": "nearest"
+  }
+}

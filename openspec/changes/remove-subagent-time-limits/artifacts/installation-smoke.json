@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "file_comparisons": 103,
+  "skill_roots": [
+    "D:\\my-works\\claude-skills\\my-engineering-workflow\\.agents\\skills",
+    "D:\\my-works\\claude-skills\\my-engineering-workflow\\.omp\\skills",
+    "D:\\my-works\\claude-skills\\my-engineering-workflow\\.claude\\skills",
+    "C:\\Users\\shuan\\.codex\\skills",
+    "C:\\Users\\shuan\\.omp\\agent\\skills",
+    "C:\\Users\\shuan\\.claude\\skills",
+    "C:\\Users\\shuan\\.pi\\agent\\skills"
+  ],
+  "omp_maxRuntimeMs": 0,
+  "pi_timeoutMs": 2147483647,
+  "pi_httpIdleTimeoutMs": 0
+}

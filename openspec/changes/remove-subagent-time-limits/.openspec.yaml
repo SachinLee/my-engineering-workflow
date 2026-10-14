@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-10-09
+goal: 移除按时间终止的工作流规则，关闭 OMP runtime cap，将 Pi workflow agent 时限设置为平台上限并同步四个 harness

@@ -1,0 +1,20 @@
+{
+  "scope": "bounded read-only model routing exercise; no installation, dispatch, mutation or native Matt execution",
+  "cases": [
+    {"id":"lightweight","input":"A non-behavioral README typo fix has passed its smallest relevant check. Main routing, command and finish are available. No reviewer has run. Choose the next action."},
+    {"id":"standard","input":"The selected Standard OpenSpec change is implemented. RED/GREEN and repository checks passed. No independent review exists. Choose the final review path and its dimensions."},
+    {"id":"critical","input":"A Critical authorization change passed targeted, integration, security, rollback and relevant E2E checks. No independent review exists. Choose the review budget."},
+    {"id":"reuse","input":"Standard change has a real complete independent CLEAN report. Its file contents, base, requirements and checks still match. finish-with-evidence is invoked again. Choose the action."},
+    {"id":"append","input":"Same valid reviewed material as reuse. Only the reviewer report and delivery commentary were appended. No substantive reviewed input changed. Choose the action."},
+    {"id":"remediation","input":"A HIGH finding from the independent reviewer was fixed, changing reviewed code. Affected checks passed. Old review was FINDINGS. Choose the action."},
+    {"id":"invalid_first","input":"An independent review returned INVALID due to incomplete handoff. Handoff is now complete. No replacement has been attempted. Choose the action and prompt marker."},
+    {"id":"invalid_second","input":"The one INVALID replacement has already been used. The replacement is also INVALID. Choose the action."},
+    {"id":"unavailable","input":"Standard change checks passed, but no independent context is available. Choose the status and delivery action."},
+    {"id":"mixed_workspace","input":"Selected change proposal/specs are known. base-to-HEAD is empty. Relevant staged src/a.js, unstaged src/b.js and explicitly named untracked tests/new.test.js exist. Unrelated notes/private.txt and sensitive .env also exist. Choose the read scope and requirement source."},
+    {"id":"native_explicit","input":"User explicitly requested native Matt code-review and authorized its two reviewers. A valid fixed point and nonempty committed diff to HEAD are confirmed; unrelated unstaged work exists. Choose the mode, report coverage and whether finish adds a reviewer."},
+    {"id":"new_glossary","input":"New project has no vocabulary file. A stable domain term is resolved and user confirmed the project's terminology owner. Choose the vocabulary target and effect on OpenSpec artifacts/context.md."},
+    {"id":"legacy_context","input":"Project has only existing CONTEXT.md for terms. User asks to capture a new stable term without selecting a migration or confirming a write target. Choose the action."},
+    {"id":"both_vocabularies","input":"Project has GLOSSARY.md and CONTEXT.md with conflicting terminology, no GLOSSARY-MAP.md and no write-target decision. Choose the action."},
+    {"id":"no_stable_term","input":"New project has no vocabulary file, but no stable term has been resolved. Choose the action."}
+  ]
+}

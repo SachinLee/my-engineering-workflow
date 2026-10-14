@@ -1,0 +1,409 @@
+{
+  "scope": "User",
+  "harness": "All",
+  "command": "pwsh -NoProfile -File scripts/install.ps1 -Scope User -Harness All",
+  "install_exit": 0,
+  "backup_dir": "C:\\Users\\shuan\\AppData\\Local\\Temp\\workflow-user-install-backup-5ykh67pd",
+  "roots": {
+    "Codex": "C:\\Users\\shuan\\.codex",
+    "OMP": "C:\\Users\\shuan\\.omp\\agent",
+    "Claude": "C:\\Users\\shuan\\.claude",
+    "Pi": "C:\\Users\\shuan\\.pi\\agent"
+  },
+  "checks": [
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\run-engineering-workflow\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\clarify-requirements\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\plan-solution\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\plan-solution\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\review-implementation\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\review-implementation\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\finish-with-evidence\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\archive-task\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\archive-task\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\openspec_compat.py",
+      "installed": "C:\\Users\\shuan\\.codex\\skills\\run-engineering-workflow\\scripts\\openspec_compat.py",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\run-engineering-workflow\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\clarify-requirements\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\plan-solution\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\plan-solution\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\review-implementation\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\review-implementation\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\finish-with-evidence\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\archive-task\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\archive-task\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\openspec_compat.py",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\skills\\run-engineering-workflow\\scripts\\openspec_compat.py",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.omp\\agents\\workflow-implementer.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\agents\\workflow-implementer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.omp\\agents\\workflow-planner.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\agents\\workflow-planner.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.omp\\agents\\workflow-reviewer.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\agents\\workflow-reviewer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\run-engineering-workflow\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\clarify-requirements\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\plan-solution\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\plan-solution\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\review-implementation\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\review-implementation\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\finish-with-evidence\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\archive-task\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\archive-task\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\openspec_compat.py",
+      "installed": "C:\\Users\\shuan\\.claude\\skills\\run-engineering-workflow\\scripts\\openspec_compat.py",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\agents\\workflow-implementer.md",
+      "installed": "C:\\Users\\shuan\\.claude\\agents\\workflow-implementer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\agents\\workflow-planner.md",
+      "installed": "C:\\Users\\shuan\\.claude\\agents\\workflow-planner.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\agents\\workflow-reviewer.md",
+      "installed": "C:\\Users\\shuan\\.claude\\agents\\workflow-reviewer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\commands\\engineering-workflow.md",
+      "installed": "C:\\Users\\shuan\\.claude\\commands\\engineering-workflow.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\commands\\archive-task.md",
+      "installed": "C:\\Users\\shuan\\.claude\\commands\\archive-task.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\run-engineering-workflow\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\run-engineering-workflow\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\run-engineering-workflow\\references\\quality-profiles.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\run-engineering-workflow\\references\\workflow-governance.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\clarify-requirements\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\clarify-requirements\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\plan-solution\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\plan-solution\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\plan-solution\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\review-implementation\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\review-implementation\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\review-implementation\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\finish-with-evidence\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\finish-with-evidence\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\SKILL.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\archive-task\\SKILL.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\skills\\archive-task\\agents\\openai.yaml",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\archive-task\\agents\\openai.yaml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\openspec_compat.py",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\skills\\run-engineering-workflow\\scripts\\openspec_compat.py",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.pi\\agents\\workflow-implementer.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\agents\\workflow-implementer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.pi\\agents\\workflow-planner.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\agents\\workflow-planner.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\.pi\\agents\\workflow-reviewer.md",
+      "installed": "C:\\Users\\shuan\\.pi\\agent\\agents\\workflow-reviewer.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\omp-extensions\\workflow-review-gate\\index.ts",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\extensions\\workflow-review-gate\\index.ts",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\omp-extensions\\workflow-review-gate\\package.json",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\extensions\\workflow-review-gate\\package.json",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\omp-extensions\\workflow-review-gate\\README.md",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\extensions\\workflow-review-gate\\README.md",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\omp-extensions\\workflow-review-gate\\lib\\review-gate-core.js",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\extensions\\workflow-review-gate\\lib\\review-gate-core.js",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\omp-extensions\\workflow-review-gate\\tests\\review-gate.test.js",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\extensions\\workflow-review-gate\\tests\\review-gate.test.js",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\config\\omp-workflow.yml",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\engineering-workflow.yml",
+      "PASS": true
+    },
+    {
+      "source": "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\start-omp.py",
+      "installed": "C:\\Users\\shuan\\.omp\\agent\\start-engineering-workflow.py",
+      "PASS": true
+    }
+  ],
+  "protected_file_count": 1071,
+  "protected_files_unchanged": true,
+  "protected_failures": [],
+  "status": "PASS"
+}

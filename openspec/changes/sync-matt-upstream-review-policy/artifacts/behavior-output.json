@@ -1,0 +1,231 @@
+{
+  "scope": "bounded read-only model routing exercise; no installation, dispatch, mutation or native Matt execution",
+  "actual_child_invocations": 1,
+  "actual_dispatches_inside_exercise": 0,
+  "results": [
+    {
+      "id": "lightweight",
+      "next_action": "Invoke finish-with-evidence in the main session, then hand off at awaiting-acceptance.",
+      "planned_reviewers": [],
+      "review_scope": "Relevant git diff and the smallest runnable check already completed.",
+      "requirement_source": "Active OpenSpec proposal/specs plus repository workflow rules.",
+      "status": "READY_FOR_FINISH",
+      "reason": "Lightweight non-behavioral work has no default independent reviewer or dispatch once the focused check passes.",
+      "source_refs": [
+        "skills/run-engineering-workflow/SKILL.md#Route By State",
+        "skills/run-engineering-workflow/references/quality-profiles.md#Lightweight",
+        "skills/finish-with-evidence/SKILL.md#Hand Off For Acceptance"
+      ]
+    },
+    {
+      "id": "standard",
+      "next_action": "Plan exactly one independent workflow-reviewer through review-implementation.",
+      "planned_reviewers": [
+        "workflow-reviewer"
+      ],
+      "review_scope": "Complete relevant workspace; Standards and Spec, correctness, security, tests, complexity, and evidence.",
+      "requirement_source": "Active OpenSpec proposal/specs, repository rules, and recorded RED/GREEN and check evidence.",
+      "status": "REVIEW_REQUIRED",
+      "reason": "Standard work requires one independent final review after implementation and repository checks.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/quality-profiles.md#Standard",
+        "skills/review-implementation/SKILL.md#One Workspace Review"
+      ]
+    },
+    {
+      "id": "critical",
+      "next_action": "Plan exactly one independent workflow-reviewer through review-implementation; do not add a second generic or native reviewer.",
+      "planned_reviewers": [
+        "workflow-reviewer"
+      ],
+      "review_scope": "Complete relevant workspace with Standards and Spec plus correctness, security, tests, complexity, rollback, and critical-path evidence.",
+      "requirement_source": "Active OpenSpec proposal/specs and the Critical quality profile.",
+      "status": "REVIEW_REQUIRED",
+      "reason": "Critical risk increases verification depth but does not increase the generic final-review budget beyond one independent reviewer.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/quality-profiles.md#Critical",
+        "skills/run-engineering-workflow/SKILL.md#Route By State"
+      ]
+    },
+    {
+      "id": "reuse",
+      "next_action": "Reuse the valid same-change/same-material CLEAN report and proceed through finish-with-evidence without a new review dispatch.",
+      "planned_reviewers": [
+        "workflow-reviewer (existing valid report reused)"
+      ],
+      "review_scope": "The already reviewed complete relevant workspace and matching requirements/check evidence.",
+      "requirement_source": "The same active OpenSpec proposal/specs and unchanged reviewed material.",
+      "status": "REVIEW_REUSED",
+      "reason": "The independent report remains valid because file contents, base, requirements, scope, and checks still match.",
+      "source_refs": [
+        "skills/run-engineering-workflow/SKILL.md#Route By State",
+        "skills/review-implementation/SKILL.md#Reuse",
+        "skills/finish-with-evidence/SKILL.md#Verify"
+      ]
+    },
+    {
+      "id": "append",
+      "next_action": "Reuse the existing independent review and continue finish-with-evidence without dispatching again.",
+      "planned_reviewers": [
+        "workflow-reviewer (existing valid report reused)"
+      ],
+      "review_scope": "The unchanged substantive reviewed inputs; appended review and delivery commentary are not new review scope.",
+      "requirement_source": "The same active OpenSpec proposal/specs and unchanged reviewed material.",
+      "status": "REVIEW_REUSED",
+      "reason": "Appending the report or delivery record does not invalidate an otherwise matching review.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/quality-profiles.md#Standard",
+        "skills/review-implementation/SKILL.md#Reuse",
+        "skills/finish-with-evidence/SKILL.md#Verify"
+      ]
+    },
+    {
+      "id": "remediation",
+      "next_action": "After the affected checks, plan a new final workflow-reviewer review for the changed snapshot.",
+      "planned_reviewers": [
+        "workflow-reviewer"
+      ],
+      "review_scope": "Complete relevant workspace after remediation, including the changed code, affected tests, requirements, and evidence.",
+      "requirement_source": "Active OpenSpec proposal/specs plus the prior finding and remediation diff.",
+      "status": "REVIEW_REQUIRED",
+      "reason": "Fixing a HIGH finding changes reviewed material, so the old FINDINGS report cannot certify the new snapshot.",
+      "source_refs": [
+        "skills/run-engineering-workflow/SKILL.md#Route By State",
+        "skills/review-implementation/SKILL.md#Reuse",
+        "skills/finish-with-evidence/SKILL.md#Verify"
+      ]
+    },
+    {
+      "id": "invalid_first",
+      "next_action": "Plan one controlled replacement workflow-reviewer review with the prompt marker `Review retry: invalid`.",
+      "planned_reviewers": [
+        "workflow-reviewer (controlled INVALID replacement)"
+      ],
+      "review_scope": "The same snapshot and complete relevant workspace, with the now-complete handoff.",
+      "requirement_source": "Active OpenSpec proposal/specs and the completed bounded review handoff.",
+      "status": "REVIEW_RETRY_ALLOWED",
+      "reason": "One INVALID replacement is allowed on the same snapshot when the handoff has been corrected.",
+      "source_refs": [
+        "skills/run-engineering-workflow/SKILL.md#OMP Review Idempotency",
+        "skills/review-implementation/SKILL.md#Reuse"
+      ]
+    },
+    {
+      "id": "invalid_second",
+      "next_action": "Stop further review dispatches and escalate the INVALID result to the main session for resolution.",
+      "planned_reviewers": [],
+      "review_scope": "No additional review scope is authorized by the retry rule.",
+      "requirement_source": "Active OpenSpec proposal/specs and the review retry policy.",
+      "status": "INVALID",
+      "reason": "The single controlled INVALID replacement has already been consumed; the workflow must escalate instead of retrying again.",
+      "source_refs": [
+        "skills/run-engineering-workflow/SKILL.md#OMP Review Idempotency",
+        "skills/review-implementation/SKILL.md#Reuse"
+      ]
+    },
+    {
+      "id": "unavailable",
+      "next_action": "Record UNVERIFIED, disclose the unavailable independent-review gap, and stop before normal completion.",
+      "planned_reviewers": [
+        "workflow-reviewer (required but unavailable)"
+      ],
+      "review_scope": "The complete relevant workspace remains unreviewed independently.",
+      "requirement_source": "Active OpenSpec proposal/specs and the Standard quality profile.",
+      "status": "UNVERIFIED",
+      "reason": "Passing repository checks does not replace the required independent review for Standard work.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/quality-profiles.md#Standard",
+        "skills/run-engineering-workflow/SKILL.md#Route By State",
+        "skills/finish-with-evidence/SKILL.md#Verify"
+      ]
+    },
+    {
+      "id": "mixed_workspace",
+      "next_action": "Prepare a bounded review handoff for the relevant workspace and plan only the reviewer required by the active profile.",
+      "planned_reviewers": [
+        "workflow-reviewer"
+      ],
+      "review_scope": "Empty base-to-HEAD diff, staged `src/a.js`, unstaged `src/b.js`, and explicitly named untracked `tests/new.test.js`; exclude `notes/private.txt` and sensitive `.env`.",
+      "requirement_source": "The selected OpenSpec proposal/specs own Spec; do not use another issue, `.scratch/`, or unrelated files.",
+      "status": "REVIEW_HANDOFF_READY",
+      "reason": "Review scope must include relevant committed, staged, unstaged, and explicitly named untracked material while excluding unrelated and sensitive files.",
+      "source_refs": [
+        "skills/review-implementation/SKILL.md#One Workspace Review",
+        "skills/review-implementation/SKILL.md#Establish The Contract",
+        "skills/run-engineering-workflow/references/workflow-governance.md#Source Trust"
+      ]
+    },
+    {
+      "id": "native_explicit",
+      "next_action": "Use explicitly authorized native Matt code-review with two reviewers; finish must not add a third reviewer.",
+      "planned_reviewers": [
+        "Matt native reviewer 1",
+        "Matt native reviewer 2"
+      ],
+      "review_scope": "Committed diff from the valid fixed point to HEAD only; staged, unstaged, and untracked contents are outside native-review coverage. Unrelated unstaged work remains untouched.",
+      "requirement_source": "Selected OpenSpec proposal/specs plus the explicitly authorized native-review request.",
+      "status": "NATIVE_REVIEW_PLANNED",
+      "reason": "Native Matt review is permitted only by explicit request with a valid fixed point and nonempty committed diff; finish does not automatically add another reviewer.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/quality-profiles.md#Explicit Native Review",
+        "skills/review-implementation/SKILL.md#One Workspace Review",
+        "commands/engineering-workflow.md#Engineering Workflow"
+      ]
+    },
+    {
+      "id": "new_glossary",
+      "next_action": "Target the project's new `GLOSSARY.md` for the resolved term; keep `artifacts/context.md` as the OpenSpec dispatch package and do not replace it.",
+      "planned_reviewers": [],
+      "review_scope": "NOT APPLICABLE",
+      "requirement_source": "Workflow governance artifact ownership rules.",
+      "status": "VOCABULARY_WRITE_ALLOWED",
+      "reason": "A new project's stable vocabulary belongs in `GLOSSARY.md` after the term and terminology owner are confirmed; `artifacts/context.md` remains a separate bounded context artifact.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/workflow-governance.md#Artifact Ownership",
+        "skills/run-engineering-workflow/references/workflow-governance.md#Context Loading Contract"
+      ]
+    },
+    {
+      "id": "legacy_context",
+      "next_action": "Ask the user to confirm the intended write target or migration choice; do not write or create a second vocabulary file yet.",
+      "planned_reviewers": [],
+      "review_scope": "NOT APPLICABLE",
+      "requirement_source": "Workflow governance rules for existing `CONTEXT.md` ownership and explicit migration.",
+      "status": "CONFIRMATION_REQUIRED",
+      "reason": "An existing project's `CONTEXT.md` is legacy-compatible vocabulary ownership, but no implicit migration, rename, dual-write, or unconfirmed target is allowed.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/workflow-governance.md#Artifact Ownership",
+        "skills/run-engineering-workflow/references/workflow-governance.md#Legacy `.workflow` And `.trellis` Records"
+      ]
+    },
+    {
+      "id": "both_vocabularies",
+      "next_action": "Ask the user to resolve the conflicting vocabulary ownership or provide an explicit `GLOSSARY-MAP.md` decision; do not write yet.",
+      "planned_reviewers": [],
+      "review_scope": "NOT APPLICABLE",
+      "requirement_source": "Workflow governance artifact ownership rules.",
+      "status": "CONFIRMATION_REQUIRED",
+      "reason": "When both vocabulary files exist and conflict, writing requires an explicit decision and should follow `GLOSSARY-MAP.md` when present; neither condition is satisfied.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/workflow-governance.md#Artifact Ownership"
+      ]
+    },
+    {
+      "id": "no_stable_term",
+      "next_action": "Defer vocabulary-file creation and clarify or resolve the stable term before selecting a write target.",
+      "planned_reviewers": [],
+      "review_scope": "NOT APPLICABLE",
+      "requirement_source": "Workflow governance rules for lazy vocabulary-file creation.",
+      "status": "BLOCKED_NO_STABLE_TERM",
+      "reason": "A new vocabulary file is created lazily only after a stable term is resolved and its owner is confirmed.",
+      "source_refs": [
+        "skills/run-engineering-workflow/references/workflow-governance.md#Artifact Ownership"
+      ]
+    }
+  ],
+  "limitations": [
+    "This exercise measures model decision output against the currently read rules; it does not verify end-to-end harness execution.",
+    "No agents were dispatched, no native Matt review was executed, and no files were edited or installed.",
+    "The exercise did not read `artifacts/verification.md` or `implementation-evidence.md`."
+  ]
+}

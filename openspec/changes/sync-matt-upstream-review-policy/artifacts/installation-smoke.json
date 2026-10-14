@@ -1,0 +1,455 @@
+{
+  "scope": "Project All in a fresh disposable sandbox; full canonical skill tree including shared references, openspec_compat.py, all three agent roles and Claude commands",
+  "commands": [
+    {
+      "check": "dry-run",
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\install.ps1",
+        "-Scope",
+        "Project",
+        "-Harness",
+        "All",
+        "-ProjectPath",
+        "C:\\Users\\shuan\\AppData\\Local\\Temp\\workflow-final-install-b5528l4b",
+        "-WhatIf"
+      ],
+      "exit_code": 0,
+      "log": "logs\\final-dry-run.log"
+    },
+    {
+      "check": "install",
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\install.ps1",
+        "-Scope",
+        "Project",
+        "-Harness",
+        "All",
+        "-ProjectPath",
+        "C:\\Users\\shuan\\AppData\\Local\\Temp\\workflow-final-install-b5528l4b"
+      ],
+      "exit_code": 0,
+      "log": "logs\\final-install.log"
+    },
+    {
+      "check": "doctor",
+      "argv": [
+        "python",
+        "D:\\my-works\\claude-skills\\my-engineering-workflow\\scripts\\doctor.py",
+        "--scope",
+        "Project",
+        "--harness",
+        "All",
+        "--project-path",
+        "C:\\Users\\shuan\\AppData\\Local\\Temp\\workflow-final-install-b5528l4b"
+      ],
+      "exit_code": 1,
+      "log": "logs\\final-doctor.log"
+    }
+  ],
+  "checked": 56,
+  "missing": 0,
+  "mismatched": 0,
+  "pairs": [
+    {
+      "source": "skills/archive-task/SKILL.md",
+      "target": ".agents/skills/archive-task/SKILL.md",
+      "source_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "target_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "match": true
+    },
+    {
+      "source": "skills/archive-task/SKILL.md",
+      "target": ".omp/skills/archive-task/SKILL.md",
+      "source_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "target_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "match": true
+    },
+    {
+      "source": "skills/archive-task/SKILL.md",
+      "target": ".claude/skills/archive-task/SKILL.md",
+      "source_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "target_sha256": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/SKILL.md",
+      "target": ".agents/skills/clarify-requirements/SKILL.md",
+      "source_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "target_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/SKILL.md",
+      "target": ".omp/skills/clarify-requirements/SKILL.md",
+      "source_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "target_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/SKILL.md",
+      "target": ".claude/skills/clarify-requirements/SKILL.md",
+      "source_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "target_sha256": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/SKILL.md",
+      "target": ".agents/skills/finish-with-evidence/SKILL.md",
+      "source_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "target_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/SKILL.md",
+      "target": ".omp/skills/finish-with-evidence/SKILL.md",
+      "source_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "target_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/SKILL.md",
+      "target": ".claude/skills/finish-with-evidence/SKILL.md",
+      "source_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "target_sha256": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/SKILL.md",
+      "target": ".agents/skills/plan-solution/SKILL.md",
+      "source_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "target_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/SKILL.md",
+      "target": ".omp/skills/plan-solution/SKILL.md",
+      "source_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "target_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/SKILL.md",
+      "target": ".claude/skills/plan-solution/SKILL.md",
+      "source_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "target_sha256": "ac59d959670e8abaf9ff0776b229f79a6289db8e3bb4841acf1abf64a89156a5",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/SKILL.md",
+      "target": ".agents/skills/review-implementation/SKILL.md",
+      "source_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "target_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/SKILL.md",
+      "target": ".omp/skills/review-implementation/SKILL.md",
+      "source_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "target_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/SKILL.md",
+      "target": ".claude/skills/review-implementation/SKILL.md",
+      "source_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "target_sha256": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/SKILL.md",
+      "target": ".agents/skills/run-engineering-workflow/SKILL.md",
+      "source_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "target_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/SKILL.md",
+      "target": ".omp/skills/run-engineering-workflow/SKILL.md",
+      "source_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "target_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/SKILL.md",
+      "target": ".claude/skills/run-engineering-workflow/SKILL.md",
+      "source_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "target_sha256": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/agents/openai.yaml",
+      "target": ".agents/skills/run-engineering-workflow/agents/openai.yaml",
+      "source_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "target_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/agents/openai.yaml",
+      "target": ".omp/skills/run-engineering-workflow/agents/openai.yaml",
+      "source_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "target_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/agents/openai.yaml",
+      "target": ".claude/skills/run-engineering-workflow/agents/openai.yaml",
+      "source_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "target_sha256": "083d3703ebc223a89325460ba9e03242b5be63f4e6725a5821b188b3dd8868e1",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md",
+      "target": ".agents/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "target_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md",
+      "target": ".omp/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "target_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md",
+      "target": ".claude/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "target_sha256": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md",
+      "target": ".agents/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "target_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md",
+      "target": ".omp/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "target_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "match": true
+    },
+    {
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md",
+      "target": ".claude/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "target_sha256": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/agents/openai.yaml",
+      "target": ".agents/skills/review-implementation/agents/openai.yaml",
+      "source_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "target_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/agents/openai.yaml",
+      "target": ".omp/skills/review-implementation/agents/openai.yaml",
+      "source_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "target_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "match": true
+    },
+    {
+      "source": "skills/review-implementation/agents/openai.yaml",
+      "target": ".claude/skills/review-implementation/agents/openai.yaml",
+      "source_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "target_sha256": "ffae120c0737123ccf1e8935624c1898f1208fd5fc261ffa66829fa678616c2e",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/agents/openai.yaml",
+      "target": ".agents/skills/plan-solution/agents/openai.yaml",
+      "source_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "target_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/agents/openai.yaml",
+      "target": ".omp/skills/plan-solution/agents/openai.yaml",
+      "source_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "target_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "match": true
+    },
+    {
+      "source": "skills/plan-solution/agents/openai.yaml",
+      "target": ".claude/skills/plan-solution/agents/openai.yaml",
+      "source_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "target_sha256": "75652acb12202f32422321e605db5f115614610cadace11bd9f330d1c159b6c9",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/agents/openai.yaml",
+      "target": ".agents/skills/finish-with-evidence/agents/openai.yaml",
+      "source_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "target_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/agents/openai.yaml",
+      "target": ".omp/skills/finish-with-evidence/agents/openai.yaml",
+      "source_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "target_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "match": true
+    },
+    {
+      "source": "skills/finish-with-evidence/agents/openai.yaml",
+      "target": ".claude/skills/finish-with-evidence/agents/openai.yaml",
+      "source_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "target_sha256": "92765e2433f5e4b58c2e1230d3bc21f075ced375459fd2736e6c4fd7096169fa",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/agents/openai.yaml",
+      "target": ".agents/skills/clarify-requirements/agents/openai.yaml",
+      "source_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "target_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/agents/openai.yaml",
+      "target": ".omp/skills/clarify-requirements/agents/openai.yaml",
+      "source_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "target_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "match": true
+    },
+    {
+      "source": "skills/clarify-requirements/agents/openai.yaml",
+      "target": ".claude/skills/clarify-requirements/agents/openai.yaml",
+      "source_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "target_sha256": "39008c7255503072159d5765559679a8b799ffb60039e71646bca8a51912f6cb",
+      "match": true
+    },
+    {
+      "source": "skills/archive-task/agents/openai.yaml",
+      "target": ".agents/skills/archive-task/agents/openai.yaml",
+      "source_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "target_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "match": true
+    },
+    {
+      "source": "skills/archive-task/agents/openai.yaml",
+      "target": ".omp/skills/archive-task/agents/openai.yaml",
+      "source_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "target_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "match": true
+    },
+    {
+      "source": "skills/archive-task/agents/openai.yaml",
+      "target": ".claude/skills/archive-task/agents/openai.yaml",
+      "source_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "target_sha256": "fba6cf39f0bbe644a66e22039dad7d12adf78a989c30a8dfd1d0c71a6196d9a3",
+      "match": true
+    },
+    {
+      "source": "scripts/openspec_compat.py",
+      "target": ".agents/skills/run-engineering-workflow/scripts/openspec_compat.py",
+      "source_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "target_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "match": true
+    },
+    {
+      "source": "scripts/openspec_compat.py",
+      "target": ".omp/skills/run-engineering-workflow/scripts/openspec_compat.py",
+      "source_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "target_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "match": true
+    },
+    {
+      "source": "scripts/openspec_compat.py",
+      "target": ".claude/skills/run-engineering-workflow/scripts/openspec_compat.py",
+      "source_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "target_sha256": "1253e650873a85d6fee2b4a9afa9d1a7c11ca485685888ef561e3885f124a9f3",
+      "match": true
+    },
+    {
+      "source": "agents/workflow-implementer.md",
+      "target": ".claude/agents/workflow-implementer.md",
+      "source_sha256": "94cd902942e81a97ef2a2b7a950a5c20e67f4e4c2ae5c12d2fd0a32f7903cda5",
+      "target_sha256": "94cd902942e81a97ef2a2b7a950a5c20e67f4e4c2ae5c12d2fd0a32f7903cda5",
+      "match": true
+    },
+    {
+      "source": "agents/workflow-planner.md",
+      "target": ".claude/agents/workflow-planner.md",
+      "source_sha256": "24ef74ddf84c9205edb99b280fd8598fcf5129c04bedc51add4aa2fef72023a4",
+      "target_sha256": "24ef74ddf84c9205edb99b280fd8598fcf5129c04bedc51add4aa2fef72023a4",
+      "match": true
+    },
+    {
+      "source": "agents/workflow-reviewer.md",
+      "target": ".claude/agents/workflow-reviewer.md",
+      "source_sha256": "6389b2d1d3c3cf28e456e4eaa4af823e80044d9edd9af7c1d8b23dfc1117401b",
+      "target_sha256": "6389b2d1d3c3cf28e456e4eaa4af823e80044d9edd9af7c1d8b23dfc1117401b",
+      "match": true
+    },
+    {
+      "source": ".omp/agents/workflow-implementer.md",
+      "target": ".omp/agents/workflow-implementer.md",
+      "source_sha256": "be2a8a4c711b99cf2935b12409379653a5182c172bbf16167c15f8349277c656",
+      "target_sha256": "be2a8a4c711b99cf2935b12409379653a5182c172bbf16167c15f8349277c656",
+      "match": true
+    },
+    {
+      "source": ".omp/agents/workflow-planner.md",
+      "target": ".omp/agents/workflow-planner.md",
+      "source_sha256": "87fbc5f25abcde52e2f4f12693e8dd16432fd45b9b021cdf03d715f7d7467025",
+      "target_sha256": "87fbc5f25abcde52e2f4f12693e8dd16432fd45b9b021cdf03d715f7d7467025",
+      "match": true
+    },
+    {
+      "source": ".omp/agents/workflow-reviewer.md",
+      "target": ".omp/agents/workflow-reviewer.md",
+      "source_sha256": "74f5c56dfcc229eca4a90c111c4647ad11363f059dccf92acc3fa298bc0a1b4d",
+      "target_sha256": "74f5c56dfcc229eca4a90c111c4647ad11363f059dccf92acc3fa298bc0a1b4d",
+      "match": true
+    },
+    {
+      "source": ".pi/agents/workflow-implementer.md",
+      "target": ".pi/agents/workflow-implementer.md",
+      "source_sha256": "b107154a38e4a0adfc3398592beaffb73ccd3d9db9420dfcb9e1459584da6044",
+      "target_sha256": "b107154a38e4a0adfc3398592beaffb73ccd3d9db9420dfcb9e1459584da6044",
+      "match": true
+    },
+    {
+      "source": ".pi/agents/workflow-planner.md",
+      "target": ".pi/agents/workflow-planner.md",
+      "source_sha256": "6be215cada57003224dfaac86e14534c1ed48c0c5abdf9b1b1bfd87f52d30af2",
+      "target_sha256": "6be215cada57003224dfaac86e14534c1ed48c0c5abdf9b1b1bfd87f52d30af2",
+      "match": true
+    },
+    {
+      "source": ".pi/agents/workflow-reviewer.md",
+      "target": ".pi/agents/workflow-reviewer.md",
+      "source_sha256": "09229ead3512910407a40c89478ebea22dde54ae61f99909ce4506932405d654",
+      "target_sha256": "09229ead3512910407a40c89478ebea22dde54ae61f99909ce4506932405d654",
+      "match": true
+    },
+    {
+      "source": "commands/archive-task.md",
+      "target": ".claude/commands/archive-task.md",
+      "source_sha256": "74a179824ab7be9fc97df18e09d22b1417572b0e833f5dffe888dd6ebf4a8c55",
+      "target_sha256": "74a179824ab7be9fc97df18e09d22b1417572b0e833f5dffe888dd6ebf4a8c55",
+      "match": true
+    },
+    {
+      "source": "commands/engineering-workflow.md",
+      "target": ".claude/commands/engineering-workflow.md",
+      "source_sha256": "a982d86d62620a7acbbd8435bee1728ba11dc890a312ced55fd2393a684379bf",
+      "target_sha256": "a982d86d62620a7acbbd8435bee1728ba11dc890a312ced55fd2393a684379bf",
+      "match": true
+    }
+  ],
+  "doctor_limit": "environment-only: sandbox has no durable records or ponytail-review; claude executable absent on PATH",
+  "sandbox_removed": true,
+  "real_user_install": false
+}

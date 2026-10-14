@@ -1,0 +1,71 @@
+{
+  "source_commit": "92d722f7426374035687b8d64d5b7e6ff8b596fc",
+  "review_inputs_unchanged": "14/14 PASS",
+  "patch_check": {
+    "status": "PASS",
+    "method": "normalize EOL only in memory, apply original unified patch to isolated baseline index, compare outputs with final sources",
+    "files": [
+      {
+        "path": "skills/run-engineering-workflow/references/quality-profiles.md",
+        "PASS": true
+      },
+      {
+        "path": "skills/run-engineering-workflow/SKILL.md",
+        "PASS": true
+      },
+      {
+        "path": "skills/run-engineering-workflow/references/workflow-governance.md",
+        "PASS": true
+      },
+      {
+        "path": "skills/review-implementation/SKILL.md",
+        "PASS": true
+      },
+      {
+        "path": "skills/finish-with-evidence/SKILL.md",
+        "PASS": true
+      },
+      {
+        "path": "agents/workflow-reviewer.md",
+        "PASS": true
+      },
+      {
+        "path": ".omp/agents/workflow-reviewer.md",
+        "PASS": true
+      },
+      {
+        "path": ".pi/agents/workflow-reviewer.md",
+        "PASS": true
+      },
+      {
+        "path": "commands/engineering-workflow.md",
+        "PASS": true
+      },
+      {
+        "path": "README.md",
+        "PASS": true
+      },
+      {
+        "path": "ARCHITECTURE.md",
+        "PASS": true
+      },
+      {
+        "path": "tests/contracts.test.js",
+        "PASS": true
+      },
+      {
+        "path": "evals/workflow-cases.json",
+        "PASS": true
+      },
+      {
+        "path": "skills/finish-with-evidence/agents/openai.yaml",
+        "PASS": true
+      }
+    ]
+  },
+  "whitespace_check": {
+    "status": "PASS",
+    "scope": "all staged records except unified patch: its space-prefixed blank context rows are required patch syntax"
+  },
+  "credentials_pattern_scan": "no matches; not a comprehensive security audit"
+}

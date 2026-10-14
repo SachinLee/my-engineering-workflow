@@ -1,0 +1,12 @@
+{
+  "experiment": "混合工作区范围验证",
+  "base": "2b6ac804ddc65259897fe311fc8573395cc6dc64",
+  "committed_diff_empty": true,
+  "staged_diff": "diff --git a/staged.txt b/staged.txt\nindex 90be1f3..07d44e5 100644\n--- a/staged.txt\n+++ b/staged.txt\n@@ -1 +1 @@\n-before\n+staged change\n",
+  "unstaged_diff": "diff --git a/unstaged.txt b/unstaged.txt\nindex 90be1f3..d15f72a 100644\n--- a/unstaged.txt\n+++ b/unstaged.txt\n@@ -1 +1 @@\n-before\n+unstaged change\n",
+  "explicit_untracked_file": "regression.test.js",
+  "untracked_content": "assert.equal(actual, expected);\n",
+  "result": "PASS",
+  "model_behavior": "NOT RUN",
+  "agent_calls": 0
+}

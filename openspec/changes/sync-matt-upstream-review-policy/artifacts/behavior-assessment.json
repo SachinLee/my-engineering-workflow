@@ -1,0 +1,101 @@
+{
+  "run_id": "del_mv4o8lkr_la1o",
+  "assessor": "main implementation context; not an independent evaluator",
+  "cases": [
+    {
+      "id": "lightweight",
+      "observed_status": "READY_FOR_FINISH",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "standard",
+      "observed_status": "REVIEW_REQUIRED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "critical",
+      "observed_status": "REVIEW_REQUIRED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "reuse",
+      "observed_status": "REVIEW_REUSED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "append",
+      "observed_status": "REVIEW_REUSED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "remediation",
+      "observed_status": "REVIEW_REQUIRED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "invalid_first",
+      "observed_status": "REVIEW_RETRY_ALLOWED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "invalid_second",
+      "observed_status": "INVALID",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "unavailable",
+      "observed_status": "UNVERIFIED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "mixed_workspace",
+      "observed_status": "REVIEW_HANDOFF_READY",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "native_explicit",
+      "observed_status": "NATIVE_REVIEW_PLANNED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "new_glossary",
+      "observed_status": "VOCABULARY_WRITE_ALLOWED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "legacy_context",
+      "observed_status": "CONFIRMATION_REQUIRED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "both_vocabularies",
+      "observed_status": "CONFIRMATION_REQUIRED",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    },
+    {
+      "id": "no_stable_term",
+      "observed_status": "BLOCKED_NO_STABLE_TERM",
+      "result": "PASS",
+      "evidence": "behavior-output.json; assessed against proposal/specs and source rules by main session"
+    }
+  ],
+  "passed": 15,
+  "actual_child_invocations": 1,
+  "actual_dispatches_inside_exercise": 0,
+  "simulated_actions_executed": false,
+  "limitation": "one model routing exercise; not cross-model or per-harness end-to-end execution"
+}

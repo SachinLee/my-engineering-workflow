@@ -1,0 +1,75 @@
+{
+  "active_change": "limit-delivery-review-rounds",
+  "review_mode": "full",
+  "scope": "approved baseline-to-current source/test delta plus directly affected installed files",
+  "git_head_provenance_only": "ba343e6b314874e2aae6373a5a15deea691ca4f2",
+  "baseline_files": [
+    "artifacts/baseline.json",
+    "artifacts/baseline-extra.json"
+  ],
+  "source_files": [
+    {
+      "path": "skills/run-engineering-workflow/references/quality-profiles.md",
+      "sha256": "444f11e86ba1f9d114b433ebe652fd4d2a55644f405f3c561cec0d87ec12a0fa"
+    },
+    {
+      "path": "skills/run-engineering-workflow/SKILL.md",
+      "sha256": "78cd2d4cedf1507a523d163ce1b11a30ab0e009d3e7320f6a25afdfdce5bf189"
+    },
+    {
+      "path": "skills/run-engineering-workflow/references/workflow-governance.md",
+      "sha256": "f6e87276972ec030f0c180fb4111a245057e65c1c4fe99a20da09e3787d63b83"
+    },
+    {
+      "path": "skills/review-implementation/SKILL.md",
+      "sha256": "026320035dd9093ee6c4d8c6c05445a6600df9b28006ab6bb08179efc0fc355c"
+    },
+    {
+      "path": "skills/finish-with-evidence/SKILL.md",
+      "sha256": "01aaab087bad2b681b39cfc38ce1612a03e7a04e94471d6b755490ce67c899fd"
+    },
+    {
+      "path": "agents/workflow-reviewer.md",
+      "sha256": "eaf98d8de5b357d904e68fb4b9c9942faeb4d3a61c29da4fef7745c53986fdd4"
+    },
+    {
+      "path": ".omp/agents/workflow-reviewer.md",
+      "sha256": "c9910085c546ce4f78389458610b03c4157757f4f0bd52ef2359fb3537bf3554"
+    },
+    {
+      "path": ".pi/agents/workflow-reviewer.md",
+      "sha256": "b3b126600882ead9f574f9c21e3c5f2f79026e9a772bd7d67dfdea8fcd092f8e"
+    },
+    {
+      "path": "commands/engineering-workflow.md",
+      "sha256": "624a48c1f555907f84a1070a3e0643fe3dacffedb91a342295f9b5bf4cc9ebcf"
+    },
+    {
+      "path": "README.md",
+      "sha256": "96fdf63f87cf46d18bcd184d94a4e84a6bed7794128beb6f88d247c1c53241e9"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "sha256": "ed6e15690f56e70a4962002cdda41874a9ead0ccb8b22d7b3d0bf435ca0f7926"
+    },
+    {
+      "path": "tests/contracts.test.js",
+      "sha256": "b8265da95712c440ff5c0bb5e26235bb2722100933317d82cb8025aebef82413"
+    },
+    {
+      "path": "evals/workflow-cases.json",
+      "sha256": "1e426c469f5adb3d4fd56c0e0d26d25f24cf9e7f74200824b63faf3303360b2e"
+    },
+    {
+      "path": "skills/finish-with-evidence/agents/openai.yaml",
+      "sha256": "2d5b26f3838203983f4be1219edde01d1550bce2736061f191ff56599cbf924d"
+    }
+  ],
+  "installation_evidence": "artifacts/installation-smoke.json",
+  "exclusions": [
+    "unrelated user modifications",
+    "other changes",
+    "legacy .pi/skills and .workflow and .trellis",
+    "external OMP gate runtime"
+  ]
+}

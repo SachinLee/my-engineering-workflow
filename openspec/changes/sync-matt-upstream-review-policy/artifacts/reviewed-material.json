@@ -1,0 +1,180 @@
+{
+  "base": "ba343e6b314874e2aae6373a5a15deea691ca4f2",
+  "scope": [
+    "skills/run-engineering-workflow/SKILL.md",
+    "skills/run-engineering-workflow/references/quality-profiles.md",
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+    "skills/clarify-requirements/SKILL.md",
+    "skills/review-implementation/SKILL.md",
+    "skills/finish-with-evidence/SKILL.md",
+    "skills/archive-task/SKILL.md",
+    "agents/workflow-reviewer.md",
+    ".omp/agents/workflow-reviewer.md",
+    ".pi/agents/workflow-reviewer.md",
+    "commands/engineering-workflow.md",
+    "README.md",
+    "ARCHITECTURE.md",
+    "manifests/upstreams.lock.json",
+    "tests/contracts.test.js",
+    "evals/workflow-cases.json"
+  ],
+  "sha256": {
+    "skills/run-engineering-workflow/SKILL.md": "7155031616ae64474106031111a1655dc0bb3d184d303ec38b65c6d27fcc0fd8",
+    "skills/run-engineering-workflow/references/quality-profiles.md": "fa16f3e45ab637dd26a89f29f80b1ca591caa7736a37fdedd5e5ee085bd39fbc",
+    "skills/run-engineering-workflow/references/workflow-governance.md": "87aecfa087780f49562a5429d3ba9b077ac8faff9c30a62b47828f14aa604d1b",
+    "skills/clarify-requirements/SKILL.md": "043be64f9f4e4173e1b7c3e15864eb1af1f95010b1efd64f801d2be5128f4183",
+    "skills/review-implementation/SKILL.md": "ac0f6f8baef11a6b672f310623bfcce76be5d42f5cc63d07b1bf674a819b5456",
+    "skills/finish-with-evidence/SKILL.md": "5c1d61304ce517e328f9ca9290f47b96fa66947f931bd0d7c7cb661b0ac9ba56",
+    "skills/archive-task/SKILL.md": "945d0f91162bb95f32ca17bcf7c7aff93043eb9de6b35369879eddc9ebfc042a",
+    "agents/workflow-reviewer.md": "6389b2d1d3c3cf28e456e4eaa4af823e80044d9edd9af7c1d8b23dfc1117401b",
+    ".omp/agents/workflow-reviewer.md": "74f5c56dfcc229eca4a90c111c4647ad11363f059dccf92acc3fa298bc0a1b4d",
+    ".pi/agents/workflow-reviewer.md": "09229ead3512910407a40c89478ebea22dde54ae61f99909ce4506932405d654",
+    "commands/engineering-workflow.md": "a982d86d62620a7acbbd8435bee1728ba11dc890a312ced55fd2393a684379bf",
+    "README.md": "7f6c47ed318515a4b442a4dafbd7a19043afa3268cea37561ba6be6275a548a7",
+    "ARCHITECTURE.md": "f0eeef6a0b330e3b6bbbb8f1c0e3632f7a3ea4fda4af1fc302de8d1714d43618",
+    "manifests/upstreams.lock.json": "cbbb0a7583fbb35b5785d4d72802042cc01c7ecb8fe518b6adbba91f8381b527",
+    "tests/contracts.test.js": "863fc045b45d420fa7bd36cad858e6ab8ee91f39e703538e5233bfdb4ae1ebfa",
+    "evals/workflow-cases.json": "6edcf67fa71994fca7bc1ea35d644b68e8cc050fcbfe2ccdc1f3234f7fd2d461"
+  },
+  "baseline_files": 189,
+  "changed_from_baseline": [
+    ".agents/skills/archive-task/SKILL.md",
+    ".agents/skills/clarify-requirements/SKILL.md",
+    ".agents/skills/finish-with-evidence/SKILL.md",
+    ".agents/skills/review-implementation/SKILL.md",
+    ".agents/skills/run-engineering-workflow/references/quality-profiles.md",
+    ".agents/skills/run-engineering-workflow/references/workflow-governance.md",
+    ".agents/skills/run-engineering-workflow/SKILL.md",
+    ".claude/agents/workflow-reviewer.md",
+    ".claude/commands/engineering-workflow.md",
+    ".claude/skills/archive-task/SKILL.md",
+    ".claude/skills/clarify-requirements/SKILL.md",
+    ".claude/skills/finish-with-evidence/SKILL.md",
+    ".claude/skills/review-implementation/SKILL.md",
+    ".claude/skills/run-engineering-workflow/references/quality-profiles.md",
+    ".claude/skills/run-engineering-workflow/references/workflow-governance.md",
+    ".claude/skills/run-engineering-workflow/SKILL.md",
+    ".omp/agents/workflow-reviewer.md",
+    ".omp/skills/archive-task/SKILL.md",
+    ".omp/skills/clarify-requirements/SKILL.md",
+    ".omp/skills/finish-with-evidence/SKILL.md",
+    ".omp/skills/review-implementation/SKILL.md",
+    ".omp/skills/run-engineering-workflow/references/quality-profiles.md",
+    ".omp/skills/run-engineering-workflow/references/workflow-governance.md",
+    ".omp/skills/run-engineering-workflow/SKILL.md",
+    ".pi/agents/workflow-reviewer.md",
+    "agents/workflow-reviewer.md",
+    "ARCHITECTURE.md",
+    "commands/engineering-workflow.md",
+    "evals/workflow-cases.json",
+    "manifests/upstreams.lock.json",
+    "README.md",
+    "skills/archive-task/SKILL.md",
+    "skills/clarify-requirements/SKILL.md",
+    "skills/finish-with-evidence/SKILL.md",
+    "skills/review-implementation/SKILL.md",
+    "skills/run-engineering-workflow/references/quality-profiles.md",
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+    "skills/run-engineering-workflow/SKILL.md",
+    "tests/contracts.test.js"
+  ],
+  "generated_counterparts": [
+    {
+      "target": ".agents/skills/archive-task/SKILL.md",
+      "source": "skills/archive-task/SKILL.md"
+    },
+    {
+      "target": ".agents/skills/clarify-requirements/SKILL.md",
+      "source": "skills/clarify-requirements/SKILL.md"
+    },
+    {
+      "target": ".agents/skills/finish-with-evidence/SKILL.md",
+      "source": "skills/finish-with-evidence/SKILL.md"
+    },
+    {
+      "target": ".agents/skills/review-implementation/SKILL.md",
+      "source": "skills/review-implementation/SKILL.md"
+    },
+    {
+      "target": ".agents/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md"
+    },
+    {
+      "target": ".agents/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md"
+    },
+    {
+      "target": ".agents/skills/run-engineering-workflow/SKILL.md",
+      "source": "skills/run-engineering-workflow/SKILL.md"
+    },
+    {
+      "target": ".claude/agents/workflow-reviewer.md",
+      "source": "agents/workflow-reviewer.md"
+    },
+    {
+      "target": ".claude/commands/engineering-workflow.md",
+      "source": "commands/engineering-workflow.md"
+    },
+    {
+      "target": ".claude/skills/archive-task/SKILL.md",
+      "source": "skills/archive-task/SKILL.md"
+    },
+    {
+      "target": ".claude/skills/clarify-requirements/SKILL.md",
+      "source": "skills/clarify-requirements/SKILL.md"
+    },
+    {
+      "target": ".claude/skills/finish-with-evidence/SKILL.md",
+      "source": "skills/finish-with-evidence/SKILL.md"
+    },
+    {
+      "target": ".claude/skills/review-implementation/SKILL.md",
+      "source": "skills/review-implementation/SKILL.md"
+    },
+    {
+      "target": ".claude/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md"
+    },
+    {
+      "target": ".claude/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md"
+    },
+    {
+      "target": ".claude/skills/run-engineering-workflow/SKILL.md",
+      "source": "skills/run-engineering-workflow/SKILL.md"
+    },
+    {
+      "target": ".omp/skills/archive-task/SKILL.md",
+      "source": "skills/archive-task/SKILL.md"
+    },
+    {
+      "target": ".omp/skills/clarify-requirements/SKILL.md",
+      "source": "skills/clarify-requirements/SKILL.md"
+    },
+    {
+      "target": ".omp/skills/finish-with-evidence/SKILL.md",
+      "source": "skills/finish-with-evidence/SKILL.md"
+    },
+    {
+      "target": ".omp/skills/review-implementation/SKILL.md",
+      "source": "skills/review-implementation/SKILL.md"
+    },
+    {
+      "target": ".omp/skills/run-engineering-workflow/references/quality-profiles.md",
+      "source": "skills/run-engineering-workflow/references/quality-profiles.md"
+    },
+    {
+      "target": ".omp/skills/run-engineering-workflow/references/workflow-governance.md",
+      "source": "skills/run-engineering-workflow/references/workflow-governance.md"
+    },
+    {
+      "target": ".omp/skills/run-engineering-workflow/SKILL.md",
+      "source": "skills/run-engineering-workflow/SKILL.md"
+    }
+  ],
+  "missing_from_baseline": [],
+  "unchanged_baseline_files": 150,
+  "comparison_excludes_change_artifacts": true,
+  "project_install_performed": true,
+  "user_install_performed": false
+}
