@@ -3,6 +3,7 @@ name: workflow-planner
 description: Plan an accepted task and persist the technical design and execution plan without implementing production code.
 tools: read, grep, find, ls, bash, edit, write
 thinkingLevel: high
+timeoutMs: 2147483647
 capabilityManifest:
   version: pi-subagents:capabilities:v1
   capabilities: [solution-planning, repository-analysis]

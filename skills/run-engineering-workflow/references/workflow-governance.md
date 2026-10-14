@@ -148,6 +148,16 @@ authoritative place; compatibility readers must not create a second state store.
 | `.workflow/` | Legacy reader/migrator | Recovery and explicit migration input only |
 | `.trellis/` | Legacy reader | Historical read-only input only |
 | Code and tests | Git | Executable implementation and behavioral proof |
+| `GLOSSARY.md` | Project docs | New project's stable domain vocabulary, only when terms are explicitly resolved |
+| `CONTEXT.md` | Project docs, legacy-compatible | Existing project's domain vocabulary when that project already owns the file; do not rename or dual-write automatically |
+| `GLOSSARY-MAP.md` | Project docs | Explicit map when a project intentionally has more than one context source |
+
+`GLOSSARY.md` and `CONTEXT.md` are project vocabulary files, not task state. A
+new file is created lazily only after a stable term is resolved and its owner is
+confirmed. If both exist, ask before writing and follow `GLOSSARY-MAP.md` when
+present. Do not migrate, rename, or mirror an old vocabulary file implicitly.
+`artifacts/context.md` remains the OpenSpec dispatch context package and is never
+replaced by a glossary file.
 
 ## Legacy `.workflow` And `.trellis` Records
 
@@ -197,9 +207,9 @@ The package must carry the conclusions needed for a fresh worker to start cold.
 | Design solution | `plan-solution` + relevant specialists | OpenSpec `design.md` |
 | Plan execution | `plan-solution` + test strategy | OpenSpec `tasks.md` |
 | Implement behavior | TDD workflow | Code and tests |
-| Review independently | `review-implementation` + code review | `artifacts/review.md` or bounded review output |
-| Verify and record | repository checks + risk-specific checks | `artifacts/verification.md` |
-| Reduce complexity | Ponytail review | Code, then re-verification |
+| Review independently | `review-implementation` via one `workflow-reviewer` | `artifacts/review.md` or bounded review output |
+| Verify changed behavior | repository checks + risk-specific checks in main router | `artifacts/verification.md` |
+| Reduce complexity | Ponytail lens in the same review | Non-blocking suggestions unless a concrete required invariant is violated |
 | Preserve learning | evidence promotion step | OpenSpec artifacts or project docs |
 
 Do not run Matt `to-spec` or `to-tickets` as a parallel record system. Their output
@@ -266,3 +276,11 @@ use a fresh context and, when available, a different model role from the
 implementer. The reviewer reports findings; the main session owns remediation,
 re-verification, and the final delivery claim. A model never approves its own
 unverified work merely because no separate reviewer is available.
+
+`quality-profiles.md` is the single review budget. The main router alone schedules
+one full independent `workflow-reviewer` report covering Standards / Spec, and at
+most one focused repair follow-up per approved delivery scope. Native Matt review,
+`code-reviewer`, and nested review dispatch are not default stages. Finish consumes
+valid evidence; gaps return to the main router. Persist rounds across resume and
+snapshot changes in existing change artifacts; exhausted budget or expanded scope
+requires a user decision, never self-approval. Unavailable review stays `UNVERIFIED`.

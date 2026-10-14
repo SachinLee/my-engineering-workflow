@@ -36,10 +36,12 @@ request
   -> user approval, OpenSpec change -> in_progress (task frontier when split)
   -> Matt TDD with an inlined 上下文包 (main session by default,
      workflow-implementer when critical)
-  -> repository verification + Matt code-review
-  -> independent correctness/security/complexity review
-  -> remediation and re-verification
-  -> artifacts/verification.md evidence (one row per AC)
+  -> repository verification (budget: quality-profiles.md)
+  -> one independent workflow-reviewer for Standards / Spec and
+     correctness/security/complexity (standard and critical)
+  -> batch blocking repairs, affected checks, at most one focused follow-up
+     (remaining blockers or expanded scope -> user decision, not an automatic loop)
+  -> artifacts/verification.md evidence reuse (finish adds no tests or reviewers)
   -> OpenSpec change -> awaiting-acceptance, hand the verification list to the user
   -> user verify, or bounce back to in_progress with a new verification round
   -> (user) accept, then archive via /archive-task

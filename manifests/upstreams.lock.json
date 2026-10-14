@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-09-14",
+  "generated_at": "2026-10-12",
   "sources": {
     "mattpocock-skills": {
       "local_path": "../mattpocock-skills",
       "remote": "https://github.com/mattpocock/skills.git",
-      "revision": "8b78b531ab965735c5dc74f6f7a219e1e37326df",
-      "version_hint": "1.2.3",
+      "revision": "49dd158d1076134a641b33efb035946536778336",
+      "version_hint": "1.3.1",
       "license": "MIT",
       "role": "requirements grilling, domain modeling, module design, TDD, two-axis review, and specification or ticket decomposition"
     },

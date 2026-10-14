@@ -1,6 +1,6 @@
 ---
 name: finish-with-evidence
-description: Verify a completed software task and record factual implementation evidence in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
+description: Consume existing verification and independent review evidence, record factual delivery results in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
 ---
 
 # Finish With Evidence
@@ -12,32 +12,35 @@ and log text verbatim. Status tokens (`PASS`, `NOT RUN`, `UNVERIFIED`,
 `NOT APPLICABLE`, `NOT CAPTURED`, `NOT COMMITTED`) stay in English so they remain
 greppable.
 
-## Verify
+## Consume Evidence
 
-1. Read the active OpenSpec change's `proposal.md`, `specs/`, `design.md`,
-   `tasks.md`, `artifacts/context.md`, and the selected quality profile.
-2. Inspect `git status` and `git diff`. Identify unrelated changes and leave them
-   untouched.
-3. Run Matt `code-review` as the Standards-versus-Spec axis: does the diff follow
-   the project's documented standards, and does it deliver what `proposal.md` and
-   the change specs asked?
-4. Run relevant repository verification: targeted tests, type checking, lint, build,
-   security review, migration checks, or E2E based on risk and available tools.
-5. Confirm that `review-implementation` ran from an independent context for
-   standard behavior changes and critical work. In OMP, use `workflow-reviewer` on
-   `@advisor`; do not substitute the `@task` implementer's self-review. In Claude
-   Code, use this repository's read-only `workflow-reviewer` on Opus after
-   `code-review` and repository checks. Resolve material findings and re-run
-   affected checks before continuing.
-6. For behavior changes, capture real RED and GREEN evidence from the relevant test
-   target when available. Mark missing RED evidence explicitly.
-7. Apply `ponytail-review` after correctness checks to find deletable complexity.
-   Re-run affected checks after simplification.
-8. Confirm every task marked `done` in `tasks.md` matches the diff and evidence, and
-   state which tasks remain on the frontier.
-9. Decide whether a reusable convention, prevention rule, or non-obvious lesson
-   belongs in `openspec/specs/`, `CONTEXT.md`, or `docs/adr/`. Record a pointer in
-   the verification artifact instead of copying the text.
+The main router is the only scheduler. Do not dispatch reviewers and do not run
+repository verification directly from this skill; consume recorded evidence.
+
+1. Read the selected change's proposal/specs, tasks and verification/review records
+   with the shared `quality-profiles.md` budget. Read design/context only as needed
+   to resolve a traceability gap, not to repeat the design or implementation review.
+2. Inspect `git status` and the relevant `git diff` to identify final input changes and
+   unrelated user work. Match the evidence's staged, unstaged and explicitly named
+   untracked scope to final contents; do not perform a second full code review.
+3. Consume same-change/same-material executed tests, lint, typecheck, build and
+   risk-specific evidence. For Standard / Critical require the independent
+   `workflow-reviewer` report with Standards / Spec, correctness/security/tests/
+   complexity coverage; local repairs also require the budgeted focused follow-up
+   and affected checks. The prior full report alone cannot approve unaudited repairs.
+   Lightweight consumes its main-session focused check, without default dispatch.
+4. Check full/focused rounds, unresolved blockers and the final coverage chain.
+   Missing or stale evidence, unavailable independent review, incomplete scope or
+   conflicting round history: record `UNVERIFIED` and return the precise gap to
+   the main router for affected checks or a budgeted/user-authorized next step.
+   Do not claim `CLEAN` or normal completion while a required gate is unsatisfied.
+   Appending the report or delivery evidence does not invalidate matching evidence
+   unless a substantive reviewed input changes. Entering finish adds no review.
+5. Record existing RED/GREEN evidence, commands/results and all AC outcomes; mark
+   missing RED evidence `NOT CAPTURED`, not an invented execution.
+6. Confirm completed tasks match evidence and identify the remaining frontier.
+   Record reusable conventions by pointer in `openspec/specs/`, `GLOSSARY.md` (or
+   a user-confirmed existing `CONTEXT.md`) or `docs/adr/` only when warranted.
 
 Do not invent commands, output, coverage, commits, or PASS results. Use `NOT RUN`,
 `UNVERIFIED`, or `NOT APPLICABLE` when evidence is unavailable.
@@ -71,9 +74,10 @@ Create or update `artifacts/verification.md` in the active OpenSpec change:
 - 确切命令与结果
 
 ## 独立复核
-- 复核者角色或模型上下文
-- 已解决的 findings
-- 修复后重复执行的检查
+- 已批准交付范围、完整/定向审核轮数及模式
+- 复核者角色或模型上下文、报告与最终材料的覆盖关系
+- 阻断 findings 的解决情况与非阻断建议
+- 修复检查的既有执行证据；缺口返回主路由，不在收尾补跑
 
 ## 提交
 - 工作提交哈希，或 NOT COMMITTED
@@ -98,8 +102,8 @@ concise. Link to code, tests, ADRs, or commits instead of copying their content.
 If work is incomplete, record the blocker and next executable step rather than
 claiming completion.
 
-You do not accept the work, and you do not archive the OpenSpec change. Once the
-evidence above is recorded:
+You do not accept the work, and you do not archive the OpenSpec change. Only when the
+required checks and review gate are satisfied and evidence is recorded:
 
 1. Set the change handoff status to `awaiting-acceptance` in `tasks.md` or the
    repository's approved OpenSpec status mechanism, with the current timestamp.
@@ -112,10 +116,11 @@ evidence above is recorded:
 Do not move the OpenSpec change into `openspec/changes/archive/`, do not append a
 journal line, do not delete compatibility pointers, and do not archive the change.
 
-If the user verifies and finds a problem, treat that as a normal transition: update
-`tasks.md`, fix the implementation, re-run the affected checks, and append a new
-round to `artifacts/verification.md` under `## 复验轮次 N`. Leave earlier rounds
-untouched, so what was claimed and when it was corrected stays visible.
+If the user verifies and finds a problem, return it to the main router: preserve
+prior rounds, update `tasks.md`, apply fixes and affected checks through that router,
+and follow the shared budget's focused/reauthorization rules rather than resetting
+rounds. Record the new evidence under `## 复验轮次 N` in
+`artifacts/verification.md`; leave earlier rounds untouched.
 
 When the user has accepted and explicitly asks to archive, invoke `archive-task`
 instead of doing it inline here; that skill owns the archive move and compatibility

@@ -1,4 +1,4 @@
 interface:
   display_name: "Finish With Evidence"
-  short_description: "Verify delivery and preserve implementation evidence"
-  default_prompt: "Use $finish-with-evidence to verify and record this completed task."
+  short_description: "Consume evidence and record delivery without another review"
+  default_prompt: "Use $finish-with-evidence to consume existing verification and review evidence, record results, and hand off for acceptance."

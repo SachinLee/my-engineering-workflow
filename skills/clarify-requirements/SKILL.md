@@ -25,7 +25,7 @@ before establishing the requirement boundary.
 3. Ask one question at a time. Ask only when the answer materially changes
    behavior, scope, risk, compatibility, or verification.
 4. Challenge overloaded domain terms. If a stable glossary exists, use it; if
-   a term is newly resolved, propose a focused `CONTEXT.md` update.
+   a term is newly resolved, propose a focused vocabulary-file update: use `GLOSSARY.md` for a new project, preserve an existing `CONTEXT.md`, and ask before writing when both exist.
 5. Stop questioning when the requested outcome is observable and the remaining
    assumptions are safe to record.
 

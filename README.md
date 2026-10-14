@@ -35,8 +35,8 @@ AI 会话之间的上下文连续性。
 | `$run-engineering-workflow` | 读取 OpenSpec 当前 change，按风险等级路由整个开发流程，并保留 legacy 恢复 |
 | `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前 change 的 `proposal.md` 和 `specs/` |
 | `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md`、`tasks.md` 和 `artifacts/context.md` |
-| `$review-implementation` | 使用独立上下文复核需求覆盖、正确性、测试、安全和复杂度 |
-| `$finish-with-evidence` | 执行最终检查，并把实际实现和验证证据写入 `artifacts/verification.md` |
+| `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
+| `$finish-with-evidence` | 核对并复用已有证据，写入 `artifacts/verification.md`；不再派审核或直接重跑检查 |
 | `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
 
 ## 核心产物
@@ -53,7 +53,7 @@ AI 会话之间的上下文连续性。
 | `artifacts/verification.md` | 实际实现、逐条 AC 结果、RED/GREEN、独立复核、验证结果和剩余风险 |
 | `openspec/` CLI 状态 | 当前 change 的 planning / in_progress / review / awaiting-acceptance 生命周期 |
 | `.workflow/`、`.trellis/` | 旧记录的只读恢复输入；不作为新任务事实源 |
-| `CONTEXT.md` | 可选的领域词汇表，不存放技术方案 |
+| `GLOSSARY.md` | 新项目的领域词汇表；已有项目继续使用用户确认的 `CONTEXT.md`，不存放技术方案 |
 | `docs/adr/` | 少量难以逆转且存在真实权衡的架构决策 |
 
 旧项目里已有的 `.workflow/` 和 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
@@ -244,9 +244,14 @@ claude plugins install mattpocock-skills
 - `domain-modeling`
 - `codebase-design`
 
-另外默认启用 `tdd`、`diagnosing-bugs` 和 `code-review`：`tdd` 是实现的默认方法，`code-review`
-承担去掉 Trellis 之后的规范符合性与需求覆盖双轴检查。本仓库的 `review-implementation`
-负责需要 fresh context 的任务级独立复核，两者不重复调用。
+默认使用 `tdd` 和 `diagnosing-bugs`；审查预算以
+[quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md) 为唯一来源。
+Standard / Critical 在交付范围完成并通过相关检查后，通过 `review-implementation`
+调用一次完整独立 `workflow-reviewer`，同一报告覆盖 Standards / Spec、正确性、安全、测试和复杂度。
+有阻断项时集中修复、运行受影响检查，最多一次定向复核；仍有阻断问题就停止自动循环，交给你决定。
+普通切片只做相关检查，不逐片完整审核。`finish-with-evidence` 只核对和记录已有证据，不再审一次。
+默认不叠加 `code-reviewer`、通用 reviewer 或 Matt `code-review`；原生审查仅按你的明确请求运行。
+预算跨会话和修复快照保留；重大范围变化需要你批准重新审核或拆分交付。
 
 Matt 的 `to-spec`、`to-tickets`、`implement` 只作为方法使用，产物必须落在当前任务目录里
 （例如票写到 `.workflow/tasks/<task-id>/tickets/`），不要让它们在 `.scratch/` 另起一套记录。
@@ -371,7 +376,7 @@ OMP adapter。也可以一次安装全部四个平台：
 全局安装后，不要再为每个项目复制本仓库的 skill。只有以下内容仍是项目级的：
 
 - 项目自己的 `.workflow/` 任务记录（需要时由主路由创建）。
-- 项目自己的 `AGENTS.md`、`CONTEXT.md`、`docs/adr/` 和 `.workflow/spec/`。
+- 项目自己的 `AGENTS.md`、`GLOSSARY.md`（或已确认继续使用的 `CONTEXT.md`）、`docs/adr/` 和 `.workflow/spec/`。
 - 项目自己的测试命令、质量标准和模型配置。
 
 因此，`install.ps1 -Scope User` 只需在本机执行一次；OMP launcher 可以从任意项目目录
@@ -509,7 +514,7 @@ ompw --continue
 
 ```text
 需求澄清 -> 方案规划 -> 等待批准 -> @task TDD 实现
-  -> code-review + 仓库检查 -> @advisor 独立复核 -> 修复并复验 -> 证据交付
+  -> 仓库检查 -> 一个 @advisor 独立复核（Standards / Spec）-> 修复并复验 -> 证据交付
   -> awaiting-acceptance ->（你验收）-> 你执行归档或调用 $archive-task
 ```
 
@@ -552,8 +557,8 @@ Get-Command python, python3, py | Select-Object Name, Source
 4. **批准执行**：用户批准后把 `STATUS` 从 `planning` 改为 `in_progress`，不能由 AI 默认为
    已批准。
 5. **TDD 实现**：先 RED，再最小 GREEN，然后重构；实现不得创建第二套计划记录。
-6. **检查和复核**：先运行仓库自身检查与 Matt `code-review`，再从独立上下文运行
-   `review-implementation`，修复 findings 后重新验证。
+6. **检查和复核**：按 `quality-profiles.md` 运行仓库检查；Standard / Critical 通过
+   `review-implementation` 调用一个独立 `workflow-reviewer`，覆盖双轴与复杂度，修复后复验。
 7. **证据交付**：把逐条 AC 结果、实际改动、RED/GREEN、命令输出和剩余风险写入
    `artifacts/verification.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
 8. **验收与归档（你做）**：你自己跑命令或手工验收；有问题就反馈，任务退回
@@ -570,12 +575,12 @@ Get-Command python, python3, py | Select-Object Name, Source
 | 场景 | 使用能力 | 结果写到哪里 |
 | --- | --- | --- |
 | 需求或方案仍含模糊决策 | Matt `grilling` | 结论整理回 `proposal.md` 或 `design.md` |
-| 统一业务术语和实体关系 | Matt `domain-modeling` | 稳定词汇写入 `CONTEXT.md`，真实架构决策写 ADR |
+| 统一业务术语和实体关系 | Matt `domain-modeling` | 新项目稳定词汇写入 `GLOSSARY.md`；已有 `CONTEXT.md` 先保持；真实架构决策写 ADR |
 | 设计模块边界和测试 seam | Matt `codebase-design` | 方案写入当前 task 的 `design.md` |
 | 功能或 bug fix | Matt `tdd` / `diagnosing-bugs` | 测试和代码；证据最终写 `artifacts/verification.md` |
 | 发布前综合验证 | 仓库自身测试、lint、typecheck、build | 实际命令结果写 `artifacts/verification.md` |
 | 安全敏感改动 | 项目自身安全工具和检查 | findings 返回主会话，修复后记录结果 |
-| 正确性检查完成后压缩复杂度 | Ponytail review/audit | 修改代码并重新运行受影响检查 |
+| 综合独立复核中的复杂度视角 | `workflow-reviewer` 使用 Ponytail 方法 | 同一 Standards / Spec 报告；单独 review/audit 仅按用户明确请求运行 |
 
 扩展只提供方法，不拥有任务状态。不要让 Matt 或 Ponytail 另建与当前任务目录重复的
 PRD、ticket、plan 或 outcome。
@@ -589,8 +594,8 @@ PRD、ticket、plan 或 outcome。
 | 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论写入当前任务 `proposal.md` |
 | 方案设计 | `plan-solution` + Matt `codebase-design` | 生成 `design.md`、`tasks.md` 和 `context.md` 读取清单 |
 | 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 默认在主会话执行；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
-| 质量检查 | Matt `code-review` + 仓库自身检查 | 双轴：规范符合性与需求覆盖；不替代项目自己的测试 |
-| 独立复核 | `review-implementation` + `ponytail-review` | 通过 `workflow-reviewer` 在新上下文执行；主会话负责修复 |
+| 质量检查 | 仓库自身检查 | 验证测试、lint、类型和构建；不自动调用原生 Matt `code-review` |
+| 独立复核 | `review-implementation` / `workflow-reviewer`；Ponytail 作为审查方法 | Standard / Critical 在一个新上下文报告 Standards / Spec 等维度，不嵌套派发 |
 | 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `artifacts/verification.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
 
 ### 跨客户端和新会话续接
@@ -660,7 +665,7 @@ Pi 中的阶段分工如下：
 | 主路由、需求追问、批准、修复、交付 | 主会话 | 当前 Pi 模型 |
 | 方案规划 | `workflow-planner` | blocking `subagent`；默认继承当前模型 |
 | TDD 实现 | `workflow-implementer` | blocking `subagent`；默认继承当前模型 |
-| 质量检查 | Matt `code-review` + 仓库自身检查 | 主会话执行，不派 agent |
+| 质量检查 | 仓库自身检查 | 主会话执行；Matt 原生审查仅供用户显式调用 |
 | 最终只读复核 | `workflow-reviewer` | blocking `subagent`；默认继承当前模型 |
 
 Pi 不读取 OMP 的 `engineering-workflow.yml`，也不识别 `@plan`、`@task`、`@advisor`。
@@ -700,9 +705,10 @@ omp --cwd "D:\path\to\project" --config "D:\path\to\project\.omp\engineering-wor
 
 项目安装同时会从同级的
 `D:\my-works\claude-skills\omp-extensions\workflow-review-gate` 同步 OMP extension 到
-`.omp/extensions/workflow-review-gate`。它只阻止同一 `Active task + review profile +
-worktree snapshot` 的重复最终审查；仓库检查和 `code-review` 不受它约束，修复产生新快照后仍
-必须进行新的独立审查。扩展的短期状态写入 `.omp/.runtime/`，不替代 `.workflow/` 记录。
+`.omp/extensions/workflow-review-gate`。当前扩展只识别旧的 `Active task + review profile +
+worktree snapshot`，未覆盖新的 `Active change:` 或交付级审核轮数；不能据此宣称运行时已阻止重复审核。
+新规则由主路由读取 OpenSpec 中的轮数与证据执行，修复快照不自动重置预算；外部 gate 修复需另立 change。
+扩展短期状态 `.omp/.runtime/` 不替代 OpenSpec 记录。
 
 ### OMP 升级后的检查
 
@@ -747,7 +753,7 @@ OMP 更新和记录系统无关：如果使用的是项目级安装，还要对�
 | 主路由、需求追问、最终决策 | 主会话 | `@default` |
 | 方案规划 | `workflow-planner` | `@plan` |
 | TDD 实现（仅 critical） | `workflow-implementer` | `@task` |
-| 质量检查 | Matt `code-review` + 仓库自身检查 | 主会话 |
+| 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
 | 最终只读复核 | `workflow-reviewer` | `@advisor` |
 | 高风险或失败升级 | 主会话/专项 agent | `@default` 或 `@slow` |
 
@@ -782,7 +788,7 @@ claude --plugin-dir "D:\my-works\claude-skills\my-engineering-workflow" --model 
 | 主路由、需求追问、批准、修复、交付 | 主会话 | 启动时选择的模型 |
 | 方案规划 | `workflow-planner` | `opus` |
 | TDD 实现（仅 critical） | `workflow-implementer` | `sonnet` |
-| 质量检查 | Matt `code-review` + 仓库自身检查 | 主会话 |
+| 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
 | 最终只读复核 | `workflow-reviewer` | `opus` |
 
 Claude Code 没有 OMP 的 `@task` / `@advisor` 角色别名。若希望实现与复核真正跨模型，
@@ -797,7 +803,7 @@ claude --model sonnet
 `workflow-planner`、`workflow-implementer`、`workflow-reviewer` 都由本仓库安装，没有项目
 hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因此不能宣称它会自动加载
 外部 skill；TDD 由 `tasks.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、
-`code-review` 和最终独立 review 共同约束。
+仓库原生验证和单次独立 review 共同约束，不能依赖嵌套 Skill 派发。
 
 ## 使用方法
 
@@ -850,7 +856,7 @@ test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
 正常行为变更应经历：
 
 ```text
-RED 测试 -> 最小实现 -> GREEN -> 重构 -> code-review + 仓库验证
+RED 测试 -> 最小实现 -> GREEN -> 重构 -> 仓库验证 -> 单次独立复核（Standard / Critical）
 ```
 
 在 OMP 中，只有 `critical` 任务才会把已批准的切片交给 `workflow-implementer`，默认使用
@@ -859,8 +865,8 @@ Code 中调用本仓库的 `workflow-implementer`，同样按已批准的 `tasks
 slice。主会话继续负责范围、升级和最终决策。
 
 ### 5. 独立复核
-`lightweight` 默认不派独立 reviewer。`standard` 在项目原生检查不足或确实需要
-fresh context 时执行一次 `review-implementation`；`critical` 任务必须执行：
+`lightweight` 默认不派独立 reviewer。`standard` / `critical` 统一按
+`quality-profiles.md` 执行一次独立复核；Critical 增加风险相关验证，不增加重复 reviewer：
 ```text
 使用 $review-implementation 从独立上下文复核当前实现。
 ```
@@ -895,8 +901,8 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 | 等级 | 适用场景 | 主要要求 |
 | --- | --- | --- |
 | `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查 |
-| `standard` | 普通功能、bug fix、重构 | RED/GREEN、目标测试、必要的 lint/类型/构建、Spec；`code-review` 与独立 review 二选一 |
-| `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E；必须独立 review |
+| `standard` | 普通功能、bug fix、重构 | 主会话 RED/GREEN 与仓库检查，加一个独立 `workflow-reviewer` 完成 Standards / Spec 等维度 |
+| `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E；仍是一个最终 reviewer |
 
 详细配置随主路由打包在
 [quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md)。风险等级

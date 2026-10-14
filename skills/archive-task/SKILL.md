@@ -58,7 +58,7 @@ Finish with exactly one status line:
   scope; this operation only relocates the OpenSpec record inside the repository.
 - Never edit a change that is already archived. A corrected conclusion belongs in a
   new change that references the archive.
-- Promoting a reusable convention into `openspec/specs/`, `CONTEXT.md`, or an ADR
+- Promoting a reusable convention into `openspec/specs/`, `GLOSSARY.md` (or a user-confirmed existing `CONTEXT.md`), or an ADR
   is separate work, done before this operation, not inside it.
 - One invocation archives one change.
 - Write OpenSpec text through the platform's file tools. If a shell command is

@@ -22,24 +22,33 @@ Route work by the active change phase:
    are a waiting state, not an environment failure.
 2. Clarify incomplete requirements in the main session and persist them in
    `proposal.md` and relevant `specs/`.
-3. After requirements are accepted, dispatch `workflow-planner` to create or
-   update `design.md`, `tasks.md`, and `artifacts/context.md`. Do not start
-   implementation until the user approves the plan and the OpenSpec change is
-   ready for implementation.
+3. After requirements are accepted, use `plan-solution` in the main session.
+   Dispatch `workflow-planner` only for critical planning or when planning delegation
+   is explicitly requested. Update `design.md`, `tasks.md`, and the inlined
+   `artifacts/context.md` package; implementation needs user plan approval.
 4. For implementation, dispatch `workflow-implementer` only for a `critical`
    change or an explicitly justified fresh-context need. Its prompt must begin
    `Active change: openspec/changes/<change-id>/` and must carry the assigned slice,
    the `Read:` paths from `artifacts/context.md`, `May modify:`, and `Verification:`.
    Require it to follow the approved RED/GREEN slices in `tasks.md`. Ordinary work
    is implemented in the main session.
-5. Run the repository's own checks, then Matt `code-review` for the
-   Standards-versus-Spec axis.
-6. After checks complete and the worktree is stable, dispatch exactly one
-   `workflow-reviewer` for independent final review. Do not append generic
-   `reviewer` or `code-reviewer` tasks for the same snapshot. The main session
-   fixes findings, reruns affected checks, and dispatches a new final review only
-   after the diff changes. An `INVALID` review has one controlled retry; its prompt
-   must contain `Review retry: invalid`.
+5. Follow `skills/run-engineering-workflow/references/quality-profiles.md` as the
+   single budget. The main session is the only review scheduler. Complete slices
+   with targeted checks, not a full review per slice; wait until the approved
+   delivery scope is complete and checks pass before the full review.
+   For lightweight work, run a focused check with no default dispatch.
+   For standard and critical work, use exactly one independent `workflow-reviewer`
+   through `review-implementation` covering the complete relevant workspace,
+   Standards / Spec, correctness, security, tests and complexity. Critical adds
+   risk-specific checks, not reviewers.
+6. Reuse valid same-change/same-material reports. Default to `workflow-reviewer`
+   only, not `code-reviewer`, native Matt `code-review`, nested dispatch, or an
+   appended generic reviewer. Batch blocking repairs, rerun affected checks, and
+   use at most the budgeted focused follow-up; do not restart full review on repair
+   snapshots or appended delivery evidence. Persist rounds in change artifacts.
+   For `INVALID`, unavailable review, exhausted budget or scope drift, follow the
+   shared budget's replacement/stop/user-decision rules; disclose `UNVERIFIED`
+   gaps rather than claiming normal completion.
 7. Use `finish-with-evidence` to record actual results in
    `artifacts/verification.md`, set the OpenSpec change to `awaiting-acceptance`,
    then stop and hand the user the verification list. Do not archive the change.

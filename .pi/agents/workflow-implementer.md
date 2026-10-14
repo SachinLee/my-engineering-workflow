@@ -3,6 +3,7 @@ name: workflow-implementer
 description: Implement one approved slice test-first in a fresh context with a declared file boundary.
 tools: read, grep, find, ls, bash, edit, write
 thinkingLevel: high
+timeoutMs: 2147483647
 capabilityManifest:
   version: pi-subagents:capabilities:v1
   capabilities: [tdd-implementation, repository-analysis]

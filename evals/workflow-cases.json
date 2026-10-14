@@ -2,6 +2,100 @@
   "schema_version": 3,
   "cases": [
     {
+      "name": "review-budget-exhausted",
+      "state": "blocking_findings_after_one_full_and_one_focused_review",
+      "expected_stage": "handoff-review-blocker",
+      "required_status": "blocked",
+      "forbidden": ["another automatic review", "REVIEW_STATUS: CLEAN"]
+    },
+    {
+      "name": "nonblocking-review-suggestions",
+      "state": "complete_independent_review_with_only_optional_suggestions",
+      "expected_stage": "finish-with-evidence",
+      "forbidden": ["repair optional suggestions by default", "dispatch another reviewer"]
+    },
+    {
+      "name": "review-resume-preserves-budget",
+      "state": "resumed_change_with_exhausted_review_budget_and_remaining_blockers",
+      "expected_stage": "handoff-review-blocker",
+      "forbidden": ["reset rounds on resume", "restart full review"]
+    },
+    {
+      "name": "review-scope-drift-needs-user-decision",
+      "state": "changed_acceptance_criteria_or_interface_outside_prior_review_coverage",
+      "expected_stage": "request-review-reauthorization",
+      "forbidden": ["automatic full review", "discard prior rounds"]
+    },
+    {
+      "name": "finish-evidence-gap-returns-to-router",
+      "state": "finish_invoked_with_missing_or_stale_verification_evidence",
+      "expected_stage": "return-verification-gap",
+      "required_evidence_status": "UNVERIFIED",
+      "forbidden": ["finish runs tests directly", "finish dispatches reviewer", "claim normal completion"]
+    },
+    {
+      "name": "slice-complete-not-delivery-complete",
+      "state": "one_slice_complete_in_shared_approved_delivery_scope",
+      "expected_stage": "targeted-checks",
+      "forbidden": ["full review per slice"]
+    },
+    {
+      "name": "valid-review-no-extra-code-reviewer",
+      "state": "complete_valid_workflow_reviewer_report_and_repository_evidence",
+      "expected_stage": "finish-with-evidence",
+      "forbidden": ["dispatch code-reviewer", "dispatch native code-review", "finish reruns unchanged checks"]
+    },
+    {
+      "name": "review-evidence-append-does-not-self-invalidate",
+      "state": "same_change_same_reviewed_material_with_appended_report",
+      "expected_stage": "report-existing-independent-review",
+      "forbidden": ["dispatch workflow-reviewer", "dispatch native code-review"]
+    },
+    {
+      "name": "independent-context-unavailable",
+      "state": "standard_change_without_available_independent_context",
+      "expected_stage": "handoff-review-gap",
+      "required_evidence_status": "UNVERIFIED",
+      "forbidden": ["REVIEW_STATUS: CLEAN", "claim normal completion"]
+    },
+    {
+      "name": "invalid-review-single-replacement",
+      "state": "invalid_review_with_repaired_handoff",
+      "expected_stage": "review-implementation",
+      "required_behavior": "replacement prompt contains `Review retry: invalid`"
+,
+      "forbidden": ["unbounded automatic retry"]
+    },
+    {
+      "name": "committed-diff-not-workspace-certification",
+      "state": "empty_committed_diff_with_staged_unstaged_untracked_changes",
+      "expected_stage": "review-implementation",
+      "required_behavior": "review complete relevant workspace with selected proposal and specs",
+      "forbidden": ["claim clean from empty committed diff", "search another issue to override selected specs"]
+    },
+    {
+      "name": "lightweight-no-default-dispatch",
+      "state": "non_behavioral_change_verified",
+      "expected_stage": "finish-with-evidence",
+      "forbidden": ["dispatch workflow-reviewer", "run native code-review by default"]
+    },
+    {
+      "name": "standard-single-independent-review",
+      "state": "standard_change_with_repository_checks",
+      "expected_stage": "review-implementation",
+      "omp_agent": "workflow-reviewer",
+      "required_behavior": "one independent report covering Standards and Spec",
+      "forbidden": ["nested dispatch", "run native code-review by default", "replace independent review with self-review"]
+    },
+    {
+      "name": "critical-deeper-checks-not-more-reviewers",
+      "state": "critical_change_with_risk_specific_checks",
+      "expected_stage": "review-implementation",
+      "omp_agent": "workflow-reviewer",
+      "required_behavior": "one independent final reviewer after full relevant verification",
+      "forbidden": ["append generic final reviewer", "run native code-review by default"]
+    },
+    {
       "name": "ambiguous-request",
       "state": "planning_without_prd",
       "expected_stage": "clarify-requirements",
@@ -40,11 +134,13 @@
       "forbidden": ["dispatch code-reviewer", "dispatch generic reviewer"]
     },
     {
-      "name": "remediated-diff-needs-fresh-final-review",
-      "state": "material_finding_fixed_with_changed_snapshot",
-      "expected_stage": "review-implementation",
+      "name": "remediated-diff-needs-focused-follow-up",
+      "state": "material_finding_fixed_with_changed_snapshot_after_one_full_review",
+      "expected_stage": "focused-review",
       "omp_agent": "workflow-reviewer",
-      "omp_role": "@advisor"
+      "omp_role": "@advisor",
+      "required_behavior": "Review mode: focused; original blocking findings, repair diff and directly affected paths only",
+      "forbidden": ["restart full review", "reset budget on changed snapshot"]
     },
     {
       "name": "verification-command-unavailable",
@@ -119,7 +215,7 @@
       "name": "review-with-diff-evidence",
       "state": "code_changed_with_evidence",
       "expected_stage": "review-implementation",
-      "required_handoff": ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]
+      "required_handoff": ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]
     },
     {
       "name": "missing-task-path",

@@ -22,6 +22,151 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
 }
 
+test("review budget is centralized and consistent across workflow entry points", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const lightweight = profiles.split("## Lightweight")[1].split("## Standard")[0];
+  const standard = profiles.split("## Standard")[1].split("## Critical")[0];
+  const critical = profiles.split("## Critical")[1];
+  assert.match(lightweight, /no default independent reviewer/i);
+  assert.match(standard, /exactly one independent.*workflow-reviewer/is);
+  assert.match(standard, /Standards.*Spec/s);
+  assert.match(standard, /implementation delegation.*explicit.*authorization/is);
+  assert.match(critical, /no additional\s+final reviewer/i);
+  for (const file of [
+    "skills/run-engineering-workflow/SKILL.md",
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+    "commands/engineering-workflow.md",
+    "README.md",
+    "ARCHITECTURE.md",
+  ]) {
+    const body = read(file);
+    assert.match(body, /quality-profiles\.md/, `${file}: missing budget source`);
+    assert.doesNotMatch(body, /then Matt `code-review`|then `code-review`, then|either Matt `code-review`|先运行仓库自身检查与 Matt `code-review`|`code-review` 与独立 review 二选一|code-review \+ 仓库检查/, `${file}: duplicate or optional default review`);
+  }
+  const command = read("commands/engineering-workflow.md");
+  assert.match(command, /lightweight.*no.*dispatch/is);
+  assert.match(command, /standard.*critical.*exactly one/is);
+  assert.match(command, /planning delegation.*explicitly requested/is);
+});
+
+test("workspace review and finish reuse a complete independent result", () => {
+  const review = read("skills/review-implementation/SKILL.md");
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+  for (const body of [review, finish]) {
+    assert.match(body, /Standards/);
+    assert.match(body, /Spec/);
+    assert.match(body, /staged.*unstaged.*untracked/is);
+    assert.match(body, /same.change.*same.material/is);
+    assert.match(body, /appending.*(?:report|evidence).*not.*invalidate/is);
+    assert.match(body, /UNVERIFIED/);
+  }
+  assert.match(review, /fixed\s+point.*nonempty.*committed/is);
+  assert.match(review, /one controlled.*INVALID/is);
+  assert.doesNotMatch(finish, /Run Matt `code-review`|after\s+`code-review`/);
+  for (const file of ["agents/workflow-reviewer.md", ".omp/agents/workflow-reviewer.md", ".pi/agents/workflow-reviewer.md"]) {
+    const body = read(file);
+    assert.match(body, /Standard.*Critical/is, file);
+    assert.match(body, /Standards.*Spec/s, file);
+    assert.match(body, /staged.*unstaged.*untracked/is, file);
+    assert.match(body, /do not.*nested dispatch/is, file);
+    assert.doesNotMatch(body, /Only dispatch for critical/);
+  }
+  assert.doesNotMatch(read(".omp/agents/workflow-reviewer.md"), /autoloadSkills:.*"code-review"/);
+});
+
+test("delivery review budget bounds rounds rather than only reviewer count", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const budget = profiles.split("## Delivery Review Budget")[1];
+  assert.ok(budget, "missing delivery-level budget");
+  assert.match(budget, /exactly one full review and at most one focused follow-up/i);
+  assert.match(budget, /original blocking findings.*repair diff.*directly affected/is);
+  assert.match(budget, /non-blocking.*(?:do not|never).*trigger/is);
+  assert.match(budget, /resume.*snapshot.*do not reset/is);
+  assert.match(budget, /blocked.*user.*(?:decide|decision)/is);
+  assert.match(budget, /user approval.*(?:new full review|restart)/is);
+  assert.match(budget, /one controlled.*INVALID.*no valid report/is);
+  assert.match(budget, /artifacts\/review\.md.*artifacts\/verification\.md/is);
+  assert.doesNotMatch(profiles, /after material fixes,[\s\S]{0,90}review the new snapshot/i);
+});
+
+test("routing reviews the delivery scope once and never adds code-reviewer", () => {
+  for (const file of ["skills/run-engineering-workflow/SKILL.md", "commands/engineering-workflow.md"]) {
+    const body = read(file);
+    assert.match(body, /delivery scope.*complete.*full review/is, file);
+    assert.match(body, /(?:slice|slices).*checks.*not.*full review/is, file);
+    assert.match(body, /code-reviewer/, file);
+    assert.match(body, /focused.*follow-up/is, file);
+    assert.match(body, /main (?:session|router).*only.*schedul/is, file);
+    assert.doesNotMatch(body, /snapshot changes require a new review|checks, and a new final review|Review again after material fixes/i, file);
+  }
+});
+
+test("behavior fixtures distinguish focused repair, exhaustion, scope drift and finish reuse", () => {
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  for (const [name, stage] of [
+    ["remediated-diff-needs-focused-follow-up", "focused-review"],
+    ["review-budget-exhausted", "handoff-review-blocker"],
+    ["nonblocking-review-suggestions", "finish-with-evidence"],
+    ["review-resume-preserves-budget", "handoff-review-blocker"],
+    ["review-scope-drift-needs-user-decision", "request-review-reauthorization"],
+    ["finish-evidence-gap-returns-to-router", "return-verification-gap"],
+    ["slice-complete-not-delivery-complete", "targeted-checks"],
+    ["valid-review-no-extra-code-reviewer", "finish-with-evidence"],
+  ]) {
+    const entry = cases.find((candidate) => candidate.name === name);
+    assert.ok(entry, `missing scenario ${name}`);
+    assert.equal(entry.expected_stage, stage);
+    assert.ok(entry.forbidden.length > 0, `${name}: missing negative boundary`);
+  }
+  assert.ok(!cases.some((entry) => entry.name === "remediated-diff-needs-fresh-final-review"));
+});
+
+test("review procedure and all reviewer adapters distinguish full and focused modes", () => {
+  const review = read("skills/review-implementation/SKILL.md");
+  assert.match(review, /Review mode:.*full.*focused/is);
+  assert.match(review, /focused.*original blocking findings.*repair diff.*directly affected/is);
+  assert.match(review, /Blocking:.*yes.*no/is);
+  assert.match(review, /REVIEW_STATUS: CLEAN.*no blocking/is);
+  assert.doesNotMatch(review, /Changes to those inputs require.*a new review/is);
+  for (const file of ["agents/workflow-reviewer.md", ".omp/agents/workflow-reviewer.md", ".pi/agents/workflow-reviewer.md"]) {
+    const body = read(file);
+    assert.match(body, /Review mode:.*full.*focused/is, file);
+    assert.match(body, /code-reviewer/, file);
+    assert.match(body, /focused.*(?:repair|findings)/is, file);
+    assert.doesNotMatch(body, /material input changes\s+require fresh review/i, file);
+  }
+});
+
+test("finish consumes evidence and returns gaps without scheduling or running checks", () => {
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+  assert.match(finish, /## Consume Evidence/);
+  assert.match(finish, /do not dispatch.*do not.*run.*verification/is);
+  assert.match(finish, /(?:missing|stale).*main router/is);
+  assert.match(finish, /(?:full|focused).*round/is);
+  assert.doesNotMatch(finish, /\d\. Run relevant repository verification|fixes, affected checks and one new review|Re-run affected checks after substantive simplification/i);
+  assert.match(finish, /awaiting-acceptance/);
+  const metadata = read("skills/finish-with-evidence/agents/openai.yaml");
+  assert.match(metadata, /consume.*(?:existing|recorded).*evidence/i);
+});
+
+test("vocabulary ownership preserves legacy files and OpenSpec context", () => {
+  const governance = read("skills/run-engineering-workflow/references/workflow-governance.md");
+  const clarify = read("skills/clarify-requirements/SKILL.md");
+  const finish = read("skills/finish-with-evidence/SKILL.md");
+  const archive = read("skills/archive-task/SKILL.md");
+  assert.match(governance, /`GLOSSARY\.md`.*new project/i);
+  assert.match(governance, /`CONTEXT\.md`.*legacy-compatible/i);
+  assert.match(governance, /ask before writing/i);
+  assert.match(governance, /`GLOSSARY-MAP\.md`/);
+  assert.match(governance, /do not migrate, rename, or mirror.*implicitly/i);
+  assert.match(governance, /`artifacts\/context\.md`.*never/);
+  for (const body of [clarify, finish, archive]) {
+    assert.match(body, /`GLOSSARY\.md`/);
+    assert.match(body, /existing `CONTEXT\.md`/);
+  }
+  assert.match(finish, /`openspec\/specs\/`/);
+});
+
 test("skills have valid names, useful descriptions, and UI prompts", () => {
   for (const name of skillNames) {
     const skill = read(`skills/${name}/SKILL.md`);
@@ -133,7 +278,10 @@ test("router selects OpenSpec and keeps legacy recovery read-only", () => {
   assert.match(router, /standard.*main session/s);
   assert.match(router, /critical.*full gated path/s);
   assert.match(router, /at most one live writer/);
-  assert.match(router, /After 10 minutes without progress/);
+  assert.doesNotMatch(router, /After (?:10|15) minutes without progress/);
+  assert.match(router, /Do not interrupt or terminate a worker solely because a duration threshold/);
+  assert.match(router, /stop only on explicit failure, cancellation, or user instruction/);
+  assert.match(router, /Do not add call-level runtime deadlines/);
   assert.match(router, /Do not automatically re-dispatch/);
   assert.match(router, /do not poll `hub jobs`, `hub list`/);
   assert.match(router, /do not initialize one silently/i);
@@ -305,7 +453,7 @@ test("OMP adapter limits skills and separates model roles", () => {
   assert.match(config, /- code-review/);
   assert.match(config, /prewalk:[\s\S]*enabled: false/);
   assert.match(config, /maxConcurrency: 4/);
-  assert.doesNotMatch(config, /maxRuntimeMs:/);
+  assert.match(config, /^  maxRuntimeMs: 0$/m);
   assert.doesNotMatch(config, /agentIdleTtlMs:/);
   assert.doesNotMatch(config, /softRequestBudget:/);
   assert.doesNotMatch(config, /\*-code-review/);
@@ -345,6 +493,10 @@ test("Pi adapter uses native agents without OMP role aliases", () => {
   assert.match(reviewer, /verificationRoles: \[independent-review\]/);
   assert.doesNotMatch(reviewer, /^model:/m);
   assert.doesNotMatch(reviewer, /^tools:.*(?:bash|edit|write)/m);
+
+  for (const agent of [planner, implementer, reviewer]) {
+    assert.match(agent, /^timeoutMs: 2147483647$/m);
+  }
 
   assert.match(router, /^## Pi Roles$/m);
   assert.match(router, /workflow-implementer/);
@@ -386,7 +538,7 @@ test("OMP dispatches carry a bounded, explicit task handoff", () => {
   for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]) {
     assert.match(implementer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]) {
+  for (const field of ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]) {
     assert.match(reviewer, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(reviewer, /REVIEW_STATUS: INVALID/);
@@ -412,6 +564,7 @@ test("behavior cases cover bounded context and fallback observability", () => {
     "Must preserve:",
     "May modify:",
     "Verification:",
+    "Review mode:",
     "Review scope:",
     "Evidence:",
   ]);
@@ -429,7 +582,7 @@ test("behavior cases cover bounded context and fallback observability", () => {
   const expectedHandoffs = new Map([
     ["planner-with-explicit-task", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:"]],
     ["implementation-with-one-slice", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "May modify:", "Verification:"]],
-    ["review-with-diff-evidence", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review scope:", "Evidence:"]],
+    ["review-with-diff-evidence", ["Active change:", "Assigned slice:", "Phase:", "Read:", "Must preserve:", "Review mode:", "Review scope:", "Evidence:"]],
   ]);
   for (const [name, requiredFields] of expectedHandoffs) {
     const entry = fixture.cases.find((candidate) => candidate.name === name);
@@ -594,6 +747,11 @@ test("upstream manifest pins auditable revisions and retires Trellis", () => {
   assert.ok(manifest.retired_sources.trellis.reason);
   assert.ok(manifest.retired_sources.trellis.retired);
 
+  assert.equal(
+    manifest.sources["mattpocock-skills"].revision,
+    "49dd158d1076134a641b33efb035946536778336",
+  );
+  assert.equal(manifest.sources["mattpocock-skills"].version_hint, "1.3.1");
   for (const source of Object.values(manifest.sources)) {
     assert.match(source.revision, /^[0-9a-f]{40}$/);
     assert.ok(source.license);

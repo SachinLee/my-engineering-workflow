@@ -53,9 +53,10 @@ changed scope`.
 
 For planning, implementation, and review handoffs also include `Phase:`, `Read:`,
 `Must preserve:`, and the role-appropriate scope. Implementation handoffs must
-include `May modify:` and `Verification:`. Review handoffs must include `Review
-scope:` and `Evidence:`. Never ask a subagent to infer the change by scanning
-`openspec/changes/`. A missing or unreadable change is an invalid dispatch; return
+include `May modify:` and `Verification:`. Review handoffs must include
+`Review mode: full | focused`, `Review scope:`, and `Evidence:`; focused mode also
+needs the prior report and original blocking findings. Never ask a subagent to infer
+its change by scanning `openspec/changes/`. A missing or unreadable change is invalid; return
 the appropriate `*_STATUS: INVALID` result and stop.
 
 Subagents receive change artifacts and file paths, not the parent conversation. They
@@ -162,10 +163,10 @@ risk level. The profile controls dispatch, not just the checklist:
 
 - `lightweight`: keep the work in the main session. Do not dispatch planner,
   implementer, checker, or reviewer. Run one focused check before delivery.
-- `standard`: keep implementation in the main session by default. Use at most
-  one implementation worker or one review worker when the boundary benefits
-  from fresh context; never dispatch both implementation workers and duplicate
-  reviewers.
+- `standard`: keep implementation in the main session. The default sole worker
+  is one independent `workflow-reviewer` through `review-implementation`.
+  Implementation delegation needs explicit justification and authorization;
+  it never replaces independent final review. Never dispatch duplicate reviewers.
 - `critical`: use the full gated path when the change touches auth, secrets,
   money, persistent data, migrations, public contracts, destructive operations,
   or a cross-layer release boundary.
@@ -207,18 +208,26 @@ Phase routing:
   that ticket's `state: done` only after its verification command has executed
   evidence. Resuming after a session break means recomputing the frontier from the
   ticket files, never rereading the previous chat.
-- Code changed: run the smallest check that proves the changed behavior.
+- Code changed: complete each slice with targeted checks, not a full review per slice.
+  The main session is the only review scheduler. Follow the Delivery Review Budget
+  in `references/quality-profiles.md`, including persisted rounds on resume.
   - For `lightweight`: run one focused check before delivery.
-  - For `standard`: use either Matt `code-review` in the main session or one
-    fresh-context `review-implementation` through `workflow-reviewer`, not both.
-  - For `critical`: run the repository checks, then `code-review`, then
-    `workflow-reviewer` from a fresh context. In OMP, run exactly one
-    `workflow-reviewer` final review after checks finish, against a stable
-    worktree snapshot; do not append duplicate reviewer tasks. In Pi, first use
-    the blocking `subagent` reviewer when available.
-  - The main session fixes findings and repeats affected checks; a changed
-    snapshot requires a new review. The implementation model does not approve
-    its own work.
+  - For `standard` and `critical`: wait until the approved delivery scope is
+    complete and repository checks pass, then dispatch the one full review via
+    `review-implementation` and `workflow-reviewer`. Cover Standards / Spec,
+    correctness, security, tests, and complexity in the same report.
+  - Default to `workflow-reviewer` only, not `code-reviewer`, a generic reviewer,
+    native Matt `code-review`, or nested dispatch. Critical adds relevant checks,
+    not extra reviewers. Explicit native review needs a valid fixed point and
+    nonempty committed diff to HEAD; it does not certify uncommitted workspace contents.
+  - Reuse valid same-change/same-material evidence. Appending reports or delivery
+    records does not invalidate it unless substantive inputs change.
+  - Batch blocking repairs and rerun affected checks; use at most the budgeted
+    focused follow-up on original findings and repair impact. Do not repeat the
+    full review for local repairs or reset the budget on a changed snapshot.
+  - Exhausted budget with blockers, expanded scope, missing history, or unavailable
+    independent review: report `blocked` / `UNVERIFIED` and the precise gap; ask
+    the user for the next decision as the shared budget requires. Never self-approve.
 - `review` clean: write or update `artifacts/verification.md` with executed evidence,
   - Use `finish-with-evidence` to record the executed verification artifact before handoff.
   set the OpenSpec change handoff to `awaiting-acceptance`, list what the user must
@@ -233,15 +242,20 @@ Phase routing:
 
 These limits enforce the profile-based routing rules:
 
-- **Prefer the main session for `lightweight` and `standard` work.** Only
-  dispatch when the assessed profile is `critical` or when fresh context is
-  explicitly justified for a bounded slice.
+- **Prefer the main session for `lightweight` and `standard` implementation.**
+  Standard and Critical require the single independent reviewer specified in
+  `references/quality-profiles.md`. Implementation delegation needs explicit
+  authorization and justification; never spend the review budget on a writer.
 - Allow at most one live writer and one review/check worker for a task.
 - Treat a worker as making progress only when it edits a declared file, runs a
   relevant check, reports a concrete result, or states a reproducible blocker.
-- After 10 minutes without progress, request one status update. After 15
-  minutes without progress, interrupt or terminate the worker and let the main
-  session take over. Do not automatically re-dispatch a similar worker.
+- If a worker appears stalled, request one status update based on observed state.
+  Do not interrupt or terminate a worker solely because a duration threshold was
+  reached; stop only on explicit failure, cancellation, or user instruction.
+  Do not automatically re-dispatch a similar worker.
+- Do not add call-level runtime deadlines. Disable the harness runtime cap where
+  supported; otherwise use its maximum supported duration. Pi's `timeoutMs`
+  accepts at most `2147483647` ms (about 24.9 days), not an unlimited value.
 - Wait for the completion event once; do not poll `hub jobs`, `hub list`, or
   equivalent status commands in a loop. Record timeout or cancellation as an
   incomplete stage, not as successful delivery.
@@ -269,8 +283,8 @@ escalation targets for `critical` tasks, not an automatic pipeline for all work:
   `critical` tasks** or explicitly requested planning.
 - Optional TDD implementation worker: `workflow-implementer` on `@task` **only
   for `critical` tasks** when a bounded worker is justified.
-- Optional independent review: `workflow-reviewer` on `@advisor` **for
-  `critical` tasks** or an explicit review request.
+- Independent review: `workflow-reviewer` on `@advisor` **for `standard` and
+  `critical` tasks**, according to `references/quality-profiles.md`.
 - Critical uncertainty or repeated implementation failure: escalate to
   `@default` or `@slow` before continuing.
 
@@ -279,13 +293,13 @@ Do not let OMP `prewalk` silently move implementation to `@smol`.
 
 ### OMP Review Idempotency
 
-The project-installed `workflow-review-gate` extension permits one final review
-per `Active task + review profile + worktree snapshot`. A final reviewer that
-returns `REVIEW_STATUS: INVALID` may be replaced once on the same snapshot only
-when the new dispatch contains `Review retry: invalid`; escalate instead of
-dispatching further retries. Material findings require remediation, affected
-checks, and a new final review after the diff changes. The only separate
-profiles are an explicitly requested `security` or `data-integrity` review.
+The Delivery Review Budget in `references/quality-profiles.md` governs approved
+scope and full/focused rounds, not one new full review per snapshot. The installed
+`workflow-review-gate` still keys its runtime decision from `Active task:` and
+profile data; it does not enforce the `Active change:` handoff or this round budget.
+Treat it as a limited legacy guard, not proof of runtime deduplication. Record
+rounds in OpenSpec artifacts and enforce the shared budget in the main router;
+repairing the external extension is a separate change.
 
 ## Pi Roles
 

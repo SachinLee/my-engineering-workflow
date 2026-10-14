@@ -20,7 +20,8 @@ skills:
     - ponytail-review
 
 task:
-  # Use the global OMP defaults for runtime, idle TTL, and request budget.
+  # Disable the runtime cap; keep global idle TTL and request budget defaults.
+  maxRuntimeMs: 0
   maxConcurrency: 4
   maxRecursionDepth: 1
   agentModelOverrides:
