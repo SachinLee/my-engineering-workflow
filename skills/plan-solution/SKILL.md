@@ -5,6 +5,15 @@ description: Design a traceable technical solution and execution plan for an act
 
 # Plan Solution
 
+## Fast Path Exit
+
+If the main router has already selected [Simple Work Fast Path](../run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path),
+return to the main session for direct execution/checks and a conversational result.
+Do not create task records or planning artifacts merely to satisfy this skill.
+Formal work is not silently downgraded here; without that router decision, use
+its eligibility/selection step first. The following planning steps apply only to
+an already selected formal change.
+
 Turn an accepted OpenSpec `proposal.md` and `specs/` into an implementation-ready
 solution. Keep technical decisions in the change's `design.md`, ordered execution
 in `tasks.md`, and dispatch context in `artifacts/context.md`. Do not implement
@@ -189,8 +198,8 @@ stale, and a reader can read the source. When resuming a legacy task that has an
 
 ## Lightweight Planning
 
-For documentation, configuration, or an isolated low-risk change, the change may
-remain proposal-only. Record an explicit solution sketch, affected files, runnable
+For an explicitly selected formal lightweight change, the change may remain
+proposal-only. Record an explicit solution sketch, affected files, runnable
 check, and the reason `design.md` is unnecessary in `proposal.md`. Use `tasks.md`
 and `artifacts/context.md` whenever the change needs ordering or dispatch evidence.
 Skipping files is allowed; skipping the planning decision is not.

@@ -1,0 +1,5 @@
+phase: awaiting-acceptance
+task: .workflow/tasks/10-06-openspec-compatibility/
+profile: critical
+created: 10-06
+source_of_truth: .workflow/tasks/10-06-openspec-compatibility/prd.md

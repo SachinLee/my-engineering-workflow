@@ -1,9 +1,19 @@
 ---
 name: finish-with-evidence
-description: Consume existing verification and independent review evidence, record factual delivery results in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
+description: Consume existing verification and independent review evidence, report simple fast-path work directly or record formal delivery in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
 ---
 
 # Finish With Evidence
+
+## Fast Path Exit
+
+If the main router has already selected [Simple Work Fast Path](../run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path),
+return existing changes/checks, `NOT RUN` items and risks to the main router for a
+conversational handoff. Do not create task records or verification artifacts, run
+checks, dispatch reviewers, or backfill a change just to close this request.
+Formal work is not silently downgraded here; a missing fast-path decision returns
+to router selection rather than implying eligibility. The formal steps below
+require a selected change and do not apply to eligible fast work.
 
 Close the gap between the planned solution and the implementation that actually
 shipped. Write results to the active OpenSpec change's `artifacts/verification.md`,

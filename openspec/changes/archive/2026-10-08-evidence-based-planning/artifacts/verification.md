@@ -83,3 +83,11 @@ for name, job in jobs:
 - 用户验收：待确认，proposal 的用户验收复选框保持未勾选。
 - 验证入口：上表四条 AC 对应的已保存场景，及三个可直接运行的仓库/诊断/格式命令。
 - 用户验收后若明确要求，可执行 `openspec archive evidence-based-planning`；本轮不执行。
+
+## 验收
+
+- accepted by user：2026-10-08T11:26:12+08:00
+- 用户验收说明：`收尾`（在会话中明确要求归档该 change）。
+- 归档前置条件：handoff 为 `awaiting-acceptance`；上表 AC-001 至 AC-004 均有结果行，无遗漏标准；用户已在本会话确认。
+- 交付后状态更新：实现已提交为 `ba343e6`（19 文件，+785/−35）并推送至 `origin/main`；上述“提交：`NOT COMMITTED`”为交付当时的记录，保留不改。
+- 归档方式：`openspec archive evidence-based-planning --skip-specs --yes`，实际归档为 `openspec/changes/archive/2026-10-08-evidence-based-planning/`（CLI 加日期前缀）；只重定位记录，未合并主 specs、未提交、未推送、未删除归档。

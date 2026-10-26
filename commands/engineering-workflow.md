@@ -1,5 +1,5 @@
 ---
-description: Run or resume the five-stage engineering workflow for a software request.
+description: Choose fast or formal engineering work, or resume the formal workflow for a software request.
 argument-hint: "[request or continuation instruction]"
 ---
 
@@ -13,7 +13,12 @@ Keep the interactive main session responsible for requirement questions, scope,
 approvals, risk escalation, remediation, and the final delivery claim.
 OpenSpec owns new changes and durable records; `.workflow/` is legacy recovery only.
 
-Route work by the active change phase:
+Before discovery, apply [Simple Work Fast Path](../skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path).
+For eligible work, execute and verify in the main session and report in the conversation,
+without creating task records or entering the formal stages below. If eligibility
+changes, stop and follow the shared escalation rule; do not auto-create a change.
+
+For formal work, retain discovery and explicit confirmation; route by the active change phase:
 
 1. For a new request, run read-only discovery of unarchived changes
    (`scripts/openspec_compat.py` `list_changes`) and match the session intent

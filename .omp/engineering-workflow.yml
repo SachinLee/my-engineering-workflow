@@ -1,0 +1,38 @@
+# Load this file explicitly with `omp --config <path>`.
+# Context mode: pointer read at session start; task artifacts are loaded by dispatch.
+# Default route is lightweight/standard inline; escalate to critical explicitly.
+# Never add a per-turn context injector here; head-of-input state destroys the prompt cache.
+skills:
+  includeSkills:
+    - run-engineering-workflow
+    - clarify-requirements
+    - plan-solution
+    - review-implementation
+    - finish-with-evidence
+    - archive-task
+    - grill-with-docs
+    - grilling
+    - domain-modeling
+    - codebase-design
+    - diagnosing-bugs
+    - tdd
+    - code-review
+    - ponytail-review
+
+task:
+  # Disable the runtime cap; keep global idle TTL and request budget defaults.
+  maxRuntimeMs: 0
+  maxConcurrency: 4
+  maxRecursionDepth: 1
+  agentModelOverrides:
+    workflow-planner: "@plan"
+    workflow-implementer: "@task"
+    workflow-reviewer: "@advisor"
+  agentPrewalk:
+    workflow-implementer: "off"
+
+plan:
+  defaultOnStartup: false
+
+prewalk:
+  enabled: false

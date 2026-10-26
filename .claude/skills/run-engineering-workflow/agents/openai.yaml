@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Workflow"
+  short_description: "Choose fast or formal work with relevant quality checks"
+  default_prompt: "Use $run-engineering-workflow to choose the fast or formal route for this engineering task."

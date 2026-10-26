@@ -10,7 +10,7 @@
 
 ## Design Rules
 
-- Store one fact in one authoritative place: OpenSpec for new work, legacy records only for recovery.
+- Store one fact in one authoritative place: OpenSpec for formal work; eligible fast work creates no task state, legacy records only for recovery.
 - Pass bounded context packages between AI sessions instead of copying full context or passing path lists alone.
 - Load state with reads, never with head-of-input injection. An injector that places volatile content before the conversation history invalidates the prompt cache for the entire session.
 - Treat conversations and generated memories as leads, not policy.
@@ -26,6 +26,10 @@
 
 ```text
 request
+  -> classify current request before discovery (quality-profiles.md#simple-work-fast-path)
+     -> eligible: main-session edit -> diff + smallest relevant checks -> report in conversation
+        (no task records; scope/risk grows -> stop, preserve diff/checks, confirm formal change)
+     -> formal: continue below; selected change continuation keeps its record
   -> read openspec/config.yaml and discover unarchived changes (openspec_compat
      list_changes, read-only; environment errors are blocked states, not "no match")
   -> match session intent against the candidates; recommend create or reuse and

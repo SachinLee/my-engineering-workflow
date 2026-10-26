@@ -1,12 +1,13 @@
 ---
 name: run-engineering-workflow
-description: Route software work through OpenSpec change records, legacy recovery, Matt-style clarification and design, TDD, independent review, and Ponytail complexity checks. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
+description: Route simple non-behavioral work directly and other software work through OpenSpec change records, legacy recovery, clarification, design, TDD, independent review, and Ponytail checks. Use when starting, resuming, planning, implementing, reviewing, or finishing engineering work.
 ---
 
 # Run Engineering Workflow
 
-Use OpenSpec as the canonical workflow record for new work. Use upstream skills as
-methods inside that change record; never create a competing task or plan system.
+Use the fast path for eligible simple work, without a task record. For formal work,
+use OpenSpec as the canonical workflow record and upstream skills as methods inside
+that change; never create a competing task or plan system.
 Legacy `.workflow/` records remain recoverable inputs, and `.trellis/` remains a
 read-only historical input.
 
@@ -73,7 +74,21 @@ Read [workflow-governance.md](references/workflow-governance.md) when deciding r
 Read [quality-profiles.md](references/quality-profiles.md) before selecting or
 changing a risk profile.
 
+## Choose Fast Or Formal
+
+Read project rules and apply [Simple Work Fast Path](references/quality-profiles.md#simple-work-fast-path)
+before OpenSpec discovery or CLI access. Judge the current request, not the mere
+presence of a repository or unrelated old changes.
+
+If eligible, execute and verify in the main session without creating task records;
+report results in the conversation, then return: skip the formal stages below.
+Follow the shared path's stop-and-confirm escalation if the scope changes.
+Otherwise use the formal branch. Explicit OpenSpec requests and selected change
+continuations retain that branch and any still-valid selection confirmation.
+
 ## Start
+
+Formal branch only; the fast-path decision above must already be resolved.
 
 1. Find the repository root and inspect `openspec/config.yaml` or `config.yml`.
    If present, run `openspec list --json` through `scripts/openspec_compat.py`
@@ -98,7 +113,7 @@ changing a risk profile.
    disagree; resolve the disagreement first and record the resolution in OpenSpec.
 ## Match And Confirm Before Creating Or Reusing
 
-Every task-routing request triggers the same loop: read-only discovery, semantic
+Every formal task-routing request triggers the same loop: read-only discovery, semantic
 match, one recommendation, and one explicit confirmation. Clarification answers
 and sub-steps of an already-confirmed request do not re-trigger the loop; a
 genuinely new request re-runs it. Pure consultation or analysis creates no task.
@@ -136,8 +151,8 @@ or reuse is not plan approval, acceptance, or archival.
 
 ## Assess Profile First
 
-Before any routing or dispatch decision, explicitly assess the task's risk
-profile by reading the selected OpenSpec `proposal.md`, affected `specs/`, and change scope:
+Formal branch only, after the fast/formal selection and confirmed change selection.
+Before formal dispatch, assess the task's risk profile by reading the selected OpenSpec `proposal.md`, affected `specs/`, and change scope:
 
 1. **Is this critical?** Does the task touch authentication, authorization,
    money, secrets, persistent data, migrations, public contracts, destructive

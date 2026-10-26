@@ -1,4 +1,4 @@
 interface:
   display_name: "Finish With Evidence"
   short_description: "Consume evidence and record delivery without another review"
-  default_prompt: "Use $finish-with-evidence to consume existing verification and review evidence, record results, and hand off for acceptance."
+  default_prompt: "Use $finish-with-evidence to consume existing evidence, report an already selected fast path directly, or record a formal change and hand off for acceptance."

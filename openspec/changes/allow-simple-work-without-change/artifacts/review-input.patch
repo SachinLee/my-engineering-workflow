@@ -1,0 +1,566 @@
+--- a/skills/run-engineering-workflow/SKILL.md
++++ b/skills/run-engineering-workflow/SKILL.md
+@@ -1,12 +1,13 @@
+ ---
+ name: run-engineering-workflow
+-description: Route software work through OpenSpec change records, legacy recovery, Matt-style clarification and design, TDD, independent review, and Ponytail complexity checks. Use when starting, resuming, planning, implementing, reviewing, or finishing a coding task that should remain traceable across AI sessions.
++description: Route simple non-behavioral work directly and other software work through OpenSpec change records, legacy recovery, clarification, design, TDD, independent review, and Ponytail checks. Use when starting, resuming, planning, implementing, reviewing, or finishing engineering work.
+ ---
+ 
+ # Run Engineering Workflow
+ 
+-Use OpenSpec as the canonical workflow record for new work. Use upstream skills as
+-methods inside that change record; never create a competing task or plan system.
++Use the fast path for eligible simple work, without a task record. For formal work,
++use OpenSpec as the canonical workflow record and upstream skills as methods inside
++that change; never create a competing task or plan system.
+ Legacy `.workflow/` records remain recoverable inputs, and `.trellis/` remains a
+ read-only historical input.
+ 
+@@ -73,7 +74,21 @@
+ Read [quality-profiles.md](references/quality-profiles.md) before selecting or
+ changing a risk profile.
+ 
++## Choose Fast Or Formal
++
++Read project rules and apply [Simple Work Fast Path](references/quality-profiles.md#simple-work-fast-path)
++before OpenSpec discovery or CLI access. Judge the current request, not the mere
++presence of a repository or unrelated old changes.
++
++If eligible, execute and verify in the main session without creating task records;
++report results in the conversation, then return: skip the formal stages below.
++Follow the shared path's stop-and-confirm escalation if the scope changes.
++Otherwise use the formal branch. Explicit OpenSpec requests and selected change
++continuations retain that branch and any still-valid selection confirmation.
++
+ ## Start
++
++Formal branch only; the fast-path decision above must already be resolved.
+ 
+ 1. Find the repository root and inspect `openspec/config.yaml` or `config.yml`.
+    If present, run `openspec list --json` through `scripts/openspec_compat.py`
+@@ -98,7 +113,7 @@
+    disagree; resolve the disagreement first and record the resolution in OpenSpec.
+ ## Match And Confirm Before Creating Or Reusing
+ 
+-Every task-routing request triggers the same loop: read-only discovery, semantic
++Every formal task-routing request triggers the same loop: read-only discovery, semantic
+ match, one recommendation, and one explicit confirmation. Clarification answers
+ and sub-steps of an already-confirmed request do not re-trigger the loop; a
+ genuinely new request re-runs it. Pure consultation or analysis creates no task.
+--- a/skills/run-engineering-workflow/references/quality-profiles.md
++++ b/skills/run-engineering-workflow/references/quality-profiles.md
+@@ -3,6 +3,39 @@
+ This is the single source of review budgets for every workflow entry point.
+ Risk adds relevant checks, never duplicate final reviewers or permission to skip
+ an available check that directly proves changed behavior.
++
++## Simple Work Fast Path
++
++This is the single source of eligibility for work without an OpenSpec change.
++Use it only when **all** conditions hold: the request is clear, non-behavioral,
++local and low-risk; it can finish in the same main session with no formal plan,
++handoff or delegation; the user has not explicitly requested OpenSpec and is not
++continuing a selected change; no stricter project record rule applies.
++Examples: typo/copy/formatting fixes and local configuration or code cleanup
++proven not to alter behavior. File count or the word "simple" is not sufficient.
++
++Behavior includes workflow/agent instructions, not only executable code.
++Behavior changes, bug fixes and refactors remain Standard or Critical. Security,
++authentication/authorization, money, secrets, persistent data, migrations, public
++contracts, dependency changes and destructive operations are never fast-path work.
++Ambiguous scope must be resolved before eligibility is claimed. CLI errors or
++failures do not qualify otherwise ineligible work for this path.
++
++- Decide before discovery: an existing `openspec/` directory or unrelated changes
++  do not require task matching, CLI access or initialization for eligible work.
++- State the fast-path scope briefly, then execute in the main session without a
++  create/reuse confirmation. Skip formal clarification/planning, dispatch and
++  default independent review; do not create or update OpenSpec, `.workflow/`,
++  `.trellis/`, or replacement task/status records, including retroactive artifacts.
++- Inspect the relevant diff and run the smallest relevant checks required by the
++  project. Report actual changes, commands/results, `NOT RUN` items and risks in
++  the conversation. A failed/unavailable check is not a verified success or an
++  independent `REVIEW_STATUS: CLEAN`; entering finish adds no checks or records.
++- If behavior, risk, scope or formal handoff needs emerge, stop expanding the
++  implementation. Preserve current diffs and executed checks, explain the change,
++  then follow formal discovery and confirmation before creating/reusing a change.
++  Do not auto-create a record or discard edits during escalation. A selected
++  change continuation keeps its existing confirmation and review history.
+ 
+ ## Lightweight
+ 
+--- a/skills/run-engineering-workflow/references/workflow-governance.md
++++ b/skills/run-engineering-workflow/references/workflow-governance.md
+@@ -3,11 +3,17 @@
+ Read this reference when routing a task, resolving conflicts between
+ integrations, or deciding where durable information belongs.
+ 
++Before discovery, apply [Simple Work Fast Path](quality-profiles.md#simple-work-fast-path).
++Eligible work has no task record: execute/check in the main session and report in
++conversation. Formal work retains the discovery and confirmation contract below;
++selected change continuations keep their still-valid confirmation. Plan/finish
++must not turn an eligible fast request into mandatory artifacts.
++
+ ## Record Layout
+ 
+-OpenSpec is the canonical record system for new work. It owns requirements,
++For formal work, OpenSpec is the canonical record system. It owns requirements,
+ change design, tasks, completion status, and archived change history. `.workflow/`
+-and `.trellis/` remain compatibility inputs only.
++and `.trellis/` remain compatibility inputs only. Fast work creates no task state.
+ 
+ ```text
+ openspec/
+@@ -24,10 +30,10 @@
+ .trellis/                     read-only legacy records; never write or execute
+ ```
+ 
+-The routing invariant is strict:
++The formal routing invariant is strict:
+ 
+ - If `openspec/config.yaml` or `config.yml` exists, OpenSpec is canonical.
+-- New work starts from read-only discovery (`scripts/openspec_compat.py`
++- New formal work starts from read-only discovery (`scripts/openspec_compat.py`
+   `list_changes`) over the current project's unarchived changes. Nothing is
+   auto-selected, not even when exactly one change exists; multiple candidates
+   are a normal waiting state, not an environment failure.
+@@ -107,6 +113,8 @@
+ 
+ ## Acceptance And Archival
+ 
++This lifecycle applies to selected formal changes; fast work ends in conversation.
++
+ **The user accepts and archives. The agent never does it on its own initiative.**
+ 
+ - Once evidence is complete, the agent updates the OpenSpec change's verification
+@@ -132,7 +140,7 @@
+ 
+ ## Artifact Ownership
+ 
+-OpenSpec is the canonical owner for new task facts. Store one fact in one
++OpenSpec is the canonical owner for new durable formal task facts. Store one fact in one
+ authoritative place; compatibility readers must not create a second state store.
+ 
+ | Artifact | Canonical owner | Purpose |
+@@ -178,6 +186,8 @@
+ 
+ ## Context Loading Contract
+ 
++These change-loading tiers apply to formal work; fast work needs no change package.
++
+ Use three context tiers:
+ 
+ | Tier | When loaded | Contents |
+--- a/commands/engineering-workflow.md
++++ b/commands/engineering-workflow.md
+@@ -1,5 +1,5 @@
+ ---
+-description: Run or resume the five-stage engineering workflow for a software request.
++description: Choose fast or formal engineering work, or resume the formal workflow for a software request.
+ argument-hint: "[request or continuation instruction]"
+ ---
+ 
+@@ -13,7 +13,12 @@
+ approvals, risk escalation, remediation, and the final delivery claim.
+ OpenSpec owns new changes and durable records; `.workflow/` is legacy recovery only.
+ 
+-Route work by the active change phase:
++Before discovery, apply [Simple Work Fast Path](../skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path).
++For eligible work, execute and verify in the main session and report in the conversation,
++without creating task records or entering the formal stages below. If eligibility
++changes, stop and follow the shared escalation rule; do not auto-create a change.
++
++For formal work, retain discovery and explicit confirmation; route by the active change phase:
+ 
+ 1. For a new request, run read-only discovery of unarchived changes
+    (`scripts/openspec_compat.py` `list_changes`) and match the session intent
+--- a/README.md
++++ b/README.md
+@@ -5,7 +5,7 @@
+ AI 会话之间的上下文连续性。
+ 
+ 本仓库不是上述项目的完整替代品，也不复制它们的源码。它是一个轻量编排层，负责规定：新任务的
+-事实源（OpenSpec change）、何时使用 TDD、需要执行哪些验证、不同 AI harness 如何接入，以及旧
++持久事实源（正式工作用 OpenSpec change，简单工作可免建任务）、何时使用 TDD、需要执行哪些验证、不同 AI harness 如何接入，以及旧
+ `.workflow/` / `.trellis/` 记录如何只读恢复或显式迁移。
+ 
+ ## 这个仓库是做什么的
+@@ -23,7 +23,7 @@
+ 
+ | 组件 | 职责 | 本仓库如何使用 |
+ | --- | --- | --- |
+-| OpenSpec | 新任务的 proposal、spec、design、tasks 和变更生命周期 | 新工作唯一事实源；通过 CLI 查询和校验 |
++| OpenSpec | 新任务的 proposal、spec、design、tasks 和变更生命周期 | 正式工作唯一持久事实源；通过 CLI 查询和校验 |
+ | `.workflow/` | 旧任务状态和产物 | 仅用于旧记录恢复；新任务不再写入 |
+ | `.trellis/` | 更早的历史记录 | 只读；不运行脚本、不安装 injector |
+ | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
+@@ -32,7 +32,7 @@
+ 
+ | Skill | 用途 |
+ | --- | --- |
+-| `$run-engineering-workflow` | 读取 OpenSpec 当前 change，按风险等级路由整个开发流程，并保留 legacy 恢复 |
++| `$run-engineering-workflow` | 先判断简单工作快速通道，其余按选定 OpenSpec change 和风险等级路由，并保留 legacy 恢复 |
+ | `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前 change 的 `proposal.md` 和 `specs/` |
+ | `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md`、`tasks.md` 和 `artifacts/context.md` |
+ | `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
+@@ -57,7 +57,7 @@
+ | `docs/adr/` | 少量难以逆转且存在真实权衡的架构决策 |
+ 
+ 旧项目里已有的 `.workflow/` 和 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
+-Trellis 脚本、不再安装它的注入扩展，新状态一律写入当前 OpenSpec change。
++Trellis 脚本、不再安装它的注入扩展，正式任务的新状态写入当前 OpenSpec change，快速通道不创建任务状态。
+ 
+ ## 产物用什么语言
+ 
+@@ -184,7 +184,10 @@
+ 
+ ### 记录系统
+ 
+-OpenSpec 是新任务的唯一记录系统，需要安装 OpenSpec CLI 1.14.0 或更高版本。第一次在某个项目中使用时，先初始化项目并指定中文产物：
++OpenSpec 是正式任务的唯一持久记录系统，需要 OpenSpec CLI 1.14.0 或更高版本。先按
++[简单工作快速通道](skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path)
++判断：符合资格的小改动直接执行，不匹配、新建或复用任务，也不要求 CLI 或初始化。
++正式任务第一次在项目中使用时，先经用户同意初始化项目并指定中文产物：
+ 
+ ```bash
+ openspec init --language Chinese
+@@ -196,7 +199,7 @@
+ openspec init --language Chinese --tools none
+ ```
+ 
+-初始化后不需要手动创建 change：工作流每次会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
++初始化后不需要手动创建 change：正式流程会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
+ 
+ ```bash
+ openspec new change add-user-authentication --description "增加用户认证"
+@@ -208,7 +211,7 @@
+ 
+ `openspec init --language Chinese` 会在 `openspec/config.yaml` 写入语言上下文。对于已经初始化的项目，直接在该文件中维护 `context` 和 `rules`，不需要重复执行 `init`。CLI 生成的固定结构标题可能仍然是英文；提交前应根据配置把说明文字和面向人的字段翻译成中文，同时保留路径、命令、标识符和状态键名的英文形式。
+ 
+-本仓库的工作流会读取选定的 OpenSpec change，再把需求澄清、方案设计、实现、复核和验证写入：
++本仓库的正式工作流会读取选定的 OpenSpec change，再把需求澄清、方案设计、实现、复核和验证写入：
+ 
+ ```text
+ openspec/changes/<change-id>/
+@@ -634,10 +637,9 @@
+ `<agent-id>` 以 `npx skills@latest --help` 的当前输出为准。不要假设所有客户端都读取
+ `~/.agents/skills`；Claude Code 等平台仍有自己的目录和 agent/command 机制。
+ 
+-如果客户端只支持主会话 skill、不支持子 agent，仍按同一五阶段流程执行，但把实现、
+-检查和复核顺序放在主会话中，并明确记录未获得独立模型复核的剩余风险。若客户端完全
+-不支持 skill，直接要求它读取 `.workflow/CURRENT.md` 指向的任务产物，按五阶段执行；此时
+-本仓库的自动路由和质量加固不能视为已加载。
++如果客户端只支持主会话 skill，仍先判断快速通道；正式工作缺少独立上下文时明确报告审核缺口，
++不把主会话自查当作通过独立审核。完全不支持 skill 时，本仓库的自动路由不能视为已加载：
++正式工作手动读取选定 OpenSpec change，旧 `.workflow/CURRENT.md` 仅供明确的 legacy 恢复。
+ 
+ ## Pi 工作流
+ 
+@@ -809,15 +811,17 @@
+ 
+ ### 1. 第一次在项目中使用
+ 
+-第一次使用时直接说明需求即可，主路由会先询问是否创建 `.workflow/`。在 Codex 中输入以下内容，或在 Claude Code 中
+-执行 `/engineering-workflow` 后附带同一需求：
++直接说明需求即可。主路由先按共享资格判断快速通道：非行为性、局部、低风险且需求明确的小改动，
++在主会话直接执行、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
++行为变更、风险不符或有正式记录/交接要求时，再进入匹配与确认。执行中范围扩大先停下，再确认升级。
++在 Codex 中输入以下内容，或在 Claude Code 中执行 `/engineering-workflow` 后附带同一需求：
+ 
+ ```text
+ 使用 $run-engineering-workflow 处理这个需求：为订单列表增加按状态筛选。
+ ```
+ 
+-该 skill 会读取 `.workflow/` 指针和当前任务状态，再决定进入需求澄清、方案规划、
+-实现、独立复核、验证还是收尾阶段。
++快速通道执行后直接报告，不进入下面的正式规划和建档步骤。其余工作读取选定的 OpenSpec change，
++再决定进入澄清、规划、实现、独立复核或收尾。已有 change 的明确续接保留其记录和有效确认，不因改动小脱离该任务。
+ 
+ ### 2. 单独澄清需求
+ 
+@@ -842,7 +846,7 @@
+ 备选方案、迁移与回滚。`tasks.md` 按 vertical slice 将每个 AC 映射到代码边界、
+ test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
+ 
+-`lightweight` 任务可以保持 PRD-only，但必须在 `proposal.md` 中记录方案草图、预计修改文件、
++显式选择正式记录的 `lightweight` 任务可以保持 PRD-only，但必须在 `proposal.md` 中记录方案草图、预计修改文件、
+ 验证方法，以及不创建独立 `design.md` / `tasks.md` 的原因。
+ 
+ ### 4. 实现
+@@ -880,7 +884,7 @@
+ 代码和测试完成后使用：
+ 
+ ```text
+-使用 $finish-with-evidence 检查当前任务，记录 outcome.md，置为待验收并把验证清单给我。
++使用 $finish-with-evidence 检查当前任务，记录 artifacts/verification.md，置为待验收并把验证清单给我。
+ ```
+ 
+ 没有执行的检查必须记录为 `NOT RUN` 或 `UNVERIFIED`，不能根据推测写成 `PASS`。
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -10,7 +10,7 @@
+ 
+ ## Design Rules
+ 
+-- Store one fact in one authoritative place: OpenSpec for new work, legacy records only for recovery.
++- Store one fact in one authoritative place: OpenSpec for formal work; eligible fast work creates no task state, legacy records only for recovery.
+ - Pass bounded context packages between AI sessions instead of copying full context or passing path lists alone.
+ - Load state with reads, never with head-of-input injection. An injector that places volatile content before the conversation history invalidates the prompt cache for the entire session.
+ - Treat conversations and generated memories as leads, not policy.
+@@ -26,6 +26,10 @@
+ 
+ ```text
+ request
++  -> classify current request before discovery (quality-profiles.md#simple-work-fast-path)
++     -> eligible: main-session edit -> diff + smallest relevant checks -> report in conversation
++        (no task records; scope/risk grows -> stop, preserve diff/checks, confirm formal change)
++     -> formal: continue below; selected change continuation keeps its record
+   -> read openspec/config.yaml and discover unarchived changes (openspec_compat
+      list_changes, read-only; environment errors are blocked states, not "no match")
+   -> match session intent against the candidates; recommend create or reuse and
+--- a/tests/contracts.test.js
++++ b/tests/contracts.test.js
+@@ -21,6 +21,107 @@
+ function read(relativePath) {
+   return fs.readFileSync(path.join(root, relativePath), "utf8");
+ }
++
++test("simple work eligibility is centralized without weakening formal gates", () => {
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
++  assert.ok(fast, "missing shared simple-work eligibility");
++  assert.match(fast, /all.*conditions/is);
++  assert.match(fast, /non-behavioral.*local.*low-risk/is);
++  assert.match(fast, /same.*session.*no.*(?:handoff|delegation)/is);
++  assert.match(fast, /explicit.*OpenSpec.*selected change/is);
++  assert.match(fast, /stricter project.*(?:record|rule)/is);
++  assert.match(fast, /behavior.*Standard.*Critical/is);
++  assert.match(fast, /dependenc/i);
++  assert.match(fast, /CLI.*(?:error|failure).*not.*(?:qualif|eligib)/is);
++});
++
++test("router chooses the fast path before discovery and preserves formal routing", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const start = router.indexOf("## Choose Fast Or Formal");
++  const locate = router.indexOf("## Start");
++  assert.ok(start >= 0 && start < locate, "fast decision must precede canonical discovery");
++  const fast = router.slice(start, locate);
++  assert.match(fast, /quality-profiles\.md#simple-work-fast-path/);
++  assert.match(fast, /before.*(?:discovery|CLI)/is);
++  assert.match(fast, /without.*(?:creat|record)/is);
++  assert.match(fast, /return.*(?:skip|do not enter).*formal/is);
++  assert.match(router.slice(locate), /formal.*(?:only|branch)/is);
++  assert.match(router.slice(locate), /never create, reuse, or select without explicit confirmation/);
++  for (const file of [
++    "commands/engineering-workflow.md",
++    "skills/run-engineering-workflow/references/workflow-governance.md",
++  ]) {
++    const body = read(file);
++    assert.match(body, /quality-profiles\.md#simple-work-fast-path/, file);
++    assert.match(body, /before.*discovery/is, file);
++    assert.match(body, /formal.*(?:confirmation|confirm)/is, file);
++  }
++  for (const file of ["README.md", "ARCHITECTURE.md"]) {
++    assert.match(read(file), /quality-profiles\.md#simple-work-fast-path/, file);
++    assert.doesNotMatch(read(file), /主路由会先询问是否创建 `\.workflow\//, file);
++  }
++  assert.match(read("skills/run-engineering-workflow/agents/openai.yaml"), /fast.*formal/is);
++});
++
++test("simple work routing fixtures cover eligibility and explicit formal intent", () => {
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  for (const [name, stage] of [
++    ["simple-docs-with-existing-changes", "fast-execute"],
++    ["simple-work-without-cli", "fast-execute"],
++    ["small-behavior-fix-requires-change", "discover-and-confirm"],
++    ["strict-project-requires-change", "discover-and-confirm"],
++    ["selected-change-small-edit", "resume-selected-change"],
++    ["explicit-openspec-small-edit", "discover-and-confirm"],
++  ]) {
++    const scenario = cases.find((item) => item.name === name);
++    assert.ok(scenario, `missing routing scenario: ${name}`);
++    assert.equal(scenario.expected_stage, stage, name);
++    assert.ok(scenario.forbidden?.length, `${name}: missing negative boundary`);
++  }
++});
++
++test("planning and finish return from an already selected fast path before formal artifacts", () => {
++  for (const [file, formalHeading] of [
++    ["skills/plan-solution/SKILL.md", "## Confirm Readiness"],
++    ["skills/finish-with-evidence/SKILL.md", "## Consume Evidence"],
++  ]) {
++    const body = read(file);
++    const start = body.indexOf("## Fast Path Exit");
++    const formal = body.indexOf(formalHeading);
++    assert.ok(start >= 0 && start < formal, `${file}: missing early fast-path exit`);
++    const fast = body.slice(start, formal);
++    assert.match(fast, /main router.*already selected/is, file);
++    assert.match(fast, /quality-profiles\.md#simple-work-fast-path/, file);
++    assert.match(fast, /return.*main (?:router|session)/is, file);
++    assert.match(fast, /(?:no|without|do not).*creat.*(?:record|artifact)/is, file);
++    assert.match(fast, /formal.*(?:not|never).*downgrad/is, file);
++  }
++  assert.match(read("skills/finish-with-evidence/agents/openai.yaml"), /fast.*formal/is);
++  assert.match(read("skills/plan-solution/SKILL.md"), /For.*formal.*lightweight/is);
++});
++
++test("fast work retains verification and stops before expanding its scope", () => {
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
++  assert.match(fast, /diff.*smallest.*checks.*project/is);
++  assert.match(fast, /commands\/results.*NOT RUN.*conversation/is);
++  assert.match(fast, /failed.*not.*success.*CLEAN/is);
++  assert.match(fast, /stop.*implementation.*Preserve.*diffs.*checks.*formal.*confirmation/is);
++  assert.match(fast, /do not auto-create.*discard edits/is);
++  assert.match(fast, /replacement task\/status records.*retroactive artifacts/is);
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  for (const [name, stage] of [
++    ["fast-scope-expands", "stop-and-confirm-change"],
++    ["fast-verification-fails", "report-verification-failure"],
++    ["fast-finish-no-record", "report-fast-evidence"],
++  ]) {
++    const scenario = cases.find((item) => item.name === name);
++    assert.ok(scenario, `missing fast exit scenario: ${name}`);
++    assert.equal(scenario.expected_stage, stage, name);
++    assert.ok(scenario.forbidden?.length, `${name}: missing negative boundary`);
++  }
++});
+ 
+ test("review budget is centralized and consistent across workflow entry points", () => {
+   const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+--- a/evals/workflow-cases.json
++++ b/evals/workflow-cases.json
+@@ -1,6 +1,63 @@
+ {
+   "schema_version": 3,
+   "cases": [
++    {
++      "name": "fast-scope-expands",
++      "state": "fast_copy_edit_reveals_behavior_change_or_need_for_formal_handoff",
++      "expected_stage": "stop-and-confirm-change",
++      "required_behavior": "stop expansion, preserve diffs and checks, follow formal matching and confirmation",
++      "forbidden": ["continue expanding implementation", "auto-create change", "discard existing edits"]
++    },
++    {
++      "name": "fast-verification-fails",
++      "state": "eligible_fast_edit_with_failed_or_unavailable_required_check",
++      "expected_stage": "report-verification-failure",
++      "forbidden": ["claim verified success", "claim independent REVIEW_STATUS: CLEAN", "silently expand scope"]
++    },
++    {
++      "name": "fast-finish-no-record",
++      "state": "finish_or_plan_invoked_after_main_router_selected_fast_path",
++      "expected_stage": "report-fast-evidence",
++      "forbidden": ["create proposal or verification artifacts", "require change creation", "finish reruns checks", "dispatch reviewer"]
++    },
++    {
++      "name": "simple-docs-with-existing-changes",
++      "state": "clear_local_non_behavioral_typo_request_with_unrelated_unarchived_changes",
++      "expected_stage": "fast-execute",
++      "required_behavior": "main-session edit and smallest relevant checks without task records",
++      "forbidden": ["list changes", "ask create or reuse", "write formal or legacy task state", "dispatch reviewer"]
++    },
++    {
++      "name": "simple-work-without-cli",
++      "state": "independently_eligible_non_behavioral_formatting_without_openspec_cli",
++      "expected_stage": "fast-execute",
++      "forbidden": ["run CLI discovery", "initialize OpenSpec", "require task creation"]
++    },
++    {
++      "name": "small-behavior-fix-requires-change",
++      "state": "one_line_behavior_or_permission_fix_described_as_simple_with_broken_cli",
++      "expected_stage": "discover-and-confirm",
++      "required_behavior": "formal route reports CLI errors as blocked, not as eligibility",
++      "forbidden": ["fast-execute", "skip regression checks", "mask CLI failure as no match"]
++    },
++    {
++      "name": "strict-project-requires-change",
++      "state": "local_doc_edit_but_project_rules_require_a_change_for_every_modification",
++      "expected_stage": "discover-and-confirm",
++      "forbidden": ["override project record requirement", "auto-create change"]
++    },
++    {
++      "name": "selected-change-small-edit",
++      "state": "explicit_continuation_of_selected_change_with_a_small_non_behavioral_edit",
++      "expected_stage": "resume-selected-change",
++      "forbidden": ["discard change linkage", "reset review budget", "reconfirm unchanged selection"]
++    },
++    {
++      "name": "explicit-openspec-small-edit",
++      "state": "user_explicitly_requests_openspec_for_a_small_documentation_change",
++      "expected_stage": "discover-and-confirm",
++      "forbidden": ["silently choose fast path", "auto-create or reuse change"]
++    },
+     {
+       "name": "review-budget-exhausted",
+       "state": "blocking_findings_after_one_full_and_one_focused_review",
+--- a/skills/plan-solution/SKILL.md
++++ b/skills/plan-solution/SKILL.md
+@@ -4,6 +4,15 @@
+ ---
+ 
+ # Plan Solution
++
++## Fast Path Exit
++
++If the main router has already selected [Simple Work Fast Path](../run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path),
++return to the main session for direct execution/checks and a conversational result.
++Do not create task records or planning artifacts merely to satisfy this skill.
++Formal work is not silently downgraded here; without that router decision, use
++its eligibility/selection step first. The following planning steps apply only to
++an already selected formal change.
+ 
+ Turn an accepted OpenSpec `proposal.md` and `specs/` into an implementation-ready
+ solution. Keep technical decisions in the change's `design.md`, ordered execution
+@@ -189,8 +198,8 @@
+ 
+ ## Lightweight Planning
+ 
+-For documentation, configuration, or an isolated low-risk change, the change may
+-remain proposal-only. Record an explicit solution sketch, affected files, runnable
++For an explicitly selected formal lightweight change, the change may remain
++proposal-only. Record an explicit solution sketch, affected files, runnable
+ check, and the reason `design.md` is unnecessary in `proposal.md`. Use `tasks.md`
+ and `artifacts/context.md` whenever the change needs ordering or dispatch evidence.
+ Skipping files is allowed; skipping the planning decision is not.
+--- a/skills/finish-with-evidence/SKILL.md
++++ b/skills/finish-with-evidence/SKILL.md
+@@ -1,9 +1,19 @@
+ ---
+ name: finish-with-evidence
+-description: Consume existing verification and independent review evidence, record factual delivery results in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
++description: Consume existing verification and independent review evidence, report simple fast-path work directly or record formal delivery in the active OpenSpec change's artifacts/verification.md. Use after code changes, before closing or handoff, and whenever future AI sessions need to know what was implemented and validated.
+ ---
+ 
+ # Finish With Evidence
++
++## Fast Path Exit
++
++If the main router has already selected [Simple Work Fast Path](../run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path),
++return existing changes/checks, `NOT RUN` items and risks to the main router for a
++conversational handoff. Do not create task records or verification artifacts, run
++checks, dispatch reviewers, or backfill a change just to close this request.
++Formal work is not silently downgraded here; a missing fast-path decision returns
++to router selection rather than implying eligibility. The formal steps below
++require a selected change and do not apply to eligible fast work.
+ 
+ Close the gap between the planned solution and the implementation that actually
+ shipped. Write results to the active OpenSpec change's `artifacts/verification.md`,
+--- a/skills/finish-with-evidence/agents/openai.yaml
++++ b/skills/finish-with-evidence/agents/openai.yaml
+@@ -1,4 +1,4 @@
+ interface:
+   display_name: "Finish With Evidence"
+   short_description: "Consume evidence and record delivery without another review"
+-  default_prompt: "Use $finish-with-evidence to consume existing verification and review evidence, record results, and hand off for acceptance."
++  default_prompt: "Use $finish-with-evidence to consume existing evidence, report an already selected fast path directly, or record a formal change and hand off for acceptance."
+--- a/skills/run-engineering-workflow/agents/openai.yaml
++++ b/skills/run-engineering-workflow/agents/openai.yaml
+@@ -1,4 +1,4 @@
+ interface:
+   display_name: "Engineering Workflow"
+-  short_description: "Route work through records and quality gates"
+-  default_prompt: "Use $run-engineering-workflow to route this engineering task."
++  short_description: "Choose fast or formal work with relevant quality checks"
++  default_prompt: "Use $run-engineering-workflow to choose the fast or formal route for this engineering task."

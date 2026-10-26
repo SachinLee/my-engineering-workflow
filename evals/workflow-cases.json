@@ -2,6 +2,63 @@
   "schema_version": 3,
   "cases": [
     {
+      "name": "fast-scope-expands",
+      "state": "fast_copy_edit_reveals_behavior_change_or_need_for_formal_handoff",
+      "expected_stage": "stop-and-confirm-change",
+      "required_behavior": "stop expansion, preserve diffs and checks, follow formal matching and confirmation",
+      "forbidden": ["continue expanding implementation", "auto-create change", "discard existing edits"]
+    },
+    {
+      "name": "fast-verification-fails",
+      "state": "eligible_fast_edit_with_failed_or_unavailable_required_check",
+      "expected_stage": "report-verification-failure",
+      "forbidden": ["claim verified success", "claim independent REVIEW_STATUS: CLEAN", "silently expand scope"]
+    },
+    {
+      "name": "fast-finish-no-record",
+      "state": "finish_or_plan_invoked_after_main_router_selected_fast_path",
+      "expected_stage": "report-fast-evidence",
+      "forbidden": ["create proposal or verification artifacts", "require change creation", "finish reruns checks", "dispatch reviewer"]
+    },
+    {
+      "name": "simple-docs-with-existing-changes",
+      "state": "clear_local_non_behavioral_typo_request_with_unrelated_unarchived_changes",
+      "expected_stage": "fast-execute",
+      "required_behavior": "main-session edit and smallest relevant checks without task records",
+      "forbidden": ["list changes", "ask create or reuse", "write formal or legacy task state", "dispatch reviewer"]
+    },
+    {
+      "name": "simple-work-without-cli",
+      "state": "independently_eligible_non_behavioral_formatting_without_openspec_cli",
+      "expected_stage": "fast-execute",
+      "forbidden": ["run CLI discovery", "initialize OpenSpec", "require task creation"]
+    },
+    {
+      "name": "small-behavior-fix-requires-change",
+      "state": "one_line_behavior_or_permission_fix_described_as_simple_with_broken_cli",
+      "expected_stage": "discover-and-confirm",
+      "required_behavior": "formal route reports CLI errors as blocked, not as eligibility",
+      "forbidden": ["fast-execute", "skip regression checks", "mask CLI failure as no match"]
+    },
+    {
+      "name": "strict-project-requires-change",
+      "state": "local_doc_edit_but_project_rules_require_a_change_for_every_modification",
+      "expected_stage": "discover-and-confirm",
+      "forbidden": ["override project record requirement", "auto-create change"]
+    },
+    {
+      "name": "selected-change-small-edit",
+      "state": "explicit_continuation_of_selected_change_with_a_small_non_behavioral_edit",
+      "expected_stage": "resume-selected-change",
+      "forbidden": ["discard change linkage", "reset review budget", "reconfirm unchanged selection"]
+    },
+    {
+      "name": "explicit-openspec-small-edit",
+      "state": "user_explicitly_requests_openspec_for_a_small_documentation_change",
+      "expected_stage": "discover-and-confirm",
+      "forbidden": ["silently choose fast path", "auto-create or reuse change"]
+    },
+    {
       "name": "review-budget-exhausted",
       "state": "blocking_findings_after_one_full_and_one_focused_review",
       "expected_stage": "handoff-review-blocker",

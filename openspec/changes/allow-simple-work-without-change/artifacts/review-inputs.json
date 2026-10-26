@@ -1,0 +1,68 @@
+{
+  "change": "allow-simple-work-without-change",
+  "mode": "full",
+  "captured_at": "2026-10-16T20:22:48.753996+08:00",
+  "git_head_provenance_only": "58c922a93ae38ee6af89c6b37f019def87dc8d83",
+  "baseline": "artifacts/baseline.json",
+  "scope": "12 declared current source/test files plus this change artifacts; excludes unrelated archived moves, legacy and generated copies",
+  "files": [
+    {
+      "path": "skills/run-engineering-workflow/SKILL.md",
+      "sha256": "b3c6339fcff095632f0cc925538f159e5a86f72f804090a93f7044d2f6ba0cb1"
+    },
+    {
+      "path": "skills/run-engineering-workflow/references/quality-profiles.md",
+      "sha256": "cbbf8dcd87ef2a98803d456fd318a518205b814ec14486f79f104225f126c810"
+    },
+    {
+      "path": "skills/run-engineering-workflow/references/workflow-governance.md",
+      "sha256": "7d71774374e57c901a9f2b89ed1570e36036901ec6a08223d25e25b5041359ea"
+    },
+    {
+      "path": "commands/engineering-workflow.md",
+      "sha256": "dc374943ce7a22977716d88d855248e2a24d3a2bdb0e328dcf7350d627bd771a"
+    },
+    {
+      "path": "README.md",
+      "sha256": "c0dd087d3b34deed1478093b6b5048117f1bfc1dc736d8cab427b042c9625c01"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "sha256": "9d65f9afb01f32b95b4f380df1bd4e1e4357d5874bc38fc96578ebeb1f988743"
+    },
+    {
+      "path": "tests/contracts.test.js",
+      "sha256": "f950c24a4f844e38e03b5655f2e69db2d6b8ca24d665ab731e08878cd7719004"
+    },
+    {
+      "path": "evals/workflow-cases.json",
+      "sha256": "27f61de5fc369369634cd8836042f64f796a21807126abb3517b61b0c283b0bb"
+    },
+    {
+      "path": "skills/plan-solution/SKILL.md",
+      "sha256": "bb44827875b5073376877af82879bd843a190f3e2fdff553b110330bf9d2e1ed"
+    },
+    {
+      "path": "skills/finish-with-evidence/SKILL.md",
+      "sha256": "cb510a799b08628c35a4cb92b56c95cf0c33818f6d6afd4261f271c2011a650d"
+    },
+    {
+      "path": "skills/finish-with-evidence/agents/openai.yaml",
+      "sha256": "301eeb0bf56af96bbea240f78b01e6911c41fc51ff93c148a486be22c2e7e6e7"
+    },
+    {
+      "path": "skills/run-engineering-workflow/agents/openai.yaml",
+      "sha256": "ae403a88e9583376827c3b3f01c7068039184db2c09e2187ad733930402d5ad8"
+    }
+  ],
+  "verification": {
+    "node": "39/39 PASS",
+    "python": "16/16 PASS",
+    "openspec_strict": "PASS",
+    "installation": "54 skill/agent checks + helpers/commands/overlay PASS",
+    "diff_check": "PASS",
+    "lsp": "NOT RUN, default biome unavailable",
+    "harness_runtime": "NOT RUN",
+    "global_installation": "NOT RUN"
+  }
+}

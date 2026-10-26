@@ -22,6 +22,140 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
 }
 
+test("simple work eligibility is centralized without weakening formal gates", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
+  assert.ok(fast, "missing shared simple-work eligibility");
+  assert.match(fast, /all.*conditions/is);
+  assert.match(fast, /non-behavioral.*local.*low-risk/is);
+  assert.match(fast, /same.*session.*no.*(?:handoff|delegation)/is);
+  assert.match(fast, /explicit.*OpenSpec.*selected change/is);
+  assert.match(fast, /stricter project.*(?:record|rule)/is);
+  assert.match(fast, /behavior.*Standard.*Critical/is);
+  assert.match(fast, /dependenc/i);
+  assert.match(fast, /CLI.*(?:error|failure).*not.*(?:qualif|eligib)/is);
+});
+
+test("router chooses the fast path before discovery and preserves formal routing", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const start = router.indexOf("## Choose Fast Or Formal");
+  const locate = router.indexOf("## Start");
+  assert.ok(start >= 0 && start < locate, "fast decision must precede canonical discovery");
+  const fast = router.slice(start, locate);
+  assert.match(fast, /quality-profiles\.md#simple-work-fast-path/);
+  assert.match(fast, /before.*(?:discovery|CLI)/is);
+  assert.match(fast, /without.*(?:creat|record)/is);
+  assert.match(fast, /return.*(?:skip|do not enter).*formal/is);
+  assert.match(router.slice(locate), /formal.*(?:only|branch)/is);
+  assert.match(router.slice(locate), /never create, reuse, or select without explicit confirmation/);
+  for (const file of [
+    "commands/engineering-workflow.md",
+    "skills/run-engineering-workflow/references/workflow-governance.md",
+  ]) {
+    const body = read(file);
+    assert.match(body, /quality-profiles\.md#simple-work-fast-path/, file);
+    assert.match(body, /before.*discovery/is, file);
+    assert.match(body, /formal.*(?:confirmation|confirm)/is, file);
+  }
+  for (const file of ["README.md", "ARCHITECTURE.md"]) {
+    assert.match(read(file), /quality-profiles\.md#simple-work-fast-path/, file);
+    assert.doesNotMatch(read(file), /主路由会先询问是否创建 `\.workflow\//, file);
+  }
+  assert.match(read("skills/run-engineering-workflow/agents/openai.yaml"), /fast.*formal/is);
+});
+
+test("current README guides do not reintroduce legacy creation before fast routing", () => {
+  const readme = read("README.md");
+  for (const stale of [
+    /先询问是否创建\s*`\.workflow\/`/,
+    /主路由会先读取\s*`\.workflow\/CURRENT\.md`/,
+    /新状态一律写入 `\.workflow\/`/,
+    /按 `\.workflow\/` 中的任务阶段/,
+    /通过同一个工作树和 `\.workflow\/` 共享上下文/,
+    /任务记录目录 `\.workflow\/` 由主路由/,
+    /进入主路由[^\n]*读取 `\.workflow\/CURRENT\.md`/,
+    /票写到 `\.workflow\/tasks\//,
+    /项目 `AGENTS\.md` 和 `\.workflow\/spec\/`/,
+  ]) assert.doesNotMatch(readme, stale, "current guide must not route new work through legacy records");
+  const guide = readme.split("## 完整使用指南")[1].split("## Pi 工作流")[0];
+  assert.match(guide, /quality-profiles\.md#simple-work-fast-path/);
+  assert.match(guide, /简单任务.*不.*(?:建档|记录)/s);
+  assert.match(guide, /### 一次正式任务的阶段/);
+  assert.match(guide, /显式 legacy 恢复/);
+  const finish = readme.split("### 6. 完成和记录证据")[1].split("### 7.")[0];
+  assert.match(finish, /快速通道.*对话.*不.*verification/s);
+  assert.match(finish, /仅.*正式.*change.*记录/s);
+});
+
+test("proposal-based risk assessment applies only after fast/formal selection", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const assessIndex = router.indexOf("## Assess Profile First");
+  assert.ok(assessIndex > router.indexOf("## Choose Fast Or Formal"));
+  const assess = router.slice(assessIndex).split("\n## ")[0];
+  assert.match(assess, /Formal branch only/);
+  assert.match(assess, /after.*fast.*formal.*(?:selection|decision)/is);
+  assert.doesNotMatch(assess, /Before any routing/);
+  assert.match(assess, /selected OpenSpec `proposal\.md`/);
+});
+test("simple work routing fixtures cover eligibility and explicit formal intent", () => {
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  for (const [name, stage] of [
+    ["simple-docs-with-existing-changes", "fast-execute"],
+    ["simple-work-without-cli", "fast-execute"],
+    ["small-behavior-fix-requires-change", "discover-and-confirm"],
+    ["strict-project-requires-change", "discover-and-confirm"],
+    ["selected-change-small-edit", "resume-selected-change"],
+    ["explicit-openspec-small-edit", "discover-and-confirm"],
+  ]) {
+    const scenario = cases.find((item) => item.name === name);
+    assert.ok(scenario, `missing routing scenario: ${name}`);
+    assert.equal(scenario.expected_stage, stage, name);
+    assert.ok(scenario.forbidden?.length, `${name}: missing negative boundary`);
+  }
+});
+
+test("planning and finish return from an already selected fast path before formal artifacts", () => {
+  for (const [file, formalHeading] of [
+    ["skills/plan-solution/SKILL.md", "## Confirm Readiness"],
+    ["skills/finish-with-evidence/SKILL.md", "## Consume Evidence"],
+  ]) {
+    const body = read(file);
+    const start = body.indexOf("## Fast Path Exit");
+    const formal = body.indexOf(formalHeading);
+    assert.ok(start >= 0 && start < formal, `${file}: missing early fast-path exit`);
+    const fast = body.slice(start, formal);
+    assert.match(fast, /main router.*already selected/is, file);
+    assert.match(fast, /quality-profiles\.md#simple-work-fast-path/, file);
+    assert.match(fast, /return.*main (?:router|session)/is, file);
+    assert.match(fast, /(?:no|without|do not).*creat.*(?:record|artifact)/is, file);
+    assert.match(fast, /formal.*(?:not|never).*downgrad/is, file);
+  }
+  assert.match(read("skills/finish-with-evidence/agents/openai.yaml"), /fast.*formal/is);
+  assert.match(read("skills/plan-solution/SKILL.md"), /For.*formal.*lightweight/is);
+});
+
+test("fast work retains verification and stops before expanding its scope", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
+  assert.match(fast, /diff.*smallest.*checks.*project/is);
+  assert.match(fast, /commands\/results.*NOT RUN.*conversation/is);
+  assert.match(fast, /failed.*not.*success.*CLEAN/is);
+  assert.match(fast, /stop.*implementation.*Preserve.*diffs.*checks.*formal.*confirmation/is);
+  assert.match(fast, /do not auto-create.*discard edits/is);
+  assert.match(fast, /replacement task\/status records.*retroactive artifacts/is);
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  for (const [name, stage] of [
+    ["fast-scope-expands", "stop-and-confirm-change"],
+    ["fast-verification-fails", "report-verification-failure"],
+    ["fast-finish-no-record", "report-fast-evidence"],
+  ]) {
+    const scenario = cases.find((item) => item.name === name);
+    assert.ok(scenario, `missing fast exit scenario: ${name}`);
+    assert.equal(scenario.expected_stage, stage, name);
+    assert.ok(scenario.forbidden?.length, `${name}: missing negative boundary`);
+  }
+});
+
 test("review budget is centralized and consistent across workflow entry points", () => {
   const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
   const lightweight = profiles.split("## Lightweight")[1].split("## Standard")[0];

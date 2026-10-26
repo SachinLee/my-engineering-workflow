@@ -5,7 +5,7 @@ Skills 和 Ponytail 中适合自己的部分组合起来，用于提高需求质
 AI 会话之间的上下文连续性。
 
 本仓库不是上述项目的完整替代品，也不复制它们的源码。它是一个轻量编排层，负责规定：新任务的
-事实源（OpenSpec change）、何时使用 TDD、需要执行哪些验证、不同 AI harness 如何接入，以及旧
+持久事实源（正式工作用 OpenSpec change，简单工作可免建任务）、何时使用 TDD、需要执行哪些验证、不同 AI harness 如何接入，以及旧
 `.workflow/` / `.trellis/` 记录如何只读恢复或显式迁移。
 
 ## 这个仓库是做什么的
@@ -23,7 +23,7 @@ AI 会话之间的上下文连续性。
 
 | 组件 | 职责 | 本仓库如何使用 |
 | --- | --- | --- |
-| OpenSpec | 新任务的 proposal、spec、design、tasks 和变更生命周期 | 新工作唯一事实源；通过 CLI 查询和校验 |
+| OpenSpec | 新任务的 proposal、spec、design、tasks 和变更生命周期 | 正式工作唯一持久事实源；通过 CLI 查询和校验 |
 | `.workflow/` | 旧任务状态和产物 | 仅用于旧记录恢复；新任务不再写入 |
 | `.trellis/` | 更早的历史记录 | 只读；不运行脚本、不安装 injector |
 | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
@@ -32,7 +32,7 @@ AI 会话之间的上下文连续性。
 
 | Skill | 用途 |
 | --- | --- |
-| `$run-engineering-workflow` | 读取 OpenSpec 当前 change，按风险等级路由整个开发流程，并保留 legacy 恢复 |
+| `$run-engineering-workflow` | 先判断简单工作快速通道，其余按选定 OpenSpec change 和风险等级路由，并保留 legacy 恢复 |
 | `$clarify-requirements` | 澄清需求，并把可验证的验收标准写入当前 change 的 `proposal.md` 和 `specs/` |
 | `$plan-solution` | 设计技术方案，把决策与执行步骤写入 `design.md`、`tasks.md` 和 `artifacts/context.md` |
 | `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
@@ -57,7 +57,7 @@ AI 会话之间的上下文连续性。
 | `docs/adr/` | 少量难以逆转且存在真实权衡的架构决策 |
 
 旧项目里已有的 `.workflow/` 和 `.trellis/` 仍可作为只读历史被读取（同名产物），但本工作流不再调用
-Trellis 脚本、不再安装它的注入扩展，新状态一律写入当前 OpenSpec change。
+Trellis 脚本、不再安装它的注入扩展，正式任务的新状态写入当前 OpenSpec change，快速通道不创建任务状态。
 
 ## 产物用什么语言
 
@@ -154,9 +154,9 @@ writer；验证命令真正跑过并把证据写进 `artifacts/verification.md` 
 AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `artifacts/verification.md`、把 `STATUS`
 置成 `awaiting-acceptance`、把该验什么列给你，然后**停住**。以下三个动作默认归你：
 
-- 把任务目录 `move` 到 `.workflow/archive/`
-- 往 `.workflow/journal.md` 追加那一行收口记录
-- 删除本会话指针、清空 `CURRENT.md`、写 `phase: done`
+- 把正式 change 归档到 `openspec/changes/archive/`（仅经用户验收并明确要求）
+- OpenSpec 归档与 journal 记录由用户触发；`$archive-task` 只在用户明确验收后调用
+- 不自动写 legacy 指针或 `phase: done`；验收与归档属于用户
 
 具体命令在 governance 的 Acceptance And Archival 一节，可以直接复制执行；你要是
 嫌麻烦，就执行归档指令 `$archive-task`（Claude 里是 `/archive-task`，Pi 里是
@@ -184,7 +184,10 @@ AI 不替你自己签字。`finish-with-evidence` 做到底就是：写完 `arti
 
 ### 记录系统
 
-OpenSpec 是新任务的唯一记录系统，需要安装 OpenSpec CLI 1.14.0 或更高版本。第一次在某个项目中使用时，先初始化项目并指定中文产物：
+OpenSpec 是正式任务的唯一持久记录系统，需要 OpenSpec CLI 1.14.0 或更高版本。先按
+[简单工作快速通道](skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path)
+判断：符合资格的小改动直接执行，不匹配、新建或复用任务，也不要求 CLI 或初始化。
+正式任务第一次在项目中使用时，先经用户同意初始化项目并指定中文产物：
 
 ```bash
 openspec init --language Chinese
@@ -196,7 +199,7 @@ openspec init --language Chinese
 openspec init --language Chinese --tools none
 ```
 
-初始化后不需要手动创建 change：工作流每次会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
+初始化后不需要手动创建 change：正式流程会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
 
 ```bash
 openspec new change add-user-authentication --description "增加用户认证"
@@ -208,7 +211,7 @@ openspec status --change add-user-authentication
 
 `openspec init --language Chinese` 会在 `openspec/config.yaml` 写入语言上下文。对于已经初始化的项目，直接在该文件中维护 `context` 和 `rules`，不需要重复执行 `init`。CLI 生成的固定结构标题可能仍然是英文；提交前应根据配置把说明文字和面向人的字段翻译成中文，同时保留路径、命令、标识符和状态键名的英文形式。
 
-本仓库的工作流会读取选定的 OpenSpec change，再把需求澄清、方案设计、实现、复核和验证写入：
+本仓库的正式工作流会读取选定的 OpenSpec change，再把需求澄清、方案设计、实现、复核和验证写入：
 
 ```text
 openspec/changes/<change-id>/
@@ -253,8 +256,8 @@ Standard / Critical 在交付范围完成并通过相关检查后，通过 `revi
 默认不叠加 `code-reviewer`、通用 reviewer 或 Matt `code-review`；原生审查仅按你的明确请求运行。
 预算跨会话和修复快照保留；重大范围变化需要你批准重新审核或拆分交付。
 
-Matt 的 `to-spec`、`to-tickets`、`implement` 只作为方法使用，产物必须落在当前任务目录里
-（例如票写到 `.workflow/tasks/<task-id>/tickets/`），不要让它们在 `.scratch/` 另起一套记录。
+Matt 的 `to-spec`、`to-tickets`、`implement` 只作为正式工作的执行方法，产物放在已确认的
+OpenSpec change 内（例如 `tasks.md` 和有界 ticket artifact），不写 legacy tasks，也不在 `.scratch/` 另起记录。
 
 ### 可选安装：Ponytail
 
@@ -348,16 +351,16 @@ pi install npm:@narumitw/pi-subagents
 - 三个 Claude agent 和 `/engineering-workflow` 到项目 `.claude/`。
 - 三个 Pi agent 到 `.pi/agents/`。
 
-安装器不会创建 `.trellis/`，也不会写入项目的 hook、extension 或 `.pi/settings.json`；
-任务记录目录 `.workflow/` 由主路由在获得同意后按需创建。
+安装器不会创建任务记录，也不会写入项目的 hook、extension 或 `.pi/settings.json`。
+先按共享快速通道判断：简单任务无需建档；正式工作在确认后使用项目内的 OpenSpec change。
+`.workflow/` 仅保留为 legacy 恢复输入，不为新工作创建或更新。
 
 只需要一个平台时使用 `Codex`、`OMP`、`Claude` 或 `Pi`。为兼容旧用法，`Both` 仍只表示
 Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可以预览安装器将替换的受管目录
 和文件。
 
 个人电脑推荐使用全局安装。项目级安装只用于团队需要把适配文件固定在仓库中，或某个
-项目需要隔离版本的情况。无论采用哪种方式，任务记录 `.workflow/` 都必须留在项目仓库内
-（并纳入版本控制），因为它保存该项目自己的任务状态和工程记录。
+项目需要隔离版本的情况。正式 OpenSpec 记录保留在项目仓库中，不随全局安装迁移。
 
 ## 完整使用指南
 
@@ -375,33 +378,24 @@ OMP adapter。也可以一次安装全部四个平台：
 
 全局安装后，不要再为每个项目复制本仓库的 skill。只有以下内容仍是项目级的：
 
-- 项目自己的 `.workflow/` 任务记录（需要时由主路由创建）。
-- 项目自己的 `AGENTS.md`、`GLOSSARY.md`（或已确认继续使用的 `CONTEXT.md`）、`docs/adr/` 和 `.workflow/spec/`。
+- 项目正式工作使用的 `openspec/changes/<change-id>/`（经确认创建/复用；简单任务不建档）。
+- 项目自己的 `AGENTS.md`、`GLOSSARY.md`（或已确认继续使用的 `CONTEXT.md`）、`docs/adr/` 和 OpenSpec specs。
 - 项目自己的测试命令、质量标准和模型配置。
 
 因此，`install.ps1 -Scope User` 只需在本机执行一次；OMP launcher 可以从任意项目目录
-启动。新项目不需要安装任何记录系统：第一次让主路由接手时，它会先询问是否创建
-`.workflow/`。已有 `.trellis/` 的旧项目保持原样即可，本工作流只读取、不改动。
+启动。安装资源不等于初始化记录系统：主路由先应用共享的
+[简单任务快速通道](skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path)。
+简单任务直接执行、验证并在对话中报告，不建档；只有正式分支才进入 OpenSpec discovery 和确认。
 
-### 每个项目不需要初始化
+### 每个项目不需要强制初始化
 
-本工作流没有 per-project 初始化命令。第一次在某个仓库使用时，主路由会先读取
-`.workflow/CURRENT.md`；没有记录时先征求同意，再创建最小骨架：
+简单任务无需 OpenSpec CLI、目录或 task 骨架。正式分支已有 OpenSpec 时只读发现候选、语义匹配，
+获得一次明确确认后新建或复用；没有记录系统时，先确认是否初始化 OpenSpec，不静默创建。
+正式记录归项目的 `openspec/changes/<change-id>/` 所有；产物按阶段由 skill 用文件工具维护。
+需要固定适配版本的团队可用 `-Scope Project -Harness All`，安装仍不创建任务记录。
 
-```text
-.workflow/
-  CURRENT.md
-  journal.md
-  tasks/
-```
-
-之后每个任务一个目录，产物（`proposal.md`、`STATUS`、`context.md`、收口后的
-`artifacts/verification.md`）由 skill 直接用读写工具维护。需要把适配文件固定在仓库里的团队，改用
-`-Scope Project -Harness All` 安装即可，记录目录本身仍然按需创建。
-
-旧项目里已有的 `.trellis/` 不需要迁移或删除：主路由以只读方式接着使用它的任务产物，
-新状态一律写入 `.workflow/`。
-
+`.workflow/CURRENT.md` 和旧 `.workflow/` 产物仅用于显式 legacy 恢复或经用户要求的迁移。
+`.trellis/` 保持只读；不自动续接、不执行脚本，也不把新状态写入任何 legacy 目录。
 ### 各客户端入口
 
 | 客户端 | 启动方式 | 新需求入口 | 继续已有任务 |
@@ -509,13 +503,13 @@ ompw --continue
 保留现有配置格式，并补充单元测试和命令行验证。
 ```
 
-正常情况下你只需要按主会话提示回答问题，并在方案完成后明确批准实现。主路由会自动按
-以下顺序调度：
+主路由先按共享快速通道分流；只有正式任务才澄清需求、形成方案并等待明确批准：
 
 ```text
-需求澄清 -> 方案规划 -> 等待批准 -> @task TDD 实现
-  -> 仓库检查 -> 一个 @advisor 独立复核（Standards / Spec）-> 修复并复验 -> 证据交付
-  -> awaiting-acceptance ->（你验收）-> 你执行归档或调用 $archive-task
+简单任务 -> 主会话执行 -> diff / 最小相关检查 -> 对话交付（不建档）
+正式任务 -> OpenSpec discovery / 确认 -> 澄清 / 规划 -> 等待批准 -> 主会话 TDD 实现
+  -> 仓库检查 -> 一个 @advisor 独立复核（Standards / Spec）-> 必要修复及定向复核
+  -> 证据交付 -> awaiting-acceptance ->（你验收并明确要求后）归档
 ```
 
 常用操作如下：
@@ -536,9 +530,9 @@ ompw --continue
 复核模型和角色由 OMP overlay 自动分配：方案规划使用 `@plan`，TDD 实现使用 `@task`，
 质量检查在主会话执行，独立复核使用 `@advisor`。用户不需要手动切换这些角色。
 
-如果关闭 OMP 后重新打开，可使用 `ompw --continue` 恢复 OMP 会话；跨 Codex、Claude Code
-或其他客户端时，优先输入“继续当前任务”，让新会话重新读取 `.workflow/` 中的任务产物。
-磁盘上的记录才是共享事实来源，OMP 聊天记录只是辅助上下文。
+如果关闭 OMP 后重新打开，可使用 `ompw --continue` 恢复 OMP 会话；正式任务跨客户端时，
+带上已确认的 OpenSpec change id，让新会话重读该 change 的产物，不从无关 change 猜测。
+快速任务不创建跨会话状态；新会话按当前请求重新分流。磁盘记录是正式工作的事实来源。
 
 Windows 上如果 `python` 无输出并以 `Exit: 49` 结束，通常是它解析到了 Microsoft Store 的
 WindowsApps 占位程序。这只影响 `doctor.py` 与 OMP 启动脚本，不影响工作流本身；改用
@@ -548,23 +542,22 @@ Python Launcher `py` 即可，可用以下命令确认解析结果：
 Get-Command python, python3, py | Select-Object Name, Source
 ```
 
-### 一次完整任务的阶段
+### 一次正式任务的阶段
 
-1. **进入主路由**：读取 `.workflow/CURRENT.md` 或本会话指针和当前 task，确认是否需要创建任务。
-2. **需求澄清**：把目标、范围、非目标、假设和带复选框的 AC（`- [ ] AC-001`）写入 `proposal.md`。
-3. **方案规划**：把技术决策写入 `design.md`，把 vertical slice、RED/GREEN 和验证命令
-   写入 `tasks.md`，并把后续 dispatch 必须读取的规范与研究文件写进 `context.md`。
-4. **批准执行**：用户批准后把 `STATUS` 从 `planning` 改为 `in_progress`，不能由 AI 默认为
-   已批准。
-5. **TDD 实现**：先 RED，再最小 GREEN，然后重构；实现不得创建第二套计划记录。
-6. **检查和复核**：按 `quality-profiles.md` 运行仓库检查；Standard / Critical 通过
-   `review-implementation` 调用一个独立 `workflow-reviewer`，覆盖双轴与复杂度，修复后复验。
-7. **证据交付**：把逐条 AC 结果、实际改动、RED/GREEN、命令输出和剩余风险写入
-   `artifacts/verification.md`，`STATUS` 置为 `awaiting-acceptance`，然后**停下**，把该验证什么列给你。
-8. **验收与归档（你做）**：你自己跑命令或手工验收；有问题就反馈，任务退回
-   `in_progress` 修完再补一轮复验记录。确认没问题后你自己执行归档（journal 一行 →
-   move 到 `archive/` → 删本会话指针 → 清 `CURRENT.md`），或者用 `$archive-task` 让
-   AI 在你已验收的前提下代跑。
+先判快速通道；合格任务执行、验证、对话交付后返回，不进入下列正式阶段。
+
+1. **进入正式主路由**：只读 OpenSpec discovery、同目标匹配，确认新建或复用，不自动选中。
+2. **需求澄清**：把目标、范围、非目标、假设和 AC 写入 change 的 `proposal.md` 与 `specs/`。
+3. **方案规划**：技术决策写入 `design.md`，vertical slice、RED/GREEN 和验证命令写入
+   `tasks.md`，为后续 dispatch 准备 `artifacts/context.md` 上下文包。
+4. **批准执行**：用户明确批准方案后进入 `in_progress`；创建/复用确认不等于计划批准。
+5. **TDD 实现**：先 RED，再最小 GREEN，然后重构；不创建第二套计划或任务记录。
+6. **检查和复核**：按 `quality-profiles.md` 执行；Standard / Critical 只有一次完整独立
+   `workflow-reviewer`，阻断修复最多一次定向复核，不按切片反复完整审核。
+7. **证据交付**：复用有效证据，把 AC 结果、改动、检查和风险记入该 change 的
+   `artifacts/verification.md`；记录 `awaiting-acceptance` 后停下，交给用户验收。
+8. **验收与归档（你做）**：只有用户验收并在当前会话明确要求后，才可调用 `$archive-task`。
+   不自动写 journal、移动目录或清除 legacy 指针。
 
 通常只需要调用主路由。只有需要重新执行或单独强化某一阶段时，才直接调用
 `clarify-requirements`、`plan-solution`、`review-implementation` 或
@@ -587,7 +580,8 @@ PRD、ticket、plan 或 outcome。
 
 ### 默认调用顺序
 
-主入口是 `$run-engineering-workflow`。它按 `.workflow/` 中的任务阶段选择以下能力：
+主入口是 `$run-engineering-workflow`。先判断快速通道，合格即直接执行、检查并对话交付；
+不合格或显式正式任务才按已确认 OpenSpec change 的阶段选择以下能力：
 
 | 阶段 | 默认调用 | 说明 |
 | --- | --- | --- |
@@ -600,28 +594,21 @@ PRD、ticket、plan 或 outcome。
 
 ### 跨客户端和新会话续接
 
-Codex、Claude Code、OMP、Pi 和其他客户端通过同一个工作树和 `.workflow/` 共享上下文，
-不通过复制聊天记录共享。切换前确保本阶段结论已经写入正确产物；切换后从同一项目根目录
-启动新客户端，然后要求继续当前任务。
+正式任务通过同一个工作树及已选定的 `openspec/changes/<change-id>/` 共享上下文，
+不通过复制聊天记录共享。跨客户端时带上该 change id，重新读取 proposal、specs、design、
+tasks、上下文包与已有验证证据，再核对代码、测试及 `git status` / `git diff`。
 
-新会话必须重新读取：
-
-1. `.workflow/CURRENT.md`（或本会话指针）与当前 task 的 `STATUS`。
-2. 当前 task 的 `proposal.md`、`context.md`、`design.md`、`tasks.md` 和已有 `artifacts/verification.md`。
-3. 适用的 `.workflow/spec/`、代码、测试和 `git status` / `git diff`。
-
-聊天摘要、自动 memory 和旧会话只可作为线索。它们与任务文件或代码冲突时，以任务
-文件、Spec、代码和测试为准。未提交修改会通过同一工作树保留，但新客户端必须先区分
-当前任务改动与用户已有改动。
+快速任务无需为续接回补记录；新会话重新判断当前请求。`.workflow/CURRENT.md`、旧 `STATUS`
+和旧产物仅用于显式 legacy 恢复，不自动选择旧任务。聊天摘要和 memory 只作线索，
+不能覆盖现有规范、记录、代码或测试；保留并区分用户已有未提交改动。
 
 ### 其他客户端
 
-本工作流不依赖平台专属 hook，因此 Cursor、OpenCode、Gemini CLI、Kiro、GitHub Copilot、
-Qoder、CodeBuddy、Kimi Code 等任何支持 agentskills.io 的客户端都能直接使用：安装五个
-skill，再在项目 `AGENTS.md` 中写明任务记录位于 `.workflow/` 即可。
+本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
+在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
 
 本仓库安装器目前原生管理 Codex、Claude Code、OMP 和 Pi。其他支持 agentskills.io 的客户端
-可使用 `skills` CLI 从本地仓库安装五个 canonical skill：
+可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
 
 ```powershell
 npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
@@ -634,10 +621,9 @@ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
 `<agent-id>` 以 `npx skills@latest --help` 的当前输出为准。不要假设所有客户端都读取
 `~/.agents/skills`；Claude Code 等平台仍有自己的目录和 agent/command 机制。
 
-如果客户端只支持主会话 skill、不支持子 agent，仍按同一五阶段流程执行，但把实现、
-检查和复核顺序放在主会话中，并明确记录未获得独立模型复核的剩余风险。若客户端完全
-不支持 skill，直接要求它读取 `.workflow/CURRENT.md` 指向的任务产物，按五阶段执行；此时
-本仓库的自动路由和质量加固不能视为已加载。
+如果客户端只支持主会话 skill，仍先判断快速通道；正式工作缺少独立上下文时明确报告审核缺口，
+不把主会话自查当作通过独立审核。完全不支持 skill 时，本仓库的自动路由不能视为已加载：
+正式工作手动读取选定 OpenSpec change，旧 `.workflow/CURRENT.md` 仅供明确的 legacy 恢复。
 
 ## Pi 工作流
 
@@ -809,15 +795,17 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因�
 
 ### 1. 第一次在项目中使用
 
-第一次使用时直接说明需求即可，主路由会先询问是否创建 `.workflow/`。在 Codex 中输入以下内容，或在 Claude Code 中
-执行 `/engineering-workflow` 后附带同一需求：
+直接说明需求即可。主路由先按共享资格判断快速通道：非行为性、局部、低风险且需求明确的小改动，
+在主会话直接执行、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
+行为变更、风险不符或有正式记录/交接要求时，再进入匹配与确认。执行中范围扩大先停下，再确认升级。
+在 Codex 中输入以下内容，或在 Claude Code 中执行 `/engineering-workflow` 后附带同一需求：
 
 ```text
 使用 $run-engineering-workflow 处理这个需求：为订单列表增加按状态筛选。
 ```
 
-该 skill 会读取 `.workflow/` 指针和当前任务状态，再决定进入需求澄清、方案规划、
-实现、独立复核、验证还是收尾阶段。
+快速通道执行后直接报告，不进入下面的正式规划和建档步骤。其余工作读取选定的 OpenSpec change，
+再决定进入澄清、规划、实现、独立复核或收尾。已有 change 的明确续接保留其记录和有效确认，不因改动小脱离该任务。
 
 ### 2. 单独澄清需求
 
@@ -842,7 +830,7 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因�
 备选方案、迁移与回滚。`tasks.md` 按 vertical slice 将每个 AC 映射到代码边界、
 test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
 
-`lightweight` 任务可以保持 PRD-only，但必须在 `proposal.md` 中记录方案草图、预计修改文件、
+显式选择正式记录的 `lightweight` 任务可以保持 PRD-only，但必须在 `proposal.md` 中记录方案草图、预计修改文件、
 验证方法，以及不创建独立 `design.md` / `tasks.md` 的原因。
 
 ### 4. 实现
@@ -877,13 +865,14 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
 
 ### 6. 完成和记录证据
 
-代码和测试完成后使用：
+快速通道直接在对话中报告 diff、检查结果和未运行项，不创建 `artifacts/verification.md`。
+仅已选定的正式 OpenSpec change 使用以下命令记录交付，复用有效检查和审核证据：
 
 ```text
-使用 $finish-with-evidence 检查当前任务，记录 outcome.md，置为待验收并把验证清单给我。
+使用 $finish-with-evidence 核对当前正式change的现有证据，记录 artifacts/verification.md，置为待验收并给出验证清单。
 ```
 
-没有执行的检查必须记录为 `NOT RUN` 或 `UNVERIFIED`，不能根据推测写成 `PASS`。
+没有执行的检查必须报告为 `NOT RUN` 或 `UNVERIFIED`，不能根据推测写成 `PASS`。
 
 ### 7. 新会话继续任务
 
@@ -893,8 +882,8 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
 使用 $run-engineering-workflow 继续当前任务。
 ```
 
-AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一段聊天摘要。确实需要找回
-旧讨论时，再使用跨会话 memory 工具或 `.workflow/journal.md` 作为线索。
+正式工作应重读已选 OpenSpec change、规范、代码和测试，不依赖上一段聊天摘要。
+简单任务重新判定当前请求，不为续接补造任务；legacy journal 仅在明确恢复旧工作时作为线索。
 
 ## 质量等级
 
@@ -913,8 +902,8 @@ AI 应优先读取当前 task、Spec、代码和测试，而不是依赖上一�
 当多个扩展给出不同指令时，按以下优先级处理：
 
 1. 用户和 AI 平台的上级指令。
-2. 项目 `AGENTS.md` 和 `.workflow/spec/`。
-3. 当前任务目录的 `proposal.md`、`design.md`、`tasks.md` 与 `artifacts/verification.md`。
+2. 项目 `AGENTS.md` 和适用规范；legacy spec 只在明确恢复时读取。
+3. 正式工作已选 OpenSpec change 的 proposal、specs、design、tasks 与验证证据；快速通道使用当前请求和代码/测试。
 4. 本仓库的路由和质量策略。
 5. Matt Skills、Ponytail 的通用默认规则。
 

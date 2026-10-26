@@ -3,11 +3,17 @@
 Read this reference when routing a task, resolving conflicts between
 integrations, or deciding where durable information belongs.
 
+Before discovery, apply [Simple Work Fast Path](quality-profiles.md#simple-work-fast-path).
+Eligible work has no task record: execute/check in the main session and report in
+conversation. Formal work retains the discovery and confirmation contract below;
+selected change continuations keep their still-valid confirmation. Plan/finish
+must not turn an eligible fast request into mandatory artifacts.
+
 ## Record Layout
 
-OpenSpec is the canonical record system for new work. It owns requirements,
+For formal work, OpenSpec is the canonical record system. It owns requirements,
 change design, tasks, completion status, and archived change history. `.workflow/`
-and `.trellis/` remain compatibility inputs only.
+and `.trellis/` remain compatibility inputs only. Fast work creates no task state.
 
 ```text
 openspec/
@@ -24,10 +30,10 @@ openspec/
 .trellis/                     read-only legacy records; never write or execute
 ```
 
-The routing invariant is strict:
+The formal routing invariant is strict:
 
 - If `openspec/config.yaml` or `config.yml` exists, OpenSpec is canonical.
-- New work starts from read-only discovery (`scripts/openspec_compat.py`
+- New formal work starts from read-only discovery (`scripts/openspec_compat.py`
   `list_changes`) over the current project's unarchived changes. Nothing is
   auto-selected, not even when exactly one change exists; multiple candidates
   are a normal waiting state, not an environment failure.
@@ -107,6 +113,8 @@ approved equivalent). Do not recreate `.workflow/tickets/` for new work.
 
 ## Acceptance And Archival
 
+This lifecycle applies to selected formal changes; fast work ends in conversation.
+
 **The user accepts and archives. The agent never does it on its own initiative.**
 
 - Once evidence is complete, the agent updates the OpenSpec change's verification
@@ -132,7 +140,7 @@ a defect, not a feature.
 
 ## Artifact Ownership
 
-OpenSpec is the canonical owner for new task facts. Store one fact in one
+OpenSpec is the canonical owner for new durable formal task facts. Store one fact in one
 authoritative place; compatibility readers must not create a second state store.
 
 | Artifact | Canonical owner | Purpose |
@@ -177,6 +185,8 @@ replaced by a glossary file.
 never write into `.trellis/`, run its scripts, or install its injectors.
 
 ## Context Loading Contract
+
+These change-loading tiers apply to formal work; fast work needs no change package.
 
 Use three context tiers:
 

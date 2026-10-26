@@ -4,6 +4,39 @@ This is the single source of review budgets for every workflow entry point.
 Risk adds relevant checks, never duplicate final reviewers or permission to skip
 an available check that directly proves changed behavior.
 
+## Simple Work Fast Path
+
+This is the single source of eligibility for work without an OpenSpec change.
+Use it only when **all** conditions hold: the request is clear, non-behavioral,
+local and low-risk; it can finish in the same main session with no formal plan,
+handoff or delegation; the user has not explicitly requested OpenSpec and is not
+continuing a selected change; no stricter project record rule applies.
+Examples: typo/copy/formatting fixes and local configuration or code cleanup
+proven not to alter behavior. File count or the word "simple" is not sufficient.
+
+Behavior includes workflow/agent instructions, not only executable code.
+Behavior changes, bug fixes and refactors remain Standard or Critical. Security,
+authentication/authorization, money, secrets, persistent data, migrations, public
+contracts, dependency changes and destructive operations are never fast-path work.
+Ambiguous scope must be resolved before eligibility is claimed. CLI errors or
+failures do not qualify otherwise ineligible work for this path.
+
+- Decide before discovery: an existing `openspec/` directory or unrelated changes
+  do not require task matching, CLI access or initialization for eligible work.
+- State the fast-path scope briefly, then execute in the main session without a
+  create/reuse confirmation. Skip formal clarification/planning, dispatch and
+  default independent review; do not create or update OpenSpec, `.workflow/`,
+  `.trellis/`, or replacement task/status records, including retroactive artifacts.
+- Inspect the relevant diff and run the smallest relevant checks required by the
+  project. Report actual changes, commands/results, `NOT RUN` items and risks in
+  the conversation. A failed/unavailable check is not a verified success or an
+  independent `REVIEW_STATUS: CLEAN`; entering finish adds no checks or records.
+- If behavior, risk, scope or formal handoff needs emerge, stop expanding the
+  implementation. Preserve current diffs and executed checks, explain the change,
+  then follow formal discovery and confirmation before creating/reusing a change.
+  Do not auto-create a record or discard edits during escalation. A selected
+  change continuation keeps its existing confirmation and review history.
+
 ## Lightweight
 
 Use only for non-behavioral documentation, local configuration, or isolated

@@ -1,0 +1,34 @@
+[
+  {
+    "check": "node-test",
+    "argv": [
+      "D:\\nvm4w\\nodejs\\npm.CMD",
+      "test"
+    ],
+    "exit_code": 0
+  },
+  {
+    "check": "python-test",
+    "argv": [
+      "C:\\Users\\shuan\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_*.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "check": "openspec-validation",
+    "argv": [
+      "D:\\Projram Files\\nodejs\\node_global\\openspec.CMD",
+      "validate",
+      "allow-simple-work-without-change",
+      "--strict"
+    ],
+    "exit_code": 0
+  }
+]

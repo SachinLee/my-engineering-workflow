@@ -1,0 +1,9 @@
+{
+  "name": "workflow-review-gate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Idempotency guard for OMP final review task dispatches.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
