@@ -50,6 +50,8 @@ In both branches, never create the root as a side effect: do not run `openspec i
 
    From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
 
+   Name the proposal title separately from the change id: write the H1 as `# 提案：<中文短标题>` with a short Chinese phrase that names the outcome, replacing the template's `# Proposal`. Keep the `## Why` and `## What Changes` headings in English because OpenSpec parses those names. Never leave the H1 as `# Proposal` or a bare change id: `openspec change list` and the routing prompt use the H1 as the change title.
+
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
    If the request contains ambiguity that would materially affect scope, externally observable behavior, compatibility, or acceptance criteria, ask the user before creating the change. For minor details, make a reasonable assumption and record it in the planning artifacts.

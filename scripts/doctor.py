@@ -9,12 +9,13 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
 
 
-from openspec_compat import detect_project_mode
+from openspec_compat import TITLE_RULE_ANCHOR, detect_project_mode
 
 SKILLS = (
     "run-engineering-workflow",
@@ -37,7 +38,7 @@ HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "Both", "All")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate an engineering workflow installation.")
-    parser.add_argument("--scope", choices=("User", "Project"), default="Project")
+    parser.add_argument("--scope", choices=("User", "Project"), default="User")
     parser.add_argument("--harness", choices=HARNESS_CHOICES, default="Both")
     parser.add_argument("--project-path")
     return parser.parse_args()
@@ -56,6 +57,58 @@ def check_skills(root: Path, label: str, errors: list[str]) -> None:
     for skill in SKILLS:
         if not (root / skill / "SKILL.md").is_file():
             errors.append(f"Missing {label} skill: {skill}")
+
+
+def is_directory_link(path: Path) -> bool:
+    try:
+        info = path.lstat()
+    except OSError:
+        return False
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    )
+
+
+def check_shared_installation(harness: str, scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
+    shared = home / ".agents" / "skills"
+    check_skills(shared, "shared", errors)
+    helper = shared / "run-engineering-workflow" / "scripts" / "openspec_compat.py"
+    if not helper.is_file():
+        errors.append(f"Missing shared OpenSpec helper: {helper}")
+    legacy = []
+    if selected(harness, "Codex"):
+        legacy.append(home / ".codex" / "skills")
+        if scope == "Project" and project:
+            legacy.append(project / ".agents" / "skills")
+    if selected(harness, "OMP"):
+        legacy.append(omp_user_root(home) / "skills")
+        if scope == "Project" and project:
+            legacy.append(project / ".omp" / "skills")
+    if selected(harness, "Pi"):
+        override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+        legacy.append((Path(override).expanduser() if override else home / ".pi" / "agent") / "skills")
+        if scope == "Project" and project:
+            legacy.extend((project / ".agents" / "skills", project / ".pi" / "skills"))
+    if selected(harness, "Claude"):
+        roots = [home / ".claude" / "skills"]
+        if scope == "Project" and project:
+            roots.append(project / ".claude" / "skills")
+        for root in roots:
+            for skill in SKILLS:
+                entry = root / skill
+                try:
+                    valid = is_directory_link(entry) and entry.is_dir() and entry.resolve() == (shared / skill).resolve()
+                except (OSError, RuntimeError):
+                    valid = False
+                if not valid:
+                    errors.append(f"Invalid or missing Claude skill link: {entry}; expected {shared / skill}")
+    # Overrides and ProjectPath=HOME can make a native root the shared root itself.
+    shared_root = shared.resolve()
+    for root in {path.resolve() for path in legacy} - {shared_root}:
+        for skill in SKILLS:
+            entry = root / skill
+            if entry.exists() or is_directory_link(entry):
+                errors.append(f"Legacy skill entry may shadow shared installation: {entry}")
 
 
 def check_agents(root: Path, label: str, errors: list[str]) -> None:
@@ -142,6 +195,33 @@ def check_review_gate(root: Path, errors: list[str]) -> None:
             errors.append("OMP workflow review gate contract tests failed.")
 
 
+def _check_proposal_title_rule(project: Path, warnings: list[str]) -> None:
+    """Warn when an initialized project cannot produce readable change titles.
+
+    `create_change` adds the rule for new changes, so this catches projects that
+    were initialized before the rule existed and would keep writing `# Proposal`.
+    """
+    config = next(
+        (path for path in (project / "openspec" / "config.yaml", project / "openspec" / "config.yml") if path.is_file()),
+        None,
+    )
+    if config is None:
+        return
+    try:
+        text = config.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        warnings.append(f"Could not read {config}: {exc}")
+        return
+    if TITLE_RULE_ANCHOR in text:
+        return
+    warnings.append(
+        f"{config} has no proposal H1 title rule, so new changes keep landing as "
+        "`# Proposal` and show up in listings as their English change id. Creating a "
+        "change through `create_change` adds the rule; existing projects can add it to "
+        "`rules.proposal` manually."
+    )
+
+
 def check_record_layout(project: Path, warnings: list[str], errors: list[str]) -> None:
     """Check the canonical OpenSpec record system and legacy read-only fallbacks."""
     has_openspec = any((project / "openspec" / name).is_file() for name in ("config.yaml", "config.yml"))
@@ -152,16 +232,22 @@ def check_record_layout(project: Path, warnings: list[str], errors: list[str]) -
             return
         if result["status"] == "unselected":
             candidates = result.get("available_changes") or []
+            titles = result.get("change_titles") or {}
             if candidates:
+                labelled = ", ".join(
+                    f"{cid}（{titles[cid]}）" if titles.get(cid) not in (None, "", cid) else cid
+                    for cid in candidates
+                )
                 warnings.append(
                     f"OpenSpec is initialized under {project}/openspec with unarchived changes "
-                    f"{', '.join(candidates)}. The routing flow recommends one and asks for "
+                    f"{labelled}. The routing flow recommends one and asks for "
                     "confirmation; nothing is auto-selected."
                 )
             else:
                 warnings.append(
                     f"OpenSpec is initialized under {project}/openspec but has no active change selected."
                 )
+        _check_proposal_title_rule(project, warnings)
         return
 
     if (project / ".workflow").is_dir():
@@ -219,7 +305,7 @@ def check_injectors(project: Path, warnings: list[str]) -> None:
 def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
     executable_exists("omp", errors)
     root = project / ".omp" if scope == "Project" else omp_user_root(home)
-    check_skills(root / "skills", "OMP", errors)
+
     check_agents(root / "agents", "OMP", errors)
     if not (root / "start-engineering-workflow.py").is_file():
         errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
@@ -246,24 +332,24 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
 def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
     executable_exists("claude", errors)
     root = project / ".claude" if scope == "Project" else home / ".claude"
-    check_skills(root / "skills", "Claude", errors)
+
     check_agents(root / "agents", "Claude", errors)
-    if not (root / "commands" / "engineering-workflow.md").is_file():
-        errors.append("Missing Claude command: engineering-workflow")
+    for command in ("engineering-workflow", "archive-task"):
+        if not (root / "commands" / f"{command}.md").is_file():
+            errors.append(f"Missing Claude command: {command}")
 
 
 def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
     executable_exists("pi", errors)
-    pi_user_root = Path(os.environ.get("PI_CODING_AGENT_DIR", home / ".pi" / "agent")).expanduser()
+    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+    pi_user_root = Path(override).expanduser() if override else home / ".pi" / "agent"
     root = project / ".pi" if scope == "Project" else pi_user_root
-    skills_root = project / ".agents" / "skills" if scope == "Project" else root / "skills"
-    check_skills(skills_root, "Pi", errors)
     check_agents(root / "agents", "Pi", errors)
     node_modules = pi_user_root / "npm" / "node_modules"
     subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
     if not any(pkg.is_dir() for pkg in subagent_pkgs):
         warnings.append(
-            "Optional Pi package pi-subagents was not found. Planning, bounded ",
+            "Optional Pi package pi-subagents was not found. Planning, bounded "
             "implementation, and independent review will remain in the main Pi session.",
         )
 
@@ -288,9 +374,7 @@ def main() -> int:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
     home = Path.home()
-    if selected(args.harness, "Codex"):
-        root = project / ".agents" / "skills" if args.scope == "Project" and project else home / ".codex" / "skills"
-        check_skills(root, "Codex", errors)
+    check_shared_installation(args.harness, args.scope, project, home, errors)
     if selected(args.harness, "OMP"):
         check_omp(args.scope, project, home, errors, warnings)
     if selected(args.harness, "Claude"):

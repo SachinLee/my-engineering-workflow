@@ -199,7 +199,11 @@ openspec init --language Chinese
 openspec init --language Chinese --tools none
 ```
 
-初始化后不需要手动创建 change：正式流程会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。底层命令仍然是：
+初始化后不需要手动创建 change：正式流程会按会话意图与当前项目未归档的 changes 语义匹配，自动推荐新建或复用，并在你确认后才执行。确认提示会包含中文任务名、change id、目标摘要和推荐理由；拒绝复用不等于同意新建，确认只对当前建议生效一次。
+
+中文任务名的来源是每个 change 的 `proposal.md` H1：写成 `# 提案：<中文短标题>`。路由与诊断通过 `scripts/openspec_compat.py` 的 `list_changes` 直接读该 H1 得到 `change_titles`，拼成 `id（中文标题）`；H1 仍是模板默认的 `# Proposal` 或直接留空时，列表与确认提示只能显示 change id。
+
+底层命令仍然是：
 
 ```bash
 openspec new change add-user-authentication --description "增加用户认证"
@@ -289,8 +293,20 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 ## 安装本仓库的 Skill
 
-仅克隆本仓库不会自动让 Codex、Claude Code、OMP 或 Pi 发现这六个 skill。使用安装器
-同步，避免升级后残留旧文件。
+六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP 和 Pi
+原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
+仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
+
+首次安装或更新全部平台，在本仓库根目录执行：
+
+```powershell
+.\scripts\install.ps1 -Scope User -Harness All
+.\scripts\doctor.ps1 -Scope User -Harness All
+```
+
+更新仓库后重跑同一条安装命令即可，无需逐个平台分别安装 skill。`Scope` 默认是 `User`，
+只决定 agents、commands 和 OMP 配置等适配文件的位置；即使选择 `Project`，skill 正文仍在
+用户级共享目录。`Harness` 默认仍为 `Both`（Codex + OMP）。
 
 ### 全局安装到 Codex
 
@@ -310,8 +326,10 @@ PowerShell 7 `pwsh`）：
 .\scripts\doctor.ps1 -Scope User -Harness Claude
 ```
 
-这会安装六个 skill、`workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个
-agent 和 `/engineering-workflow` / `/archive-task` 两个命令。重新启动 Claude Code 后生效。
+这会发布共享 skills，并在 `~/.claude/skills/` 为六个 skill 建立目录链接，安装
+`workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个 agent 和
+`/engineering-workflow` / `/archive-task` 两个命令。Windows 使用 junction，macOS / Linux
+使用 symlink；链接目标始终是对应的共享 skill。重新启动 Claude Code 后生效。
 
 ### 全局安装到 Pi
 
@@ -320,11 +338,12 @@ agent 和 `/engineering-workflow` / `/archive-task` 两个命令。重新启动 
 .\scripts\doctor.ps1 -Scope User -Harness Pi
 ```
 
-这会把六个 skill 安装到 `~/.pi/agent/skills/`，把 provider-independent 的
+这会把六个 skill 发布到 `~/.agents/skills/`，把 provider-independent 的
 `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
 `model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
 `.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
-该用户目录。Pi 会在 `/reload` 或新会话后刷新 agent catalog。
+该用户目录存放 Pi / OMP 的适配文件、定位旧副本，skill 共享目录仍是 `~/.agents/skills/`。
+Pi 会在 `/reload` 或新会话后刷新 agent catalog。
 
 方案规划、有界实现和独立复核需要 Pi subagents 扩展；没有它时主路由会在主会话内执行并记录缺少
 独立上下文：
@@ -344,14 +363,15 @@ pi install npm:@narumitw/pi-subagents
 
 安装器会同步：
 
-- 六个 canonical skill 到共享 `.agents/skills/`、`.omp/skills/` 和
-  `.claude/skills/`；Pi 与 Codex 共用项目 `.agents/skills/`，不制造重复副本。
+- 六个 canonical skill 只发布到用户级 `~/.agents/skills/`。
+- Claude 用户级和项目级 `.claude/skills/` 建立逐 skill 链接，不复制正文。
 - 三个 OMP agent 到 `.omp/agents/`。
 - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
-- 三个 Claude agent 和 `/engineering-workflow` 到项目 `.claude/`。
+- 三个 Claude agent、`/engineering-workflow` 和 `/archive-task` 到项目 `.claude/`。
 - 三个 Pi agent 到 `.pi/agents/`。
 
-安装器不会创建任务记录，也不会写入项目的 hook、extension 或 `.pi/settings.json`。
+安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
+OMP 的 `workflow-review-gate` 扩展继续随适配安装。
 先按共享快速通道判断：简单任务无需建档；正式工作在确认后使用项目内的 OpenSpec change。
 `.workflow/` 仅保留为 legacy 恢复输入，不为新工作创建或更新。
 
@@ -359,8 +379,27 @@ pi install npm:@narumitw/pi-subagents
 Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可以预览安装器将替换的受管目录
 和文件。
 
-个人电脑推荐使用全局安装。项目级安装只用于团队需要把适配文件固定在仓库中，或某个
-项目需要隔离版本的情况。正式 OpenSpec 记录保留在项目仓库中，不随全局安装迁移。
+个人电脑推荐使用全局安装。项目级安装用于把适配文件放在项目中，**不再隔离 skill
+版本**：共享安装更新后，同一用户的所有项目一起使用新版本。正式 OpenSpec 记录仍保留在
+项目仓库中。
+
+### 从旧副本迁移及恢复
+
+安装器只处理六个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
+`~/.codex/skills/`、OMP / Pi 的用户 `skills/`，以及 Claude 的旧正文副本；Project 范围还会
+处理指定项目的 `.agents/skills/`、`.omp/skills/`、`.pi/skills/`、`.claude/skills/` 中对应的
+受管入口。Claude 入口随后建立共享链接。其他项目的旧副本不会被全盘扫描，需要在该项目
+再运行一次 `-Scope Project` 安装；doctor 会报告当前检查范围内的旧入口。
+
+旧目录（包括本地修改）及需要替换的共享安装先完整备份到
+`~/.agents/backups/my-engineering-workflow/<run-id>/`，每次迁移输出 `Backup: 原路径 -> 备份路径`。
+相同共享内容和正确 Claude 链接在重跑时保留，不产生重复备份。遇到未知链接或链接父目录会
+停止并报告路径；请先人工确认该路径，不要直接删除它的目标。
+
+需要恢复时，按安装输出定位备份与原路径；若原路径是新建的 Claude 链接，先只移除链接本身，
+再把对应备份复制回原位置。恢复普通旧副本会重新引入遮蔽，回滚旧版安装器时才应恢复旧布局。
+可先用 `-WhatIf` 预览，安装器不会写入磁盘。安装完成后重启 Codex / Claude / OMP 会话，Pi 使用
+`/reload` 或新会话。
 
 ## 完整使用指南
 
@@ -392,7 +431,7 @@ OMP adapter。也可以一次安装全部四个平台：
 简单任务无需 OpenSpec CLI、目录或 task 骨架。正式分支已有 OpenSpec 时只读发现候选、语义匹配，
 获得一次明确确认后新建或复用；没有记录系统时，先确认是否初始化 OpenSpec，不静默创建。
 正式记录归项目的 `openspec/changes/<change-id>/` 所有；产物按阶段由 skill 用文件工具维护。
-需要固定适配版本的团队可用 `-Scope Project -Harness All`，安装仍不创建任务记录。
+需要把适配文件放在项目中的团队可用 `-Scope Project -Harness All`，skills 仍共享用户级版本，安装不创建任务记录。
 
 `.workflow/CURRENT.md` 和旧 `.workflow/` 产物仅用于显式 legacy 恢复或经用户要求的迁移。
 `.trellis/` 保持只读；不自动续接、不执行脚本，也不把新状态写入任何 legacy 目录。

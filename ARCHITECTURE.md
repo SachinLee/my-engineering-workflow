@@ -55,6 +55,23 @@ request
 
 See `skills/run-engineering-workflow/references/workflow-governance.md` for the
 canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings.
+## Shared Installation
+
+`skills/` owns canonical source. The installer publishes six skills and the assembled
+OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
+OMP, and Pi discover that directory natively; Claude uses per-skill directory links
+(junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
+only harness adapters: agents, commands, OMP config, launcher, and review gate.
+Project scope shares skill versions across projects. Both remains Codex + OMP.
+
+Selected harness legacy copies, including target-project copies in Project scope,
+are backed up outside skill discovery under `~/.agents/backups/my-engineering-workflow/`
+before removal. Shared updates preserve changed content there too. Unknown links
+and linked parents fail preflight; correct Claude links and unchanged published
+content are idempotent. Other projects require their own explicit migration.
+Doctor checks the shared helper, Claude link destinations, legacy shadow entries,
+and the scope-specific adapters. OpenSpec records stay project-local.
+
 ## OMP Roles
 
 ```text

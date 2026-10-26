@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
   [ValidateSet("User", "Project")]
-  [string]$Scope = "Project",
+  [string]$Scope = "User",
 
   [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
   [string]$Harness = "Both",
@@ -76,19 +76,78 @@ function Assert-ManagedChild {
 function Assert-NotReparsePoint {
   param([Parameter(Mandatory)] [string]$Path)
 
-  if (Test-Path -LiteralPath $Path) {
-    $item = Get-Item -LiteralPath $Path -Force
+  $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+  if ($null -ne $item) {
     if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
       throw "Refusing to replace a symlink or junction: $Path"
     }
   }
 }
 
+function Assert-SafeParents {
+  param([Parameter(Mandatory)] [string]$Path)
+
+  $parent = Split-Path -Parent ([IO.Path]::GetFullPath($Path))
+  while ($parent) {
+    Assert-NotReparsePoint -Path $parent
+    $parent = Split-Path -Parent $parent
+  }
+}
+
+function Assert-SafeTree {
+  param([Parameter(Mandatory)] [string]$Path)
+
+  Assert-SafeParents -Path $Path
+  Assert-NotReparsePoint -Path $Path
+  if (Test-Path -LiteralPath $Path -PathType Container) {
+    foreach ($item in Get-ChildItem -LiteralPath $Path -Force -Recurse) {
+      Assert-NotReparsePoint -Path $item.FullName
+    }
+  }
+}
+
+function Test-SharedLink {
+  param([string]$Path, [string]$Target)
+
+  $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+  if ($null -eq $item -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+    return $false
+  }
+  $destination = @($item.Target)
+  if ($destination.Count -ne 1 -or -not $destination[0]) { return $false }
+  $resolved = $destination[0]
+  if (-not [IO.Path]::IsPathRooted($resolved)) {
+    $resolved = Join-Path (Split-Path -Parent $Path) $resolved
+  }
+  $comparison = if ($env:OS -eq 'Windows_NT') { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+  return [string]::Equals(
+    [IO.Path]::GetFullPath($resolved).TrimEnd('\', '/'),
+    [IO.Path]::GetFullPath($Target).TrimEnd('\', '/'),
+    $comparison
+  )
+}
+
+$backupRoot = Join-Path $HOME (".agents/backups/my-engineering-workflow/" + [guid]::NewGuid().ToString('N'))
+$backupIndex = 0
+function Backup-ManagedPath {
+  param([string]$Path)
+
+  if ($null -eq (Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue)) { return }
+  $script:backupIndex++
+  $destination = Join-Path $backupRoot ("{0:D3}-{1}" -f $script:backupIndex, (Split-Path -Leaf $Path))
+  New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
+  # Copy first so a cross-volume migration keeps the original until backup succeeds.
+  Copy-Item -LiteralPath $Path -Destination $destination -Recurse -Force
+  Write-Host "Backup: $Path -> $destination"
+  Remove-Item -LiteralPath $Path -Recurse -Force
+}
+
 function Sync-SkillDirectory {
   param(
     [Parameter(Mandatory)] [string]$Source,
     [Parameter(Mandatory)] [string]$TargetRoot,
-    [Parameter(Mandatory)] [string]$Name
+    [Parameter(Mandatory)] [string]$Name,
+    [switch]$IncludeCompat
   )
 
   if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
@@ -96,13 +155,45 @@ function Sync-SkillDirectory {
   }
   $target = Join-Path $TargetRoot $Name
   Assert-ManagedChild -Root $TargetRoot -Child $target
-  Assert-NotReparsePoint -Path $target
-  if ($PSCmdlet.ShouldProcess($target, "replace managed skill directory")) {
-    New-Item -ItemType Directory -Force -Path $TargetRoot | Out-Null
-    if (Test-Path -LiteralPath $target) {
-      Remove-Item -LiteralPath $target -Recurse -Force
+  Assert-SafeTree -Path $target
+  $expected = @{}
+  foreach ($file in Get-ChildItem -LiteralPath $Source -File -Recurse -Force) {
+    $relative = $file.FullName.Substring($Source.Length).TrimStart('\', '/')
+    $expected[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+  }
+  if ($IncludeCompat) {
+    $expected[(Join-Path 'scripts' 'openspec_compat.py')] = (Get-FileHash -LiteralPath $compatSource -Algorithm SHA256).Hash
+  }
+  $actual = @(Get-ChildItem -LiteralPath $target -File -Recurse -Force -ErrorAction SilentlyContinue)
+  $matchesSource = (Test-Path -LiteralPath $target -PathType Container) -and $actual.Count -eq $expected.Count
+  foreach ($file in $actual) {
+    $relative = $file.FullName.Substring($target.Length).TrimStart('\', '/')
+    if (-not $expected.ContainsKey($relative) -or $expected[$relative] -ne (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) {
+      $matchesSource = $false
+      break
     }
-    Copy-Item -LiteralPath $Source -Destination $TargetRoot -Recurse -Force
+  }
+  if ($matchesSource) { return }
+  if ($PSCmdlet.ShouldProcess($target, "back up existing content and publish managed directory")) {
+    Backup-ManagedPath -Path $target
+    New-Item -ItemType Directory -Force -Path $TargetRoot | Out-Null
+    Copy-Item -LiteralPath $Source -Destination $target -Recurse -Force
+    if ($IncludeCompat) {
+      $scripts = Join-Path $target 'scripts'
+      New-Item -ItemType Directory -Force -Path $scripts | Out-Null
+      Copy-Item -LiteralPath $compatSource -Destination (Join-Path $scripts 'openspec_compat.py') -Force
+    }
+  }
+}
+
+function Install-SharedLink {
+  param([string]$Path, [string]$Target)
+
+  if (Test-SharedLink -Path $Path -Target $Target) { return }
+  if ($PSCmdlet.ShouldProcess($Path, "link skill to $Target")) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
+    $linkType = if ($env:OS -eq 'Windows_NT') { 'Junction' } else { 'SymbolicLink' }
+    New-Item -ItemType $linkType -Path $Path -Target $Target | Out-Null
   }
 }
 
@@ -123,6 +214,7 @@ function Copy-ManagedFile {
   }
   $targetRoot = Split-Path -Parent $Target
   Assert-ManagedChild -Root $targetRoot -Child $Target
+  Assert-SafeParents -Path $Target
   Assert-NotReparsePoint -Path $Target
   if ($PSCmdlet.ShouldProcess($Target, "install managed workflow file")) {
     New-Item -ItemType Directory -Force -Path $targetRoot | Out-Null
@@ -135,6 +227,7 @@ function Remove-LegacyManagedFile {
 
   $targetRoot = Split-Path -Parent $Path
   Assert-ManagedChild -Root $targetRoot -Child $Path
+  Assert-SafeParents -Path $Path
   Assert-NotReparsePoint -Path $Path
   if ((Test-Path -LiteralPath $Path -PathType Leaf) -and
       $PSCmdlet.ShouldProcess($Path, "remove legacy managed workflow file")) {
@@ -155,6 +248,7 @@ function Add-OmpSkillWhitelist {
     Write-Host "OMP config not found, so skills stay unfiltered: $Path"
     return
   }
+  Assert-SafeParents -Path $Path
   Assert-NotReparsePoint -Path $Path
 
   $raw = [IO.File]::ReadAllText($Path)
@@ -212,23 +306,118 @@ function Add-OmpSkillWhitelist {
   Write-Host "Added to OMP skill whitelist: $($missing -join ', ')"
 }
 
-if ($Harness -in @("Codex", "Both", "All")) {
-  $codexSkills = if ($Scope -eq "Project") {
-    Join-Path $project ".agents\skills"
-  } else {
-    Join-Path $HOME ".codex\skills"
+$sharedSkills = Join-Path $HOME '.agents/skills'
+$compatSource = Join-Path $repoRoot 'scripts\openspec_compat.py'
+$legacyRoots = @()
+$claudeLinkRoots = @()
+if ($Harness -in @('Codex', 'Both', 'All')) {
+  $legacyRoots += Join-Path $HOME '.codex/skills'
+  if ($project) { $legacyRoots += Join-Path $project '.agents/skills' }
+}
+if ($Harness -in @('OMP', 'Both', 'All')) {
+  $legacyRoots += Join-Path $ompUserRoot 'skills'
+  if ($project) { $legacyRoots += Join-Path $project '.omp/skills' }
+}
+if ($Harness -in @('Pi', 'All')) {
+  $legacyRoots += Join-Path $piUserRoot 'skills'
+  if ($project) {
+    $legacyRoots += Join-Path $project '.agents/skills'
+    $legacyRoots += Join-Path $project '.pi/skills'
   }
+}
+if ($Harness -in @('Claude', 'All')) {
+  $claudeLinkRoots += Join-Path $HOME '.claude/skills'
+  if ($project) { $claudeLinkRoots += Join-Path $project '.claude/skills' }
+  $legacyRoots += $claudeLinkRoots
+}
+$legacyRoots = @($legacyRoots | Sort-Object -Unique | Where-Object {
+  [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($sharedSkills)
+})
 
+# Preflight every managed skill before any migration. Never follow unknown links.
+Assert-SafeParents -Path $backupRoot
+Assert-NotReparsePoint -Path $backupRoot
+foreach ($name in $skillNames) {
+  $source = Join-Path $repoRoot "skills\$name"
+  Assert-SafeTree -Path $source
+  if (-not (Test-Path -LiteralPath (Join-Path $source 'SKILL.md') -PathType Leaf)) {
+    throw "Skill source directory was not found: $source"
+  }
+  $target = Join-Path $sharedSkills $name
+  Assert-SafeTree -Path $target
+  foreach ($root in $legacyRoots) {
+    $old = Join-Path $root $name
+    Assert-SafeParents -Path $old
+    if (-not (Test-SharedLink -Path $old -Target $target)) {
+      Assert-SafeTree -Path $old
+    }
+  }
+}
+if (-not (Test-Path -LiteralPath $compatSource -PathType Leaf)) {
+  throw "Managed source file was not found: $compatSource"
+}
+if ($Harness -in @('OMP', 'Both', 'All') -and -not (Test-Path -LiteralPath $workflowReviewGateSource -PathType Container)) {
+  throw "Skill source directory was not found: $workflowReviewGateSource"
+}
+$managedFiles = @()
+if ($Harness -in @('OMP', 'Both', 'All')) {
+  $root = if ($project) { Join-Path $project '.omp' } else { $ompUserRoot }
+  foreach ($fileName in $ompAgentNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot ".omp/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+  }
+  $managedFiles += @{ Source = Join-Path $repoRoot 'config/omp-workflow.yml'; Target = Join-Path $root 'engineering-workflow.yml' }
+  $managedFiles += @{ Source = Join-Path $repoRoot 'scripts/start-omp.py'; Target = Join-Path $root 'start-engineering-workflow.py' }
+  foreach ($path in @((Join-Path $root 'start-engineering-workflow.ps1'), (Join-Path $root 'config.yml'), (Join-Path $ompUserRoot 'config.yml'))) {
+    Assert-SafeParents -Path $path
+    Assert-NotReparsePoint -Path $path
+  }
+  Assert-SafeTree -Path (Join-Path $root 'extensions/workflow-review-gate')
+  Assert-SafeTree -Path $workflowReviewGateSource
+}
+if ($Harness -in @('Claude', 'All')) {
+  $root = if ($project) { Join-Path $project '.claude' } else { Join-Path $HOME '.claude' }
+  foreach ($fileName in $claudeAgentNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot "agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+  }
+  foreach ($fileName in $claudeCommandNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot "commands/$fileName"; Target = Join-Path $root "commands/$fileName" }
+  }
+}
+if ($Harness -in @('Pi', 'All')) {
+  $root = if ($project) { Join-Path $project '.pi' } else { $piUserRoot }
+  foreach ($fileName in $piAgentNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot ".pi/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+  }
+}
+foreach ($file in $managedFiles) {
+  if (-not (Test-Path -LiteralPath $file.Source -PathType Leaf)) {
+    throw "Managed source file was not found: $($file.Source)"
+  }
+  Assert-SafeParents -Path $file.Target
+  Assert-NotReparsePoint -Path $file.Target
+}
+foreach ($name in $skillNames) {
+  Sync-SkillDirectory -Source (Join-Path $repoRoot "skills\$name") -TargetRoot $sharedSkills -Name $name `
+    -IncludeCompat:($name -eq 'run-engineering-workflow')
+}
+foreach ($root in $legacyRoots) {
   foreach ($name in $skillNames) {
-    Sync-SkillDirectory `
-      -Source (Join-Path $repoRoot "skills\$name") `
-      -TargetRoot $codexSkills `
-      -Name $name
+    $old = Join-Path $root $name
+    $target = Join-Path $sharedSkills $name
+    if (Test-SharedLink -Path $old -Target $target) {
+      if ($claudeLinkRoots -notcontains $root -and $PSCmdlet.ShouldProcess($old, 'remove redundant shared skill link')) {
+        # Directory.Delete removes only the link, never the shared target.
+        [IO.Directory]::Delete($old)
+      }
+    } elseif ((Test-Path -LiteralPath $old) -and $PSCmdlet.ShouldProcess($old, 'back up legacy skill directory')) {
+      Backup-ManagedPath -Path $old
+    }
   }
-
-  Copy-ManagedFile `
-    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
-    -Target (Join-Path $codexSkills "run-engineering-workflow\scripts\openspec_compat.py")
+}
+foreach ($root in $claudeLinkRoots) {
+  foreach ($name in $skillNames) {
+    Install-SharedLink -Path (Join-Path $root $name) -Target (Join-Path $sharedSkills $name)
+  }
 }
 if ($Harness -in @("OMP", "Both", "All")) {
   $ompRoot = if ($Scope -eq "Project") {
@@ -236,20 +425,10 @@ if ($Harness -in @("OMP", "Both", "All")) {
   } else {
     $ompUserRoot
   }
-  $ompSkills = Join-Path $ompRoot "skills"
+
   $ompAgents = Join-Path $ompRoot "agents"
   $ompExtensions = Join-Path $ompRoot "extensions"
 
-  foreach ($name in $skillNames) {
-    Sync-SkillDirectory `
-      -Source (Join-Path $repoRoot "skills\$name") `
-      -TargetRoot $ompSkills `
-      -Name $name
-  }
-
-  Copy-ManagedFile `
-    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
-    -Target (Join-Path $ompSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $ompAgentNames) {
     Copy-ManagedFile `
@@ -273,6 +452,9 @@ if ($Harness -in @("OMP", "Both", "All")) {
   Add-OmpSkillWhitelist `
     -Path (Join-Path $ompRoot "config.yml") `
     -Names $skillNames
+  if ($Scope -eq 'Project') {
+    Add-OmpSkillWhitelist -Path (Join-Path $ompUserRoot 'config.yml') -Names $skillNames
+  }
 }
 
 if ($Harness -in @("Claude", "All")) {
@@ -281,20 +463,10 @@ if ($Harness -in @("Claude", "All")) {
   } else {
     Join-Path $HOME ".claude"
   }
-  $claudeSkills = Join-Path $claudeRoot "skills"
+
   $claudeAgents = Join-Path $claudeRoot "agents"
   $claudeCommands = Join-Path $claudeRoot "commands"
 
-  foreach ($name in $skillNames) {
-    Sync-SkillDirectory `
-      -Source (Join-Path $repoRoot "skills\$name") `
-      -TargetRoot $claudeSkills `
-      -Name $name
-  }
-
-  Copy-ManagedFile `
-    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
-    -Target (Join-Path $claudeSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $claudeAgentNames) {
     Copy-ManagedFile `
@@ -315,23 +487,9 @@ if ($Harness -in @("Pi", "All")) {
   } else {
     $piUserRoot
   }
-  $piSkills = if ($Scope -eq "Project") {
-    Join-Path $project ".agents\skills"
-  } else {
-    Join-Path $piRoot "skills"
-  }
+
   $piAgents = Join-Path $piRoot "agents"
 
-  foreach ($name in $skillNames) {
-    Sync-SkillDirectory `
-      -Source (Join-Path $repoRoot "skills\$name") `
-      -TargetRoot $piSkills `
-      -Name $name
-  }
-
-  Copy-ManagedFile `
-    -Source (Join-Path $repoRoot "scripts\openspec_compat.py") `
-    -Target (Join-Path $piSkills "run-engineering-workflow\scripts\openspec_compat.py")
 
   foreach ($fileName in $piAgentNames) {
     Copy-ManagedFile `
@@ -341,7 +499,7 @@ if ($Harness -in @("Pi", "All")) {
 }
 
 $resultVerb = if ($WhatIfPreference) { "Planned" } else { "Installed" }
-Write-Host "$resultVerb $($skillNames.Count) workflow skills for $Harness at $Scope scope."
+Write-Host "$resultVerb $($skillNames.Count) shared workflow skills at $sharedSkills; $Harness adapters at $Scope scope."
 if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
   $startPrefix = if ($WhatIfPreference) { "After installation, start" } else { "Start" }
   $launcher = Join-Path $project ".omp\start-engineering-workflow.py"

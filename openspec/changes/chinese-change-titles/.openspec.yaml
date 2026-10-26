@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-10-26
+goal: proposal H1 写中文、规则下沉到 config 与 skill、compat 脚本回传 title

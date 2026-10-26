@@ -10,6 +10,7 @@ context: |
 rules:
   proposal:
     - State the motivation, scope, non-goals, assumptions, and acceptance criteria in Chinese.
+    - Write the proposal H1 as `# 提案：<中文短标题>` so `openspec change list` and routing prompts show a readable Chinese title; keep the section headings `## Why` and `## What Changes` in English because OpenSpec parses those names.
   specs:
     - Write requirements and scenarios in Chinese; keep the structural keywords SHALL and MUST in English.
   design:

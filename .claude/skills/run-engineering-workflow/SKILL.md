@@ -125,6 +125,20 @@ Unarchived is not the same as unfinished: recommend reuse with the change's
 actual status (`detect_project_mode(project, change=<id>)`), and keep its
 existing work — never clear requirements, execution state, or prior verification
 evidence when reusing.
+Show candidates by their readable Chinese title from `list_changes`'s
+`change_titles` map, paired with the change id; use the bare id when the title
+is missing. Titles come from each `proposal.md` H1, so a change whose H1 is
+still `# Proposal` or a bare id has no readable title to show.
+
+When the user wants to look up a task themselves instead of asking the agent,
+tell them to run `python <skill-dir>/scripts/openspec_compat.py list` (add
+`--project <dir>` from outside the repo). It is read-only and prints `id` plus
+title, which is more reliable than `openspec change list --long`: that deprecated
+command prints `(unable to read)` for any proposal whose section headings are
+Chinese. When the install is shared, the helper sits next to this skill at
+`~/.agents/skills/run-engineering-workflow/scripts/openspec_compat.py`; a project
+checkout keeps it at `scripts/openspec_compat.py`. On Windows, set
+`PYTHONIOENCODING=utf-8`, otherwise the console code page garbles the titles.
 
 Same-goal means the candidate targets the same work object, the same expected
 outcome, a compatible scope, and the same acceptance relationship. Related but
@@ -135,13 +149,19 @@ of treating it as "no match".
   name, the change id (lowercase letters, numbers, hyphens), a one-line goal
   summary, and why no candidate matches. Ask "是否创建 XXX 任务？" and stop
   until the user confirms. Creation runs only through `create_change` in
-  `scripts/openspec_compat.py`; it never overwrites an existing change id.
+  `scripts/openspec_compat.py`; it never overwrites an existing change id. It also
+  installs the proposal H1 title rule into the project's `openspec/config.yaml`
+  when absent, so author the proposal with a Chinese H1 rather than assuming the
+  template's `# Proposal`; the rule arrives through `openspec instructions
+  proposal`, and `title_rule` in the result reports what happened.
 - One same-goal candidate → propose reuse with the change's current status. Ask
   "已经存在 XXX 任务，是否复用？" and stop until the user confirms.
-- Several plausible candidates → show each candidate's goal, scope, and status
+- Several plausible candidates → show each candidate as `id（中文标题）` using
+  `change_titles` from `list_changes`, together with its goal, scope, and status
   plus the differences, then let the user pick one to reuse, create a new
   change, or cancel. Never order candidates by recency, name, or model
-  preference and act without the user's choice.
+  preference and act without the user's choice. Fall back to the bare change id
+  when `change_titles` has no readable title for it.
 
 A confirmation authorizes exactly the current proposal, once. Rejecting reuse is
 not consent to create; renaming or rescoping the proposal requires a new
@@ -151,8 +171,8 @@ or reuse is not plan approval, acceptance, or archival.
 
 ## Assess Profile First
 
-Before any routing or dispatch decision, explicitly assess the task's risk
-profile by reading the selected OpenSpec `proposal.md`, affected `specs/`, and change scope:
+Formal branch only, after the fast/formal selection and confirmed change selection.
+Before formal dispatch, assess the task's risk profile by reading the selected OpenSpec `proposal.md`, affected `specs/`, and change scope:
 
 1. **Is this critical?** Does the task touch authentication, authorization,
    money, secrets, persistent data, migrations, public contracts, destructive

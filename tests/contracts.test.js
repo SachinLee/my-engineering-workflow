@@ -482,12 +482,9 @@ test("routing recommends and requires confirmation before creating or reusing", 
   assert.match(compat, /Change id must contain lowercase letters, numbers, and hyphens only/);
   assert.match(doctor, /nothing is auto-selected/);
   assert.match(installer, /scripts\\openspec_compat\.py/);
-  for (const root of ["codexSkills", "ompSkills", "claudeSkills", "piSkills"]) {
-    assert.match(
-      installer,
-      new RegExp(`Join-Path \\$${root} "run-engineering-workflow\\\\scripts\\\\openspec_compat\\.py"`),
-    );
-  }
+  assert.match(installer, /\$sharedSkills = Join-Path \$HOME '\.agents\/skills'/);
+  assert.match(installer, /-IncludeCompat:\(\$name -eq 'run-engineering-workflow'\)/);
+  assert.doesNotMatch(installer, /\$(codexSkills|ompSkills|piSkills)\s*=/);
 });
 
 test("archive-task is gated on user acceptance and owns the move", () => {
@@ -821,13 +818,15 @@ test("tooling supports synchronized install, diagnosis, and Python OMP launch", 
   const launcher = read("scripts/start-omp.py");
 
   assert.match(installer, /SupportsShouldProcess/);
-  assert.match(installer, /Remove-Item -LiteralPath \$target -Recurse -Force/);
+  assert.match(installer, /Backup-ManagedPath -Path \$target/);
+  assert.match(installer, /Assert-SafeParents/);
+  assert.match(installer, /Install-SharedLink/);
   assert.match(installer, /engineering-workflow\.yml/);
   assert.match(installer, /"Claude"/);
   assert.match(installer, /"Pi"/);
   assert.match(installer, /"All"/);
   assert.match(installer, /Join-Path \$project "\.claude"/);
-  assert.match(installer, /Join-Path \$claudeRoot "skills"/);
+  assert.match(installer, /\$claudeLinkRoots/);
   assert.match(installer, /Join-Path \$claudeRoot "agents"/);
   assert.match(installer, /Join-Path \$claudeRoot "commands"/);
   for (const agent of ["workflow-planner.md", "workflow-implementer.md", "workflow-reviewer.md"]) {
@@ -848,7 +847,11 @@ test("tooling supports synchronized install, diagnosis, and Python OMP launch", 
   assert.match(doctorWrapper, /doctor\.py/);
   assert.match(doctorWrapper, /& py -3/);
   assert.match(doctor, /executable_exists\("pi"/);
-  assert.match(doctor, /"Pi", errors/);
+  assert.match(doctor, /check_agents\(root \/ "agents", "Pi", errors\)/);
+  assert.match(doctor, /def check_shared_installation/);
+  assert.match(doctor, /Missing shared OpenSpec helper/);
+  assert.match(doctor, /Claude skill link/);
+  assert.match(doctor, /Legacy skill entry/);
   assert.match(doctor, /"@narumitw" \/ "pi-subagents"/);
   assert.match(doctor, /Missing OMP Python launcher/);
   assert.match(doctor, /check_skill_whitelist\(path, "overlay", errors\)/);
@@ -1002,4 +1005,55 @@ test("decomposition exposes slices, tickets, and a recomputable frontier", () =>
   assert.match(router, /recompute the frontier/);
   assert.match(finish, /tasks\.md/);
   assert.match(planner, /tasks\.md/);
+});
+
+test("OpenSpec changes carry a readable Chinese title in listings and routing", () => {
+  const config = read("openspec/config.yaml");
+  const propose = read(".pi/skills/openspec-propose/SKILL.md");
+  const compat = read("scripts/openspec_compat.py");
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const doctor = read("scripts/doctor.py");
+
+  assert.match(config, /# 提案：<中文短标题>/);
+  assert.match(config, /## Why` and `## What Changes` in English/);
+  assert.match(propose, /# 提案：<中文短标题>/);
+  assert.match(propose, /Never leave the H1 as `# Proposal` or a bare change id/);
+  assert.match(compat, /def _change_titles\(/);
+  assert.match(compat, /TITLE_RE = re\.compile/);
+  assert.match(compat, /change_titles=titles/);
+  assert.doesNotMatch(compat, /"change", "list"/);
+  assert.doesNotMatch(compat, /\["show", name\]/);
+  assert.match(router, /change_titles/);
+  assert.match(doctor, /change_titles/);
+});
+
+test("A human can list changes with readable titles without the agent", () => {
+  const compat = read("scripts/openspec_compat.py");
+  const skill = read("skills/run-engineering-workflow/SKILL.md");
+
+  assert.match(compat, /def _main\(argv: Sequence\[str\]\) -> int:/);
+  assert.match(compat, /add_parser\("list"/);
+  assert.match(compat, /def _safe_print\(/);
+  assert.match(compat, /raise SystemExit\(_main\(sys\.argv\[1:\]\)\)/);
+  assert.doesNotMatch(compat, /raise SystemExit\("Import this module/);
+  // The CLI must stay read-only: no create/update/archive command may appear.
+  assert.doesNotMatch(compat, /add_parser\("(create|update|archive|apply)"/);
+  assert.match(skill, /openspec_compat\.py list/);
+});
+
+test("The proposal title rule is installed into new projects, not only this repo", () => {
+  const compat = read("scripts/openspec_compat.py");
+  const doctor = read("scripts/doctor.py");
+
+  // A fresh project's config only carries commented examples, so the rule has to
+  // be written by the workflow itself; otherwise new changes land as `# Proposal`.
+  assert.match(compat, /def ensure_proposal_title_rule\(/);
+  assert.match(compat, /TITLE_RULE_ANCHOR/);
+  assert.match(compat, /title_rule = ensure_proposal_title_rule\(root\)/);
+  // Text-based insertion keeps the template's comment block and user rules.
+  assert.doesNotMatch(compat, /import yaml/);
+  assert.match(compat, /config\.read_bytes\(\)\.decode\("utf-8-sig"\)/);
+  assert.match(doctor, /TITLE_RULE_ANCHOR, detect_project_mode/);
+  assert.match(doctor, /def _check_proposal_title_rule\(/);
+  assert.match(doctor, /_check_proposal_title_rule\(project, warnings\)/);
 });

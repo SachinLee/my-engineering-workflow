@@ -8,11 +8,13 @@ rather than parse CLI text or inspect legacy directories themselves.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 from pathlib import Path
@@ -116,6 +118,77 @@ def _has_openspec_root(project: Path) -> bool:
     return any((project / "openspec" / name).is_file() for name in ("config.yaml", "config.yml"))
 
 
+TITLE_RULE_ANCHOR = "提案：<中文短标题>"
+
+
+def _config_file(project: Path) -> Optional[Path]:
+    config = project / "openspec" / "config.yaml"
+    if config.is_file():
+        return config
+    fallback = project / "openspec" / "config.yml"
+    return fallback if fallback.is_file() else None
+
+
+def ensure_proposal_title_rule(project: os.PathLike[str] | str) -> Dict[str, Any]:
+    """Idempotently add the Chinese H1 rule to a project's `openspec/config.yaml`.
+
+    Planning artifacts are written by the agent from `openspec instructions
+    proposal`, and a fresh project's config carries only commented-out examples,
+    so without this rule a new change lands as `# Proposal` and its title is
+    unreadable. Editing is text-based on purpose: a YAML round-trip would drop the
+    template's comment block and any user comments. Existing configuration is
+    never rewritten — the rule is inserted only when the anchor text is absent.
+    """
+    root = Path(project).expanduser().resolve()
+    if not root.is_dir():
+        raise CompatibilityError(f"Project root does not exist: {root}")
+    config = _config_file(root)
+    if config is None:
+        return {"status": "skipped", "reason": "no openspec/config.yaml or config.yml"}
+    try:
+        # Read bytes, not text: `read_text` translates line endings, which would
+        # make a CRLF file look like LF and get rewritten with the wrong newline.
+        text = config.read_bytes().decode("utf-8-sig")
+    except OSError as exc:
+        return {"status": "failed", "reason": str(exc)}
+    if TITLE_RULE_ANCHOR in text:
+        return {"status": "unchanged", "config": str(config)}
+    eol = "\r\n" if "\r\n" in text else "\n"
+    line = f"    - Write the proposal H1 as `# 提案：<中文短标题>` so `openspec change list` and routing prompts show a readable Chinese title; keep the section headings `## Why` and `## What Changes` in English because OpenSpec parses those names.{eol}"
+    lines = text.splitlines()
+    proposal_index = None
+    rules_index = None
+    for index, current in enumerate(lines):
+        if rules_index is None and current.startswith("rules:"):
+            rules_index = index
+        if proposal_index is None and re.match(r"^  proposal:\s*(?:#.*)?$", current):
+            proposal_index = index
+    if proposal_index is not None:
+        end = len(lines)
+        for index in range(proposal_index + 1, len(lines)):
+            if lines[index].strip() and not lines[index].startswith("     "):
+                end = index
+                break
+        lines.insert(end, line.rstrip("\r\n"))
+    elif rules_index is not None:
+        lines.insert(rules_index + 1, "  proposal:")
+        lines.insert(rules_index + 2, line.rstrip("\r\n"))
+    else:
+        # `rules:` may only exist inside the template's comment block; append a
+        # real block after the `context` value so the commented example stays put.
+        end = len(lines)
+        for index, current in enumerate(lines):
+            if re.match(r"^rules:\s*", current) and not current.lstrip().startswith("#"):
+                end = index
+                break
+        lines.insert(end, "")
+        lines.insert(end + 1, "rules:")
+        lines.insert(end + 2, "  proposal:")
+        lines.insert(end + 3, line.rstrip("\r\n"))
+    config.write_text(eol.join(lines) + eol, encoding="utf-8", newline="")
+    return {"status": "updated", "config": str(config)}
+
+
 def _safe_project_path(project: Path, candidate: Path, label: str) -> Path:
     project = project.resolve()
     candidate = candidate.resolve()
@@ -166,7 +239,49 @@ def _result(
     return payload
 
 
-def _open_spec_names(executable: Executable, root: Path, timeout: float) -> Tuple[str, List[str]]:
+TITLE_RE = re.compile(r"^#\s+(?:Change:\s+)?(.+)$")
+
+
+def _change_titles(root: Path, names: List[str]) -> Dict[str, str]:
+    """Best-effort change titles from each proposal's H1. Never raises: an
+    unreadable or placeholder title degrades to the change id, because routing
+    only needs titles for display and must not block on them.
+
+    Reads `proposal.md` directly instead of `openspec show <id> --json`: `show`
+    fails with `Change must have a Why section` on every change whose proposal
+    uses Chinese section names (6 of 8 in this repo), and costs a process per
+    change. The regex mirrors OpenSpec's own `extractTitle`."""
+    titles = {name: name for name in names}
+    for name in names:
+        if not CHANGE_ID_RE.fullmatch(name):
+            continue
+        try:
+            text = (root / "openspec" / "changes" / name / "proposal.md").read_text(
+                encoding="utf-8-sig", errors="replace"
+            )
+        except OSError:
+            continue
+        in_fence = False
+        for line in text.splitlines():
+            if line.lstrip().startswith("```"):
+                # A `# comment` inside a fenced block is code, not the title.
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            match = TITLE_RE.match(line)
+            if not match:
+                continue
+            cleaned = match.group(1).strip()
+            if cleaned and cleaned.lower() != "proposal" and cleaned != name:
+                titles[name] = cleaned
+            break
+    return titles
+
+
+def _open_spec_names(
+    executable: Executable, root: Path, timeout: float
+) -> Tuple[str, List[str], Dict[str, str]]:
     """Read-only discovery: version check, list --json, root match, change names."""
     version = _check_version(executable, root, timeout)
     listing = _json_command(executable, root, ["list"], timeout)
@@ -178,7 +293,8 @@ def _open_spec_names(executable: Executable, root: Path, timeout: float) -> Tupl
     changes = listing.get("changes")
     if not isinstance(changes, list) or any(not isinstance(item, dict) for item in changes):
         raise CompatibilityError("OpenSpec list response has no valid changes array")
-    return version, [item.get("name") for item in changes if isinstance(item.get("name"), str)]
+    names = [item.get("name") for item in changes if isinstance(item.get("name"), str)]
+    return version, names, _change_titles(root, names)
 
 
 def list_changes(
@@ -195,7 +311,7 @@ def list_changes(
         return _result("blocked", "blocked", "none", reason="OpenSpec is not initialized in this project.")
     try:
         executable = _executable(openspec_executable)
-        version, names = _open_spec_names(executable, root, timeout)
+        version, names, titles = _open_spec_names(executable, root, timeout)
     except CompatibilityError as exc:
         return _result("blocked", "blocked", "openspec", reason=str(exc))
     return _result(
@@ -204,6 +320,7 @@ def list_changes(
         "openspec",
         openspec_version=version,
         available_changes=names,
+        change_titles=titles,
     )
 
 
@@ -242,7 +359,10 @@ def create_change(
         ],
         timeout,
     )
-    return {"status": "created", "change": change_id, "detail": payload}
+    # The change's artifacts are authored from `openspec instructions proposal`,
+    # so the title rule has to be in the project config before that read happens.
+    title_rule = ensure_proposal_title_rule(root)
+    return {"status": "created", "change": change_id, "detail": payload, "title_rule": title_rule}
 
 
 def detect_project_mode(
@@ -260,7 +380,7 @@ def detect_project_mode(
     if _has_openspec_root(root):
         try:
             executable = _executable(openspec_executable)
-            version, names = _open_spec_names(executable, root, timeout)
+            version, names, titles = _open_spec_names(executable, root, timeout)
             selected = change
             if selected is None:
                 # Consent-first routing: no auto-selection, no blocked state on
@@ -272,6 +392,7 @@ def detect_project_mode(
                     "openspec",
                     openspec_version=version,
                     available_changes=names,
+                    change_titles=titles,
                 )
             if selected not in names:
                 return _result(
@@ -280,6 +401,7 @@ def detect_project_mode(
                     "openspec",
                     reason=f"OpenSpec change was not listed: {selected}",
                     available_changes=names,
+                    change_titles=titles,
                     openspec_version=version,
                 )
             status = _json_command(executable, root, ["status", "--change", selected], timeout)
@@ -433,5 +555,58 @@ def migrate_workflow_task(
         raise
 
 
+def _safe_print(line: str) -> None:
+    """Print a line, degrading a title the console cannot encode instead of crashing.
+
+    Windows consoles often report ``gbk``; a Chinese title is then unprintable and a
+    bare ``print`` raises UnicodeEncodeError. Losing the title is acceptable, losing
+    the id is not, because the id is what every OpenSpec command takes.
+    """
+    try:
+        print(line)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(line.encode(encoding, "replace").decode(encoding, "replace"))
+
+
+def _main(argv: Sequence[str]) -> int:
+    """Read-only `list` command so a human can find a change without the agent.
+
+    `openspec list` prints English kebab-case ids only, and `openspec change list
+    --long` prints `(unable to read)` for any proposal using Chinese section
+    names. Reading the H1 directly avoids both problems.
+    """
+    parser = argparse.ArgumentParser(
+        prog="openspec_compat.py",
+        description="Read-only OpenSpec change discovery with readable titles.",
+    )
+    sub = parser.add_subparsers(dest="command")
+    list_parser = sub.add_parser("list", help="list unarchived changes with their titles")
+    list_parser.add_argument("--project", default=".", help="project root (default: current directory)")
+    args = parser.parse_args(argv)
+    if args.command != "list":
+        parser.print_help()
+        return 2
+    root = Path(args.project).expanduser().resolve()
+    result = list_changes(root)
+    if result["status"] not in {"ready", "unselected"}:
+        print(f"blocked: {result.get('reason') or 'unknown error'}", file=sys.stderr)
+        return 1
+    names = result.get("available_changes") or []
+    titles = result.get("change_titles") or {}
+    if not names:
+        print("No unarchived changes.")
+        return 0
+    width = max(len(name) for name in names)
+    for name in names:
+        title = titles.get(name)
+        # `_change_titles` falls back to the id, so only print a real title.
+        if title and title != name:
+            _safe_print(name.ljust(width) + "  " + title)
+        else:
+            _safe_print(name)
+    return 0
+
+
 if __name__ == "__main__":
-    raise SystemExit("Import this module from doctor, migration commands, or tests.")
+    raise SystemExit(_main(sys.argv[1:]))

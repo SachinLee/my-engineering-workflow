@@ -1,6 +1,6 @@
 param(
   [ValidateSet("User", "Project")]
-  [string]$Scope = "Project",
+  [string]$Scope = "User",
 
   [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
   [string]$Harness = "Both",
