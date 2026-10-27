@@ -27,12 +27,18 @@ test("simple work eligibility is centralized without weakening formal gates", ()
   const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
   assert.ok(fast, "missing shared simple-work eligibility");
   assert.match(fast, /all.*conditions/is);
-  assert.match(fast, /non-behavioral.*local.*low-risk/is);
-  assert.match(fast, /same.*session.*no.*(?:handoff|delegation)/is);
-  assert.match(fast, /explicit.*OpenSpec.*selected change/is);
+  assert.match(fast, /local.*low-risk/is);
+  assert.match(fast, /bounded seam/i);
+  assert.match(fast, /regression check/i);
+  assert.match(fast, /no formal record/i);
+  assert.match(fast, /not continuing a\s+selected change/is);
   assert.match(fast, /stricter project.*(?:record|rule)/is);
-  assert.match(fast, /behavior.*Standard.*Critical/is);
+  assert.match(
+    fast,
+    /authentication.*money.*secrets.*persistent data.*migrations.*public contracts/is,
+  );
   assert.match(fast, /dependenc/i);
+  assert.match(fast, /file count.*never sufficient/is);
   assert.match(fast, /CLI.*(?:error|failure).*not.*(?:qualif|eligib)/is);
 });
 
@@ -102,7 +108,9 @@ test("simple work routing fixtures cover eligibility and explicit formal intent"
   for (const [name, stage] of [
     ["simple-docs-with-existing-changes", "fast-execute"],
     ["simple-work-without-cli", "fast-execute"],
+    ["small-behavior-fix-bounded-seam", "fast-execute"],
     ["small-behavior-fix-requires-change", "discover-and-confirm"],
+    ["high-risk-small-diff-requires-formal", "discover-and-confirm"],
     ["strict-project-requires-change", "discover-and-confirm"],
     ["selected-change-small-edit", "resume-selected-change"],
     ["explicit-openspec-small-edit", "discover-and-confirm"],
@@ -142,7 +150,7 @@ test("fast work retains verification and stops before expanding its scope", () =
   assert.match(fast, /failed.*not.*success.*CLEAN/is);
   assert.match(fast, /stop.*implementation.*Preserve.*diffs.*checks.*formal.*confirmation/is);
   assert.match(fast, /do not auto-create.*discard edits/is);
-  assert.match(fast, /replacement task\/status records.*retroactive artifacts/is);
+  assert.match(fast, /replacement task\/status\s+records.*retroactive artifacts/is);
   const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
   for (const [name, stage] of [
     ["fast-scope-expands", "stop-and-confirm-change"],
@@ -161,10 +169,12 @@ test("review budget is centralized and consistent across workflow entry points",
   const lightweight = profiles.split("## Lightweight")[1].split("## Standard")[0];
   const standard = profiles.split("## Standard")[1].split("## Critical")[0];
   const critical = profiles.split("## Critical")[1];
-  assert.match(lightweight, /no default independent reviewer/i);
+  assert.match(lightweight, /no mandatory formal planner.*independent reviewer/is);
   assert.match(standard, /exactly one independent.*workflow-reviewer/is);
   assert.match(standard, /Standards.*Spec/s);
-  assert.match(standard, /implementation delegation.*explicit.*authorization/is);
+  assert.match(standard, /already approved scope.*delegat/is);
+  assert.match(standard, /re-ask only when/is);
+  assert.doesNotMatch(standard, /per-?delegation authorization|always ask before delegating/i);
   assert.match(critical, /no additional\s+final reviewer/i);
   for (const file of [
     "skills/run-engineering-workflow/SKILL.md",
@@ -178,9 +188,220 @@ test("review budget is centralized and consistent across workflow entry points",
     assert.doesNotMatch(body, /then Matt `code-review`|then `code-review`, then|either Matt `code-review`|先运行仓库自身检查与 Matt `code-review`|`code-review` 与独立 review 二选一|code-review \+ 仓库检查/, `${file}: duplicate or optional default review`);
   }
   const command = read("commands/engineering-workflow.md");
-  assert.match(command, /lightweight.*no.*dispatch/is);
+  assert.match(command, /lightweight.*no mandatory formal planner/is);
   assert.match(command, /standard.*critical.*exactly one/is);
   assert.match(command, /planning delegation.*explicitly requested/is);
+});
+
+test("shared quality contract owns delivery rules while hosts own scheduling and models", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const governance = read("skills/run-engineering-workflow/references/workflow-governance.md");
+  const architecture = read("ARCHITECTURE.md");
+
+  for (const body of [router, governance, architecture]) {
+    assert.match(body, /shared quality contract|共享交付规则|共享质量契约/i);
+    assert.match(body, /host owns|宿主管理|client owns/i);
+    assert.match(body, /scheduling.*models?.*tools?|调度.*模型.*工具/is);
+  }
+  // The workflow states what it owns and what it delegates to the client.
+  assert.match(router, /## Host And Workflow Boundary/);
+  assert.match(router, /acceptance criteria, evidence(?: requirements)?, risk profiles and\s+the single review budget/i);
+  assert.match(router, /scheduling, model choice, tool\s+availability/i);
+});
+
+test("delegation follows the host's native model inside an already authorized scope", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const command = read("commands/engineering-workflow.md");
+
+  for (const [file, body] of [
+    ["skills/run-engineering-workflow/SKILL.md", router],
+    ["skills/run-engineering-workflow/references/quality-profiles.md", profiles],
+    ["commands/engineering-workflow.md", command],
+  ]) {
+    assert.match(body, /authorized scope|already approved scope/is, file);
+    assert.match(body, /re-ask only|ask again only|only when (?:the )?scope.*(?:materially )?changes/is, file);
+    assert.doesNotMatch(body, /never dispatch (?:a )?subagent|always ask before delegating/i, file);
+  }
+  // One writer per bounded slice still holds, and independence still holds.
+  assert.match(router, /one writer per bounded/i);
+  assert.match(router, /independent lanes/i);
+  assert.match(profiles, /exactly one independent `workflow-reviewer`/);
+  assert.match(profiles, /one writer per bounded, non-overlapping slice/i);
+  assert.doesNotMatch(profiles, /repeat per-delegation authorization/i);
+});
+
+test("OpenCode has one Slim orchestrator and never double-orchestrates or double-reviews", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const architecture = read("ARCHITECTURE.md");
+  const section = router.split("## OpenCode Roles")[1]?.split("\n## ")[0];
+  assert.ok(section, "router is missing an OpenCode adapter section");
+  assert.match(section, /Slim/i);
+  assert.match(section, /sole (?:orchestrator|main orchestrator)/i);
+  for (const role of ["explorer", "designer", "fixer", "oracle"]) {
+    assert.match(section, new RegExp(`\\b${role}\\b`, "i"), `OpenCode section missing ${role}`);
+  }
+  assert.match(section, /workflow-planner|workflow-implementer|workflow-reviewer/);
+  assert.match(section, /implementation.*Slim `fixer`|Slim `fixer`.*implementation/is);
+  assert.match(section, /review.*Slim `oracle`|Slim `oracle`.*review/is);
+  assert.match(section, /UNVERIFIED/);
+  assert.match(section, /never introduce a second orchestrator|no second orchestrator/i);
+  assert.match(section, /one shared review budget/i);
+  assert.match(architecture, /^## OpenCode Roles$/m);
+  assert.match(architecture, /Slim/);
+
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  for (const name of ["openspec-slim-single-orchestrator", "independent-lanes-no-shared-write-files"]) {
+    const entry = cases.find((candidate) => candidate.name === name);
+    assert.ok(entry, `missing OpenCode case: ${name}`);
+    assert.ok(entry.required_behavior, `${name}: missing required_behavior`);
+    assert.ok(entry.forbidden?.length, `${name}: missing negative boundary`);
+  }
+});
+
+test("OpenCode formal work routes through Slim fixer and oracle without static model IDs", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const section = router.split("## OpenCode Roles")[1]?.split("\n## ")[0];
+  assert.ok(section, "router is missing an OpenCode adapter section");
+  // Formal implementation is the fixer role; the single independent review is the oracle role.
+  assert.match(section, /formal implementation[^.;]{0,80}Slim `fixer`/is);
+  assert.match(section, /(?:one|single) independent[^.;]{0,60}review[^.;]{0,60}Slim `oracle`/is);
+  assert.match(section, /active (?:OMO-Slim )?preset/i);
+  // An inherited parent model must never be reported as the role's model.
+  assert.match(section, /inheritance is not evidence|not evidence that Slim/i);
+  assert.match(section, /Never copy a model\s+ID/);
+  assert.match(section, /UNVERIFIED/);
+
+  const command = read("commands/engineering-workflow.md");
+  assert.match(command, /Slim `fixer`/);
+  assert.match(command, /Slim `oracle`/);
+  assert.match(command, /active OMO-Slim preset|当前激活的\s*OMO-Slim\s*preset|preset/i);
+  assert.match(command, /UNVERIFIED/);
+
+  const architecture = read("ARCHITECTURE.md");
+  const archSection = architecture.split("## OpenCode Roles")[1].split("\n## ")[0];
+  assert.match(archSection, /Slim `fixer`/);
+  assert.match(archSection, /Slim `oracle`/);
+  assert.match(archSection, /active OMO-Slim\s+preset/i);
+  assert.match(archSection, /UNVERIFIED/);
+  assert.match(archSection, /parent-model inheritance/i);
+
+  const readme = read("README.md");
+  const readmeSection = readme.split("## OpenCode 工作流")[1].split("\n## ")[0];
+  assert.match(readmeSection, /`fixer`[^\n]{0,40}正式实现|正式实现[^\n]{0,40}`fixer`/s);
+  assert.match(readmeSection, /`oracle`[^\n]{0,40}复核|复核[^\n]{0,40}`oracle`/s);
+  assert.match(readmeSection, /preset/);
+  assert.match(readmeSection, /UNVERIFIED/);
+  assert.match(readmeSection, /不[^\n]{0,40}静态|静态[^\n]{0,40}不/);
+  assert.match(readmeSection, /继承[^\n]{0,30}不等于|继承[^\n]{0,30}不是/);
+
+  // Managed OpenCode agents stay model-free: a preset model ID is user config.
+  for (const file of ["workflow-planner.md", "workflow-implementer.md", "workflow-reviewer.md"]) {
+    const body = read(`.opencode/agents/${file}`);
+    assert.doesNotMatch(body, /^model:/m, `${file}: managed agent must not pin a model`);
+    assert.doesNotMatch(body, /oh-my-opencode-slim\.json/, `${file}: must not read preset model IDs`);
+  }
+  // No adapter document may embed a concrete provider/model pair as a fallback default.
+  for (const file of [
+    "skills/run-engineering-workflow/SKILL.md",
+    "commands/engineering-workflow.md",
+    "ARCHITECTURE.md",
+    "README.md",
+  ]) {
+    const body = read(file);
+    assert.doesNotMatch(body, /magpie\/|openai\/gpt|anthropic\/claude-|google\/gemini/i, file);
+  }
+
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  const unverified = cases.find((entry) => entry.name === "opencode-slim-role-routing-unverified");
+  assert.ok(unverified, "missing unverified role-routing case");
+  assert.equal(unverified.required_status, "UNVERIFIED");
+  assert.equal(unverified.expected_stage, "report-unverified-role-routing");
+  assert.ok(unverified.forbidden?.length, "unverified case: missing negative boundary");
+});
+
+test("harness adapters declare only verified capabilities and keep models user-owned", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const architecture = read("ARCHITECTURE.md");
+  const readme = read("README.md");
+
+  for (const [file, body] of [
+    ["skills/run-engineering-workflow/SKILL.md", router],
+    ["ARCHITECTURE.md", architecture],
+    ["README.md", readme],
+  ]) {
+    assert.match(body, /six canonical skills|六个 canonical skill|六个规范技能/is, file);
+    assert.match(body, /managed|受管|共享/is, file);
+    assert.match(body, /models?[^.;]{0,40}user-(?:owned|configured)|模型.*用户(?:所有|配置)/is, file);
+  }
+  assert.match(architecture, /Claude.*model labels|`opus`.*remap/is);
+  assert.match(architecture, /Pi.*overrides?.*differ/is);
+  assert.match(architecture, /Codex.*shared skills?/is);
+  assert.match(architecture, /subagent.*independent(?:ly)? (?:verif\w+)/is);
+  assert.match(architecture, /not claim|never claim|no false promise|no adapter may promise/i);
+  assert.doesNotMatch(router, /Codex (?:supports|provides) native subagents/i);
+});
+
+test("OpenCode appears in install and support enumerations", () => {
+  const readme = read("README.md");
+  const agents = read("AGENTS.md");
+  const architecture = read("ARCHITECTURE.md");
+
+  assert.match(readme, /-Harness OpenCode/);
+  assert.match(readme, /OPENCODE_CONFIG_DIR/);
+  assert.match(readme, /Codex、OMP、Pi 和\s*OpenCode\s*原生发现/);
+  assert.match(readme, /`All`[^。]{0,120}OpenCode/s);
+  assert.match(readme, /OpenCode 只在启动时加载/);
+  assert.match(agents, /\.opencode\//);
+  assert.match(agents, /`All` for Codex[\s\S]{0,120}OpenCode/);
+  assert.match(agents, /OpenCode agent[\s\S]{0,80}model/);
+  assert.match(architecture, /OpenCode discover/);
+  assert.match(architecture, /Pi and OpenCode agents omit `model`/);
+  assert.match(architecture, /Slim `fixer`.*Slim `oracle`/s);
+});
+
+test("Ponytail 5 guidance keeps scope complete and Matt TDD as the default method", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const governance = read("skills/run-engineering-workflow/references/workflow-governance.md");
+
+  for (const body of [profiles, governance]) {
+    assert.match(body, /callers.*fixtures.*config.*exports/is);
+    assert.match(body, /validation.*error (?:handling|paths)/is);
+    assert.match(body, /self-check/i);
+  }
+  assert.match(profiles, /Matt `tdd`/);
+  assert.match(profiles, /ECC.*optional.*named alternative|named alternative.*ECC/is);
+  assert.match(profiles, /not (?:a )?default dependency|never a default dependency/i);
+});
+
+test("fast-path behavior fixes require a bounded seam and a regression check", () => {
+  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
+  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
+  assert.match(fast, /small behavior (?:fix|change)/i);
+  assert.match(fast, /bounded seam/i);
+  assert.match(fast, /regression (?:check|test)/i);
+  assert.match(fast, /escalat/i);
+  assert.match(fast, /auth|authentication/i);
+  assert.match(fast, /migrations/i);
+  assert.match(fast, /destructive/i);
+  assert.match(fast, /unknown risk|risk is unknown/i);
+  assert.match(fast, /file count.*never sufficient/i);
+  // High risk never qualifies, however small the diff.
+  assert.match(fast, /regardless of how small/i);
+
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  for (const name of [
+    "small-behavior-fix-bounded-seam",
+    "high-risk-small-diff-requires-formal",
+    "fast-path-behavior-fix-regression",
+    "openspec-slim-single-orchestrator",
+    "codex-shared-skills-no-native-agents",
+  ]) {
+    const entry = cases.find((candidate) => candidate.name === name);
+    assert.ok(entry, `missing behavior case for ${name}`);
+    assert.ok(entry.expected_stage, `${name}: missing expected_stage`);
+    assert.ok(entry.forbidden?.length, `${name}: missing negative boundary`);
+  }
 });
 
 test("workspace review and finish reuse a complete independent result", () => {
@@ -408,10 +629,12 @@ test("router selects OpenSpec and keeps legacy recovery read-only", () => {
   assert.match(router, /workflow-planner/);
   assert.match(router, /workflow-implementer/);
   assert.match(router, /workflow-reviewer/);
-  assert.match(router, /lightweight.*main session/s);
-  assert.match(router, /standard.*main session/s);
+  assert.match(router, /lightweight.*host-native/s);
+  assert.match(router, /standard.*host's preferred writer/s);
+  assert.match(router, /lightweight.*no mandatory formal planner/s);
   assert.match(router, /critical.*full gated path/s);
-  assert.match(router, /at most one live writer/);
+  assert.match(router, /one writer per bounded/i);
+  assert.match(router, /independent lanes.*parallel/is);
   assert.doesNotMatch(router, /After (?:10|15) minutes without progress/);
   assert.match(router, /Do not interrupt or terminate a worker solely because a duration threshold/);
   assert.match(router, /stop only on explicit failure, cancellation, or user instruction/);
@@ -886,7 +1109,7 @@ test("upstream manifest pins auditable revisions and retires Trellis", () => {
 
   assert.equal(
     manifest.sources["mattpocock-skills"].revision,
-    "49dd158d1076134a641b33efb035946536778336",
+    "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
   );
   assert.equal(manifest.sources["mattpocock-skills"].version_hint, "1.3.1");
   for (const source of Object.values(manifest.sources)) {

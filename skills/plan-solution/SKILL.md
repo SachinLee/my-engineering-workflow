@@ -145,7 +145,7 @@ Phase: implement
 
 Keep the package under roughly 1,500 tokens per slice. When the source material
 is longer, inline the decisive lines and cite the file rather than pasting it.
-A slice without a context package is planned for a main-session edit, not for
+A slice without a context package is planned for a direct host-native edit, not for
 dispatch.
 
 ## Decompose The Work

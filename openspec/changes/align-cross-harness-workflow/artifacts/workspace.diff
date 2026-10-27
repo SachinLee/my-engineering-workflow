@@ -1,0 +1,2951 @@
+# Regenerated evidence attachment
+# Base: HEAD; tracked diff plus all current untracked files except this attachment and workspace-status.txt.
+diff --git a/.claude/skills/finish-with-evidence/SKILL.md b/.claude/skills/finish-with-evidence/SKILL.md
+index 587e669..61a77aa 100644
+--- a/.claude/skills/finish-with-evidence/SKILL.md
++++ b/.claude/skills/finish-with-evidence/SKILL.md
+@@ -38,7 +38,7 @@ repository verification directly from this skill; consume recorded evidence.
+    `workflow-reviewer` report with Standards / Spec, correctness/security/tests/
+    complexity coverage; local repairs also require the budgeted focused follow-up
+    and affected checks. The prior full report alone cannot approve unaudited repairs.
+-   Lightweight consumes its main-session focused check, without default dispatch.
++   Lightweight consumes its host-native focused check, without a formal reviewer.
+ 4. Check full/focused rounds, unresolved blockers and the final coverage chain.
+    Missing or stale evidence, unavailable independent review, incomplete scope or
+    conflicting round history: record `UNVERIFIED` and return the precise gap to
+diff --git a/.claude/skills/plan-solution/SKILL.md b/.claude/skills/plan-solution/SKILL.md
+index cfbaff7..2a9f51f 100644
+--- a/.claude/skills/plan-solution/SKILL.md
++++ b/.claude/skills/plan-solution/SKILL.md
+@@ -145,7 +145,7 @@ Phase: implement
+ 
+ Keep the package under roughly 1,500 tokens per slice. When the source material
+ is longer, inline the decisive lines and cite the file rather than pasting it.
+-A slice without a context package is planned for a main-session edit, not for
++A slice without a context package is planned for a direct host-native edit, not for
+ dispatch.
+ 
+ ## Decompose The Work
+diff --git a/.claude/skills/run-engineering-workflow/SKILL.md b/.claude/skills/run-engineering-workflow/SKILL.md
+index af113b6..11c2818 100644
+--- a/.claude/skills/run-engineering-workflow/SKILL.md
++++ b/.claude/skills/run-engineering-workflow/SKILL.md
+@@ -19,6 +19,23 @@ OpenSpec artifacts (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, and
+ `artifacts/`) are written in the user's language — Chinese by default. Keep code
+ identifiers, paths, commands, log text, OpenSpec filenames, and status tokens
+ (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`) verbatim so they stay greppable.
++
++## Host And Workflow Boundary
++
++The shared quality contract in [quality-profiles.md](references/quality-profiles.md)
++owns delivery rules: acceptance criteria, evidence requirements, risk profiles and
++the single review budget. The host owns scheduling, model choice, tool
++availability and how a delegated role is spawned. Adapter sections below say only
++which roles exist and how to reach them; they never redefine quality.
++
++Delegation is proportionate, not renegotiated each time. An approved plan or an
++already authorized scope covers ordinary dispatch within that scope: create or
++reuse a subagent, hand a bounded slice to it, or run the step in the main session
++when the host supports no delegation. Re-ask only when scope, risk, or the
++reviewer's independence materially changes — not per delegation, and not merely
++because this client exposes another mechanism. One writer per bounded slice and
++one review budget still hold.
++
+ ## Bounded Context And Dispatch Contract
+ 
+ OpenSpec remains the only durable source of new task state. Treat a change id as
+@@ -78,10 +95,14 @@ changing a risk profile.
+ 
+ Read project rules and apply [Simple Work Fast Path](references/quality-profiles.md#simple-work-fast-path)
+ before OpenSpec discovery or CLI access. Judge the current request, not the mere
+-presence of a repository or unrelated old changes.
+-
+-If eligible, execute and verify in the main session without creating task records;
+-report results in the conversation, then return: skip the formal stages below.
++presence of a repository or unrelated old changes. A small, clearly scoped behavior
++fix inside a bounded seam with a regression check is eligible; authentication,
++money, secrets, persistent data, migrations, public contracts, dependencies,
++destructive work and unknown risk are not, however small the diff.
++
++If eligible, execute and verify without creating task records — in the main
++session, or on the host's preferred bounded worker when it has one; report results
++in the conversation, then return: skip the formal stages below.
+ Follow the shared path's stop-and-confirm escalation if the scope changes.
+ Otherwise use the formal branch. Explicit OpenSpec requests and selected change
+ continuations retain that branch and any still-valid selection confirmation.
+@@ -185,8 +206,8 @@ Before formal dispatch, assess the task's risk profile by reading the selected O
+    - **No** → profile is `standard` (normal features, bug fixes, refactors)
+ 3. **State the assessed profile explicitly** before proceeding to routing.
+    Example: "This is a **standard** task (bug fix in presentation layer, no
+-   auth or data changes). Implementation will stay in the main session unless a
+-   bounded worker is justified."
++   auth or data changes). Implementation runs on the host's preferred writer
++   within the approved slice."
+ 
+ When uncertain, default to `standard` and escalate to `critical` only when clear
+ risk signals appear. Never default to `critical` for ordinary feature work.
+@@ -196,12 +217,16 @@ risk signals appear. Never default to `critical` for ordinary feature work.
+ After assessing the profile, route according to the task phase and the assessed
+ risk level. The profile controls dispatch, not just the checklist:
+ 
+-- `lightweight`: keep the work in the main session. Do not dispatch planner,
+-  implementer, checker, or reviewer. Run one focused check before delivery.
+-- `standard`: keep implementation in the main session. The default sole worker
+-  is one independent `workflow-reviewer` through `review-implementation`.
+-  Implementation delegation needs explicit justification and authorization;
+-  it never replaces independent final review. Never dispatch duplicate reviewers.
++- `lightweight`: no mandatory formal planner, implementer, or independent
++  reviewer. Keep scheduling host-native — the main session, or a bounded worker
++  the host prefers — and run one focused check before delivery. Do not spend the
++  review budget on this profile.
++- `standard`: implement on the host's preferred writer — the main session only
++  when the host has no specialist policy. A bounded slice may go to a single
++  worker when fresh context or parallelism genuinely helps; the approved scope
++  already covers it. The default sole reviewer stays one independent
++  `workflow-reviewer` through `review-implementation`; delegation never replaces
++  independent final review. Never dispatch duplicate reviewers.
+ - `critical`: use the full gated path when the change touches auth, secrets,
+   money, persistent data, migrations, public contracts, destructive operations,
+   or a cross-layer release boundary.
+@@ -218,7 +243,8 @@ Phase routing:
+   main session. Only dispatch `workflow-planner` if the task is assessed as
+   `critical` or the user explicitly requests planning delegation.
+ - `planning` with accepted requirements but no reviewed solution:
+-  - For `lightweight` or `standard`: invoke `plan-solution` in the main session.
++  - For `lightweight` or `standard`: run `plan-solution`; use the main session or
++    the host's planning specialist, whichever the host prefers.
+   - For `critical`: in OMP, dispatch `workflow-planner` on `@plan`. In Pi, use
+     the blocking `subagent` tool with `agentScope: "both"` when available;
+     otherwise keep planning in the main session and disclose the lack of fresh
+@@ -230,14 +256,17 @@ Phase routing:
+   is not permission to start implicitly; record the approval in `tasks.md` or the
+   change's verification context.
+ - `in_progress`: read OpenSpec `proposal.md`, the relevant `specs/`, `design.md`,
+-  `tasks.md`, and `artifacts/context.md` before editing. Use ECC `tdd-workflow`
+-  or Matt `tdd` for behavior changes and regression fixes.
+-  - For `lightweight` or `standard`: implement in the main session. Only use a
+-    single bounded worker if explicitly justified by the need for fresh
+-    context.
++  `tasks.md`, and `artifacts/context.md` before editing. Prefer Matt `tdd` for
++  behavior changes and regression fixes; ECC `tdd-workflow` is an optional named
++  alternative when installed, never a default dependency.
++  - For `lightweight` or `standard`: implement on the host's preferred writer —
++    the main session when the host has no specialist policy. Within the approved
++    scope you may hand one bounded slice to a single worker when fresh context or
++    parallelism helps; no extra authorization step. Independent slices run as
++    parallel lanes only when they share no write files.
+   - For `critical`: dispatch `workflow-implementer` on `@task` and require it
+-    to read `skill://tdd-workflow` (or `tdd`) before editing. Keep the handoff
+-    inside the declared file boundary.
++    to read `tdd` (or the configured alternative) before editing. Keep the
++    handoff inside the declared file boundary.
+ - `in_progress` with a `tickets/` directory: recompute the frontier (every
+   `blocked_by` ticket is `done`), advance exactly one ticket per writer, and set
+   that ticket's `state: done` only after its verification command has executed
+@@ -246,7 +275,8 @@ Phase routing:
+ - Code changed: complete each slice with targeted checks, not a full review per slice.
+   The main session is the only review scheduler. Follow the Delivery Review Budget
+   in `references/quality-profiles.md`, including persisted rounds on resume.
+-  - For `lightweight`: run one focused check before delivery.
++  - For `lightweight`: run one focused check before delivery, scheduled natively by
++    the host; no formal reviewer.
+   - For `standard` and `critical`: wait until the approved delivery scope is
+     complete and repository checks pass, then dispatch the one full review via
+     `review-implementation` and `workflow-reviewer`. Cover Standards / Spec,
+@@ -277,11 +307,14 @@ Phase routing:
+ 
+ These limits enforce the profile-based routing rules:
+ 
+-- **Prefer the main session for `lightweight` and `standard` implementation.**
+-  Standard and Critical require the single independent reviewer specified in
+-  `references/quality-profiles.md`. Implementation delegation needs explicit
+-  authorization and justification; never spend the review budget on a writer.
+-- Allow at most one live writer and one review/check worker for a task.
++- **Implement on the host's preferred writer — the main session only when the host
++  has no specialist policy.** Standard and Critical require the single
++  independent reviewer specified in `references/quality-profiles.md`. Within an
++  approved scope you may delegate a bounded slice without re-asking; never spend
++  the review budget on a writer.
++- One writer per bounded, non-overlapping slice. Independent lanes may
++  run in parallel when they share no write files; a slice keeps one writer and at
++  most one review/check worker.
+ - Treat a worker as making progress only when it edits a declared file, runs a
+   relevant check, reports a concrete result, or states a reproducible blocker.
+ - If a worker appears stalled, request one status update based on observed state.
+@@ -352,8 +385,8 @@ responsibilities while preserving Pi's native resource and project-trust model:
+   blocking `subagent` tool with `agentScope: "both"`.
+ 
+ The project must be trusted before Pi loads `.pi` extensions, project agents, or
+-project `.agents/skills`. If `subagent` is unavailable, keep planning,
+-implementation dispatch, and review in the main session, run deterministic
++project `.agents/skills`. If `subagent` is unavailable, keep planning and review
++in the main session, implement directly, run deterministic
+ checks, and report that only context/model independence was unavailable.
+ 
+ ## Claude Code Roles
+@@ -373,6 +406,49 @@ use Sonnet and planning/review should use Opus. If the main session is already
+ Opus, a subagent still provides fresh context but not a different model. Never
+ describe fresh context alone as cross-model independence.
+ 
++## OpenCode Roles
++
++OpenCode runs exactly one orchestrator: the Slim Orchestrator session. It is the
++sole orchestrator and scheduler: it owns discovery, confirmation, risk assessment,
++the writer budget, and the single review budget. Never introduce a second orchestrator, a
++second reviewer pass, or a nested dispatch chain to "cover" more work.
++
++The orchestrator delegates through OpenCode's native specialists:
++
++- `explorer` for bounded read-only investigation the main session would otherwise
++  do itself (the dispatch contract still requires an inlined context package).
++- `designer` for UI, layout, and visual-hierarchy decisions.
++- `fixer` for bounded implementation of an approved slice.
++- `oracle` for a second opinion on a material design or correctness uncertainty.
++
++Formal slices that need this repository's own procedures still use
++`workflow-planner`, `workflow-implementer`, and `workflow-reviewer`; `workflow`
++agents are for strict formal slices and the single independent review, not a
++parallel orchestrator. Review remains one shared review budget from
++`references/quality-profiles.md`, whoever the client schedules.
++
++For OpenCode specifically, Slim owns the model-bearing dispatch boundary. Route
++formal implementation slices through Slim `fixer` and the one independent
++formal review through Slim `oracle`; the active OMO-Slim preset supplies their
++models. Include the repository procedure and the bounded OpenSpec handoff in
++each specialist prompt. The model-free native workflow agents remain available
++for explicit/manual use, but parent-model inheritance is not evidence that
++Slim's role model was used. Never copy a model ID from
++`oh-my-opencode-slim.json` into these templates. If a role cannot be invoked or
++its effective model cannot be observed, record `UNVERIFIED` and state that a
++direct native agent inherits the parent session model instead.
++
++## Adapter Capabilities And Ownership
++
++The six canonical skills under `skills/` are the shared, installer-managed
++source; adapters add managed links or native discovery on top and never fork the
++bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
++`sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
++can differ, and OMP roles resolve through the user's `modelRoles`. Codex shares
++the skills directory, and subagent capability there is claimed only after
++independent verification for that client version — no adapter may promise
++independent review when the client cannot provide it; report `UNVERIFIED` instead.
++
+ ## Precedence
+ 
+ Resolve conflicts in this order:
+diff --git a/.claude/skills/run-engineering-workflow/references/quality-profiles.md b/.claude/skills/run-engineering-workflow/references/quality-profiles.md
+index 93266f6..ff15969 100644
+--- a/.claude/skills/run-engineering-workflow/references/quality-profiles.md
++++ b/.claude/skills/run-engineering-workflow/references/quality-profiles.md
+@@ -1,32 +1,52 @@
+ # Quality Profiles
+ 
+-This is the single source of review budgets for every workflow entry point.
++This file is the shared quality contract: it owns acceptance criteria, evidence
++requirements, risk profiles and the review budget for every workflow entry point.
++It does not own which agent runs, which model serves a role, or which tools a
++client exposes — the host owns scheduling, model choice and tool availability.
+ Risk adds relevant checks, never duplicate final reviewers or permission to skip
+ an available check that directly proves changed behavior.
+ 
+ ## Simple Work Fast Path
+ 
+ This is the single source of eligibility for work without an OpenSpec change.
+-Use it only when **all** conditions hold: the request is clear, non-behavioral,
+-local and low-risk; it can finish in the same main session with no formal plan,
+-handoff or delegation; the user has not explicitly requested OpenSpec and is not
+-continuing a selected change; no stricter project record rule applies.
+-Examples: typo/copy/formatting fixes and local configuration or code cleanup
+-proven not to alter behavior. File count or the word "simple" is not sufficient.
+-
+-Behavior includes workflow/agent instructions, not only executable code.
+-Behavior changes, bug fixes and refactors remain Standard or Critical. Security,
+-authentication/authorization, money, secrets, persistent data, migrations, public
+-contracts, dependency changes and destructive operations are never fast-path work.
+-Ambiguous scope must be resolved before eligibility is claimed. CLI errors or
+-failures do not qualify otherwise ineligible work for this path.
++Use it only when **all** conditions hold: the request is clear, local and
++low-risk, and it does not need a formal continuation or an explicit durable
++handoff; the user has not explicitly requested OpenSpec and is not continuing a
++selected change; no stricter project record rule applies.
++
++Two work shapes qualify:
++
++- Non-behavioral edits: typo/copy/formatting fixes, local configuration, or code
++  cleanup proven not to alter behavior.
++- A small behavior fix confined to a bounded seam, where the change is clearly
++  scoped, the affected caller graph is visible, and a regression check proves the
++  fixed behavior. Keep the fix and its regression test in the same change.
++
++File count is never sufficient, and it never disqualifies either: a one-line
++change can be high risk and a five-file change can be trivial. Behavior includes
++workflow/agent instructions, not only executable code. A behavior fix that needs
++a migration, a public contract change, or a design decision is formal work.
++
++Escalate to the formal branch — regardless of how small the diff is — when the
++work touches authentication/authorization, money, secrets, persistent data,
++migrations, public contracts, dependencies or destructive operations, or when
++risk is unknown or cannot be bounded. Behavior changes that fit none of the two
++shapes above, and all refactors, remain Standard or Critical. Ambiguous scope must
++be resolved before eligibility is claimed. CLI errors or failures do not qualify
++otherwise ineligible work for this path.
++
++Fast-path work needs a meaningful regression check for any behavior change, and
++no formal record: report the check in the conversation. Absence of a record is not
++absence of evidence.
+ 
+ - Decide before discovery: an existing `openspec/` directory or unrelated changes
+   do not require task matching, CLI access or initialization for eligible work.
+-- State the fast-path scope briefly, then execute in the main session without a
+-  create/reuse confirmation. Skip formal clarification/planning, dispatch and
+-  default independent review; do not create or update OpenSpec, `.workflow/`,
+-  `.trellis/`, or replacement task/status records, including retroactive artifacts.
++- State the fast-path scope briefly, then execute without a create/reuse
++  confirmation, on the main session or the host's preferred bounded worker. Skip
++  formal clarification/planning dispatch and default independent review; do not
++  create or update OpenSpec, `.workflow/`, `.trellis/`, or replacement task/status
++  records, including retroactive artifacts.
+ - Inspect the relevant diff and run the smallest relevant checks required by the
+   project. Report actual changes, commands/results, `NOT RUN` items and risks in
+   the conversation. A failed/unavailable check is not a verified success or an
+@@ -37,28 +57,52 @@ failures do not qualify otherwise ineligible work for this path.
+   Do not auto-create a record or discard edits during escalation. A selected
+   change continuation keeps its existing confirmation and review history.
+ 
++## Change Completeness
++
++A lazy solution is lazy about code, never about the change. Before calling a change
++complete, list every place it must reach: callers, tests, fixtures, config, and
++exports. A shortcut that leaves a caller, fixture or exported signature broken is
++unfinished work, not a smaller change.
++
++- Keep validation and error paths when you move or merge code; deletion is not a
++  simplification when it removes a trust boundary or failure handling.
++- Non-trivial new logic (a branch, a loop, a parser, money or security handling)
++  leaves one small test or assert-based self-check behind. Trivial edits need none.
++- Ponytail supplies this lens; it never lowers correctness, security,
++  accessibility or required verification.
++
+ ## Lightweight
+ 
+ Use only for non-behavioral documentation, local configuration, or isolated
+ low-risk changes. Reclassify behavior changes as Standard or Critical.
+ 
+-- Keep work in the main session: no default independent reviewer or dispatch.
++- No mandatory formal planner, implementer, or independent reviewer. Keep
++  scheduling host-native: the main session, or a bounded worker the host prefers.
+ - Review scope and `git diff`, then run the smallest relevant runnable check.
+ 
+ ## Standard
+ 
+ Use for normal features, bug fixes, and refactors.
+ 
+-- Implement in the main session and capture RED/GREEN evidence.
++- Implement on the host's preferred writer — the main session only when the host
++  has no specialist policy — and capture RED/GREEN evidence.
+ - Run targeted tests, relevant lint, typecheck, and build.
++- Prefer Matt `tdd` for behavior changes and regression fixes. ECC
++  `tdd-workflow` is an optional named alternative when it is installed and the
++  user or project chooses it; it is never a default dependency, and its absence
++  changes nothing here.
+ - Use exactly one independent `workflow-reviewer` in a fresh context, through
+   `review-implementation`, for the complete relevant workspace. It reports both
+   Standards and Spec, plus correctness, security, tests, and complexity.
+ - Do not run both by default: `review-implementation` is the review procedure,
+   not another review added after `workflow-reviewer`.
+-- The reviewer is the default sole worker. Any implementation delegation needs
+-  explicit justification and user authorization; it never removes independent
+-  final review. Apply the Delivery Review Budget below across all entry points.
++- Inside an already approved scope, delegate with the host's native mechanism
++  (subagent, task, or none) when fresh context or parallelism genuinely helps.
++  The scope approval covers proportionate delegation; re-ask only when the scope,
++  risk, or the reviewer's independence materially changes. Delegation never
++  removes independent final review. One writer per bounded, non-overlapping slice;
++  independent lanes may run in parallel only when they share no write files. Apply
++  the Delivery Review Budget below across all entry points.
+ - If independent review is unavailable, record `UNVERIFIED` and hand off the
+   gap; do not claim normal delivery completion or `REVIEW_STATUS: CLEAN`.
+ 
+@@ -77,8 +121,8 @@ migrations, public contracts, or destructive operations.
+ ## Delivery Review Budget
+ 
+ The main router is the only review scheduler. For each approved delivery scope,
+-allow exactly one full review and at most one focused follow-up. Lightweight
+-keeps its main-session check without default independent review. Standard and
++allow exactly one full review and at most one focused follow-up. Lightweight keeps
++its focused check without default independent review. Standard and
+ Critical use `workflow-reviewer` only; do not append `code-reviewer`, a generic
+ reviewer, native Matt `code-review`, or nested review dispatch by default.
+ 
+@@ -90,7 +134,7 @@ reviewer, native Matt `code-review`, or nested review dispatch by default.
+   the gate. Optional simplification and preference suggestions are non-blocking;
+   they do not trigger repairs or another review by default. `CLEAN` means no
+   blocking findings with required coverage/evidence, not no suggestions at all.
+-- Batch blocking repairs in the main session and rerun affected checks. Use
++- Batch blocking repairs on the implementer side and rerun affected checks. Use
+   `Review mode: focused` for original blocking findings, the repair diff, and
+   directly affected paths only, preferably in the original reviewer context.
+   Do not solicit a new whole-scope optimization list during this follow-up.
+diff --git a/.claude/skills/run-engineering-workflow/references/workflow-governance.md b/.claude/skills/run-engineering-workflow/references/workflow-governance.md
+index 3aef92e..bf00a47 100644
+--- a/.claude/skills/run-engineering-workflow/references/workflow-governance.md
++++ b/.claude/skills/run-engineering-workflow/references/workflow-governance.md
+@@ -4,11 +4,27 @@ Read this reference when routing a task, resolving conflicts between
+ integrations, or deciding where durable information belongs.
+ 
+ Before discovery, apply [Simple Work Fast Path](quality-profiles.md#simple-work-fast-path).
+-Eligible work has no task record: execute/check in the main session and report in
+-conversation. Formal work retains the discovery and confirmation contract below;
++Eligible work has no task record: execute/check host-natively — main session or the
++host's preferred bounded worker — and report in conversation. Formal work retains
++the discovery and confirmation contract below;
+ selected change continuations keep their still-valid confirmation. Plan/finish
+ must not turn an eligible fast request into mandatory artifacts.
+ 
++## Host And Workflow Boundary
++
++`quality-profiles.md` is the shared quality contract and owns delivery rules:
++acceptance criteria, evidence requirements, risk profiles and the review budget.
++The host owns scheduling, model choice, tool availability and how a delegated
++role is spawned. Adapter notes below say which roles exist and how to reach
++them; they never restate or relax delivery rules.
++
++An approved plan or an already authorized scope covers ordinary dispatch inside
++that scope, including creating or reusing a subagent. Re-ask only when scope,
++risk, or the reviewer's independence materially changes.
++
++One writer per bounded, non-overlapping slice. Independent lanes may run in
++parallel where they share no write files; they still share the one review budget.
++
+ ## Record Layout
+ 
+ For formal work, OpenSpec is the canonical record system. It owns requirements,
+@@ -91,9 +107,15 @@ contracts, and necessary correctness invariants — not hypothetical future need
+ - Design headings are prompts, not requirements. Omit inapplicable sections or
+   briefly say why; never build migration, monitoring, rollout, or recovery
+   systems just to fill a template.
++- A change is complete only when it reaches every place it must: callers, tests,
++  fixtures, config, and exports. Keep validation and error paths when moving or
++  merging code, and leave one small test or assert-based self-check for
++  non-trivial new logic. Trivial edits need none.
+ 
+ Consult Matt `codebase-design` for real boundaries and Ponytail for simplification
+ when available. This rule applies even when optional upstream skills are absent.
++Matt `tdd` stays the default behavior-change method; ECC `tdd-workflow` is an
++optional named alternative, not a default dependency.
+ 
+ 
+ ## Tickets And Decomposition
+@@ -103,13 +125,14 @@ Three split levels; use the smallest one that fits how the work gets executed:
+ | Level | Use when | Location |
+ | --- | --- | --- |
+ | Slice | Same session, shared module, single writer | OpenSpec `tasks.md` |
+-| Ticket | Independently accepted, cross-session, or multiple writers | OpenSpec task item plus bounded artifact |
++| Ticket | Independently accepted, cross-session, or parallel non-overlapping lanes | OpenSpec task item plus bounded artifact |
+ | Change | Different release unit or independent outcome | Separate OpenSpec change |
+ 
+-OpenSpec `tasks.md` is the execution frontier. One change, one live writer unless
+-an explicit ticket handoff says otherwise. A task is complete only with executed
+-verification evidence in `artifacts/verification.md` (or the repository's
+-approved equivalent). Do not recreate `.workflow/tickets/` for new work.
++OpenSpec `tasks.md` is the execution frontier. Each bounded, non-overlapping slice
++has one writer; independent lanes may run in parallel when their file sets do not
++overlap and the handoff names each lane's write boundary. A task is complete only
++with executed verification evidence in `artifacts/verification.md` (or the
++repository's approved equivalent). Do not recreate `.workflow/tickets/` for new work.
+ 
+ ## Acceptance And Archival
+ 
+diff --git a/AGENTS.md b/AGENTS.md
+index 0394740..d4d2bb5 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -26,9 +26,13 @@ Rules:
+   entries to `.claude-plugin/plugin.json`.
+ - All three agents (`workflow-planner`, `workflow-implementer`,
+   `workflow-reviewer`) are owned and installed by this repository. Keep their
+-  root, `.omp/`, and `.pi/` definitions in sync through `scripts/install.ps1`.
++  root, `.omp/`, `.pi/`, and `.opencode/` definitions in sync through
++  `scripts/install.ps1`.
++- OpenCode discovers the shared user-level `~/.agents/skills/` natively, so the
++  installer manages only its agents and two commands there; keep OpenCode agent
++  frontmatter free of `model` so the user's own config decides the model.
+ - Preserve `Both` as Codex + OMP for compatibility; use `All` for Codex + OMP +
+-  Claude Code + Pi.
++  Claude Code + Pi + OpenCode.
+ - Keep implementation and final review in separate model contexts when the
+   active harness supports it.
+ - Update `manifests/upstreams.lock.json` only after reviewing upstream changes.
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 3d4745f..3710ce7 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -6,10 +6,11 @@
+ 2. `.workflow/` remains a recoverable legacy record system; `.trellis/` remains read-only historical input. Neither is a new-work authority.
+ 3. Matt-style practices improve requirements, domain language, module seams, TDD, and Spec-versus-Standards review.
+ 4. Ponytail supplies a final pressure against unnecessary complexity.
+-5. This repository supplies routing, ownership, profiles, independent review, Codex, OMP, Claude Code, and Pi adapters, plus migration and evidence tooling.
++5. This repository supplies routing, ownership, profiles, independent review, Codex, OpenCode, OMP, Claude Code, and Pi adapters, plus migration and evidence tooling.
+ 
+ ## Design Rules
+ 
++- The shared quality contract owns delivery rules: acceptance criteria, evidence, risk profiles, and the review budget. The host owns scheduling, model choice, and tool availability. Adapters map roles; they never restate quality.
+ - Store one fact in one authoritative place: OpenSpec for formal work; eligible fast work creates no task state, legacy records only for recovery.
+ - Pass bounded context packages between AI sessions instead of copying full context or passing path lists alone.
+ - Load state with reads, never with head-of-input injection. An injector that places volatile content before the conversation history invalidates the prompt cache for the entire session.
+@@ -27,7 +28,7 @@
+ ```text
+ request
+   -> classify current request before discovery (quality-profiles.md#simple-work-fast-path)
+-     -> eligible: main-session edit -> diff + smallest relevant checks -> report in conversation
++     -> eligible: host-native edit -> diff + smallest relevant checks -> report in conversation
+         (no task records; scope/risk grows -> stop, preserve diff/checks, confirm formal change)
+      -> formal: continue below; selected change continuation keeps its record
+   -> read openspec/config.yaml and discover unarchived changes (openspec_compat
+@@ -38,8 +39,8 @@ request
+   -> clarify requirements (proposal.md with checkboxed ACs and specs/*.md)
+   -> plan solution in design.md, tasks.md, and artifacts/context.md
+   -> user approval, OpenSpec change -> in_progress (task frontier when split)
+-  -> Matt TDD with an inlined 上下文包 (main session by default,
+-     workflow-implementer when critical)
++  -> Matt TDD with an inlined 上下文包 (host's preferred writer, or main session
++     when the host has no specialist policy; workflow-implementer when critical)
+   -> repository verification (budget: quality-profiles.md)
+   -> one independent workflow-reviewer for Standards / Spec and
+      correctness/security/complexity (standard and critical)
+@@ -59,9 +60,10 @@ canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings
+ 
+ `skills/` owns canonical source. The installer publishes six skills and the assembled
+ OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
+-OMP, and Pi discover that directory natively; Claude uses per-skill directory links
++OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
+ (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
+-only harness adapters: agents, commands, OMP config, launcher, and review gate.
++only harness adapters: agents, commands, OMP config, launcher, review gate, and
++the OpenCode agent/command set.
+ Project scope shares skill versions across projects. Both remains Codex + OMP.
+ 
+ Selected harness legacy copies, including target-project copies in Project scope,
+@@ -113,7 +115,42 @@ main configured model
+ ```
+ 
+ The workflow installs only its six skills and three provider-independent Pi
+-agents. Pi agents omit a fixed `model` and inherit the active Pi model; they
+-never use OMP `@role` aliases. If `@narumitw/pi-subagents` is not installed,
+-planning, bounded implementation, and independent review fall back to the main
+-session and must disclose the loss of fresh-context review.
++agents. Pi agents omit a fixed `model` and inherit the active Pi model; user or
++trusted-project overrides can differ per agent. They never use OMP `@role` aliases.
++If `@narumitw/pi-subagents` is not installed, planning, bounded implementation,
++and independent review fall back to the main session and must disclose the loss of
++fresh-context review.
++
++## OpenCode Roles
++
++```text
++Slim Orchestrator (sole orchestrator, sole scheduler)
++  -> explorer (bounded read-only investigation)
++  -> designer (UI, layout, visual hierarchy)
++  -> fixer (bounded implementation of an approved slice)
++  -> oracle (second opinion on material uncertainty)
++  -> workflow-planner / workflow-implementer / workflow-reviewer
++     (strict formal slices and the single independent review only)
++  -> main-session remediation, evidence, and the delivery claim
++```
++
++Slim is the only orchestrator. The workflow agents are specialists it may call,
++not a parallel control plane; adding a second orchestrator or a second review pass
++breaks the per-slice writer rule and the one-review-budget rule. Review still comes
++from the single budget in `quality-profiles.md`.
++Formal implementation is routed through Slim `fixer` and the single independent
++review through Slim `oracle`; those roles select models from the active OMO-Slim
++preset. The model-free workflow agent files are procedures, not model bindings.
++If a role cannot be invoked or its effective model cannot be verified, report
++`UNVERIFIED` instead of treating parent-model inheritance as role routing.
++
++## Adapter Capabilities And Ownership
++
++The six canonical skills are installer-managed and shared; adapters add managed
++links or native discovery and never fork the bodies. Model selection stays
++user-owned: Claude agent definitions carry `opus` and `sonnet` labels a user may
++remap, Pi and OpenCode agents omit `model` so user overrides can differ, and OMP roles resolve
++through the user's `modelRoles`. Codex and OpenCode consume the shared skills directory, and
++subagent capability is asserted only after independent verification for that client
++version. No adapter may promise independent review a client cannot provide; report
++`UNVERIFIED` with the precise gap instead.
+diff --git a/README.md b/README.md
+index 5e2c377..690956d 100644
+--- a/README.md
++++ b/README.md
+@@ -28,7 +28,12 @@ AI 会话之间的上下文连续性。
+ | `.trellis/` | 更早的历史记录 | 只读；不运行脚本、不安装 injector |
+ | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
+ | Ponytail | YAGNI、复用、stdlib/native 优先 | 只用于复杂度控制，不降低质量要求 |
+-本仓库目前提供六个 skill：
++
++这些组件之上有一条**共享质量契约**：它只负责交付规则——验收标准、证据要求、风险等级和
++审查预算。谁来调度、用哪个模型、客户端暴露哪些工具，归宿主（Codex、Claude Code、OpenCode、
++OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用”，不重写质量标准。
++
++本仓库目前提供六个 canonical skill（安装器统一管理的同一份源码）：
+ 
+ | Skill | 用途 |
+ | --- | --- |
+@@ -123,7 +128,7 @@ INVALID 派发，不允许进入实现）。
+ | 档位 | 用在什么时候 | 写在哪里 |
+ | --- | --- | --- |
+ | 切片 | 同一会话内顺序完成、共享模块、只有一个 writer | `tasks.md` 的 `### 切片 N` |
+-| 工单 | 每片能独立验收、需要跨会话续接、或多 writer 并行 | `tickets/NN-<slug>.md` |
++| 工单 | 每片能独立验收、需要跨会话续接、或互不重叠的并行 lane | `tickets/NN-<slug>.md` |
+ | 多任务 | 不同发布单元、不同仓库、可各自独立收口 | 多个 task 目录 + 一个总控 task |
+ 
+ 工单文件头部固定字段：
+@@ -139,8 +144,9 @@ writer: main          # main | workflow-implementer
+ ---
+ ```
+ 
+-调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；一次工单只给一个
+-writer；验证命令真正跑过并把证据写进 `artifacts/verification.md` 后，才能把 `state` 改成 `done`。
++调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；每个有界且不重叠的切片只给一个
++writer，文件集不重叠的独立 lane 可以并行，但共用同一套审查预算；验证命令真正跑过并把证据写进
++`artifacts/verification.md` 后，才能把 `state` 改成 `done`。
+ 换会话或换客户端续接时，重新读 `tickets/` 算 frontier，不靠上一段聊天回忆进度。
+ 工单正文不重写切片计划，直接引用 `tasks.md#切片-N` 和它的上下文包。
+ 
+@@ -293,8 +299,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
+ 
+ ## 安装本仓库的 Skill
+ 
+-六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP 和 Pi
+-原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
++六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
++OpenCode 原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
+ 仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
+ 
+ 首次安装或更新全部平台，在本仓库根目录执行：
+@@ -306,7 +312,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
+ 
+ 更新仓库后重跑同一条安装命令即可，无需逐个平台分别安装 skill。`Scope` 默认是 `User`，
+ 只决定 agents、commands 和 OMP 配置等适配文件的位置；即使选择 `Project`，skill 正文仍在
+-用户级共享目录。`Harness` 默认仍为 `Both`（Codex + OMP）。
++用户级共享目录。`Harness` 默认仍为 `Both`（Codex + OMP），`All` 同时覆盖 Codex、OMP、
++Claude Code、Pi 和 OpenCode。
+ 
+ ### 全局安装到 Codex
+ 
+@@ -352,7 +359,30 @@ Pi 会在 `/reload` 或新会话后刷新 agent catalog。
+ pi install npm:@narumitw/pi-subagents
+ ```
+ 
+-### 安装到项目，同时支持四个平台
++### 全局安装到 OpenCode
++
++```powershell
++.\scripts\install.ps1 -Scope User -Harness OpenCode
++.\scripts\doctor.ps1 -Scope User -Harness OpenCode
++```
++
++OpenCode 原生发现共享的 `~/.agents/skills/`，所以安装器不为它复制 skill 正文，只管理
++三个 agent 和 `/engineering-workflow`、`/archive-task` 两个 command，写入
++`~/.config/opencode/`（设置了 `OPENCODE_CONFIG_DIR` 时改用它）；`-Scope Project` 则写入目标
++项目的 `.opencode/`。OpenCode 适配只声明做完共享安装后原生发现的 skill，不再复制一份正文；
++受管范围只有这三个 agent 和两个 command。agent 文件不带 `model` 和模型供应商，实际模型仍由你的 OpenCode 配置
++决定：模板只固定 `mode: subagent` 和权限，因此换模型只需改用户自己的配置。
++
++OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开一个新会话（不能只靠
++`/reload` 之类热加载），旧会话看不到新增的 agent。安装器同样会清理
++`~/.config/opencode/skills/` 和项目 `.opencode/skills/` 中的旧 skill 入口。也可直接使用
++`python scripts/doctor.py --scope User --harness OpenCode` 检查同一组文件。
++
++OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开一个新会话（不能只靠
++`/reload` 之类热加载），旧会话看不到新增的 agent。安装器同样会清理
++`~/.config/opencode/skills/` 和项目 `.opencode/skills/` 中的旧 skill 入口。
++
++### 安装到项目，同时支持五个平台
+ 
+ 目标项目不需要任何外部记录系统，直接安装即可：
+ 
+@@ -369,14 +399,15 @@ pi install npm:@narumitw/pi-subagents
+ - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
+ - 三个 Claude agent、`/engineering-workflow` 和 `/archive-task` 到项目 `.claude/`。
+ - 三个 Pi agent 到 `.pi/agents/`。
++- 三个 OpenCode agent 和两个 command 到项目 `.opencode/`。
+ 
+ 安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
+ OMP 的 `workflow-review-gate` 扩展继续随适配安装。
+ 先按共享快速通道判断：简单任务无需建档；正式工作在确认后使用项目内的 OpenSpec change。
+ `.workflow/` 仅保留为 legacy 恢复输入，不为新工作创建或更新。
+ 
+-只需要一个平台时使用 `Codex`、`OMP`、`Claude` 或 `Pi`。为兼容旧用法，`Both` 仍只表示
+-Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可以预览安装器将替换的受管目录
++只需要一个平台时使用 `Codex`、`OMP`、`Claude`、`Pi` 或 `OpenCode`。为兼容旧用法，`Both` 仍只表示
++Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi + OpenCode。先用 `-WhatIf` 可以预览安装器将替换的受管目录
+ 和文件。
+ 
+ 个人电脑推荐使用全局安装。项目级安装用于把适配文件放在项目中，**不再隔离 skill
+@@ -405,8 +436,8 @@ Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可
+ 
+ ### 一次性全局准备
+ 
+-Codex、Claude Code 和 Pi 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
+-OMP adapter。也可以一次安装全部四个平台：
++Codex、Claude Code、Pi 和 OpenCode 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
++OMP adapter。也可以一次安装全部五个平台：
+ 
+ ```powershell
+ .\scripts\install.ps1 -Scope User -Harness OMP
+@@ -545,8 +576,8 @@ ompw --continue
+ 主路由先按共享快速通道分流；只有正式任务才澄清需求、形成方案并等待明确批准：
+ 
+ ```text
+-简单任务 -> 主会话执行 -> diff / 最小相关检查 -> 对话交付（不建档）
+-正式任务 -> OpenSpec discovery / 确认 -> 澄清 / 规划 -> 等待批准 -> 主会话 TDD 实现
++简单任务 -> 宿主原生执行（主会话或宿主首选 worker）-> diff / 最小相关检查 -> 对话交付（不建档）
++正式任务 -> OpenSpec discovery / 确认 -> 澄清 / 规划 -> 等待批准 -> 宿主首选 writer 做 TDD 实现
+   -> 仓库检查 -> 一个 @advisor 独立复核（Standards / Spec）-> 必要修复及定向复核
+   -> 证据交付 -> awaiting-acceptance ->（你验收并明确要求后）归档
+ ```
+@@ -626,7 +657,7 @@ PRD、ticket、plan 或 outcome。
+ | --- | --- | --- |
+ | 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论写入当前任务 `proposal.md` |
+ | 方案设计 | `plan-solution` + Matt `codebase-design` | 生成 `design.md`、`tasks.md` 和 `context.md` 读取清单 |
+-| 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 默认在主会话执行；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
++| 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 由宿主首选 writer 执行（无专门策略时用主会话）；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
+ | 质量检查 | 仓库自身检查 | 验证测试、lint、类型和构建；不自动调用原生 Matt `code-review` |
+ | 独立复核 | `review-implementation` / `workflow-reviewer`；Ponytail 作为审查方法 | Standard / Critical 在一个新上下文报告 Standards / Spec 等维度，不嵌套派发 |
+ | 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `artifacts/verification.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
+@@ -646,7 +677,7 @@ tasks、上下文包与已有验证证据，再核对代码、测试及 `git sta
+ 本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
+ 在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
+ 
+-本仓库安装器目前原生管理 Codex、Claude Code、OMP 和 Pi。其他支持 agentskills.io 的客户端
++本仓库安装器目前原生管理 Codex、Claude Code、OMP、Pi 和 OpenCode。其他支持 agentskills.io 的客户端
+ 可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
+ 
+ ```powershell
+@@ -777,7 +808,7 @@ OMP 更新和记录系统无关：如果使用的是项目级安装，还要对
+ | --- | --- | --- |
+ | 主路由、需求追问、最终决策 | 主会话 | `@default` |
+ | 方案规划 | `workflow-planner` | `@plan` |
+-| TDD 实现（仅 critical） | `workflow-implementer` | `@task` |
++| TDD 实现（critical 或已批准的有界切片） | `workflow-implementer` | `@task` |
+ | 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
+ | 最终只读复核 | `workflow-reviewer` | `@advisor` |
+ | 高风险或失败升级 | 主会话/专项 agent | `@default` 或 `@slow` |
+@@ -812,7 +843,7 @@ claude --plugin-dir "D:\my-works\claude-skills\my-engineering-workflow" --model
+ | --- | --- | --- |
+ | 主路由、需求追问、批准、修复、交付 | 主会话 | 启动时选择的模型 |
+ | 方案规划 | `workflow-planner` | `opus` |
+-| TDD 实现（仅 critical） | `workflow-implementer` | `sonnet` |
++| TDD 实现（critical 或已批准的有界切片） | `workflow-implementer` | `sonnet` |
+ | 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
+ | 最终只读复核 | `workflow-reviewer` | `opus` |
+ 
+@@ -830,12 +861,38 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因
+ 外部 skill；TDD 由 `tasks.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、
+ 仓库原生验证和单次独立 review 共同约束，不能依赖嵌套 Skill 派发。
+ 
++`opus` / `sonnet` 只是本仓库给出的模型标签，不是固定承诺：`agents/*.md` 里的 `model`
++字段归你所有，可以按可用模型重映射。改完重跑 `install.ps1 -Harness Claude` 即可生效。
++
++## OpenCode 工作流
++
++OpenCode 端只有一个调度器：**Slim Orchestrator**。它负责发现、确认、风险评估、写入
++预算和唯一的审查预算；不要再加第二个 orchestrator、第二遍 review 或嵌套派发链。
++
++Slim 通过 OpenCode 原生 specialist 干活：
++
++| 角色 | 用途 |
++| --- | --- |
++| `explorer` | 有界只读调研（仍按上下文包规则派发） |
++| `designer` | 界面、布局、视觉层级 |
++| `fixer` | 已批准切片的有界实现 |
++| `oracle` | 重大设计或正确性不确定时的第二意见 |
++| `workflow-planner` / `workflow-implementer` / `workflow-reviewer` | 仅用于严格正式切片和那一次独立复核 |
++
++`workflow` agents 是 Slim 可以调用的 specialist，不是第二套控制面。一次正式交付仍然只有
++一套审查预算（见 `quality-profiles.md`）。OpenCode 的模型归属用户自己的配置；
++六个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
++
++正式实现通过 Slim `fixer` 角色路由，那一次独立复核通过 Slim `oracle` 角色路由，两个角色由当前激活的 OMO-Slim preset 决定模型。
++不要把某个 preset 的模型 ID 静态写进受管 agent 或本文档；`.opencode/agents/` 里的 `model` 字段保持空缺。
++角色不可调用或无法观察实际模型时，记录 `UNVERIFIED`；直接调用不带 `model` 的 workflow agent 只会继承父会话模型，继承不等于角色路由。
++
+ ## 使用方法
+ 
+ ### 1. 第一次在项目中使用
+ 
+ 直接说明需求即可。主路由先按共享资格判断快速通道：非行为性、局部、低风险且需求明确的小改动，
+-在主会话直接执行、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
++由宿主原生方式直接执行（主会话或宿主首选 worker）、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
+ 行为变更、风险不符或有正式记录/交接要求时，再进入匹配与确认。执行中范围扩大先停下，再确认升级。
+ 在 Codex 中输入以下内容，或在 Claude Code 中执行 `/engineering-workflow` 后附带同一需求：
+ 
+@@ -887,9 +944,9 @@ RED 测试 -> 最小实现 -> GREEN -> 重构 -> 仓库验证 -> 单次独立复
+ ```
+ 
+ 在 OMP 中，只有 `critical` 任务才会把已批准的切片交给 `workflow-implementer`，默认使用
+-`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务留在主会话实现。在 Claude
+-Code 中调用本仓库的 `workflow-implementer`，同样按已批准的 `tasks.md` 执行 RED/GREEN
+-slice。主会话继续负责范围、升级和最终决策。
++`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务由宿主首选 writer 实现，没有专门
++策略时用主会话。在 Claude Code 中调用本仓库的 `workflow-implementer`，同样按已批准的
++`tasks.md` 执行 RED/GREEN slice。主会话继续负责范围、升级和最终决策。
+ 
+ ### 5. 独立复核
+ `lightweight` 默认不派独立 reviewer。`standard` / `critical` 统一按
+@@ -928,13 +985,18 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
+ 
+ | 等级 | 适用场景 | 主要要求 |
+ | --- | --- | --- |
+-| `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查 |
+-| `standard` | 普通功能、bug fix、重构 | 主会话 RED/GREEN 与仓库检查，加一个独立 `workflow-reviewer` 完成 Standards / Spec 等维度 |
++| 快速通道 | 无行为改动，或范围明确、接缝有界且带回归检查的小行为修复 | 宿主原生执行、diff、最小相关检查；不建档，也不因此缺少证据 |
++| `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查；无强制正式 planner/reviewer，调度由宿主决定 |
++| `standard` | 普通功能、bug fix、重构 | 宿主首选 writer 做 RED/GREEN 与仓库检查，加一个独立 `workflow-reviewer` 完成 Standards / Spec 等维度 |
+ | `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E；仍是一个最终 reviewer |
+ 
+-详细配置随主路由打包在
++快速通道不是按文件数判断的：一行改动也可能高风险，五个文件也可能是纯格式。认证、资金、
++密钥、持久数据、迁移、公共契约、依赖、破坏性操作或无法界定风险时，一律走正式流程。
++详细资格、风险升级与审查预算随主路由打包在
+ [quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md)。风险等级
+-不能覆盖项目自身更严格的要求。
++不能覆盖项目自身更严格的要求。方法默认用 Matt `tdd`；ECC `tdd-workflow` 只是可选替代，
++不是默认依赖。模型选择始终归用户配置：Claude 的 `opus` / `sonnet` 标签可重映射，Pi agent
++省略 `model` 以便继承或覆盖。
+ 
+ ## 冲突处理规则
+ 
+diff --git a/commands/engineering-workflow.md b/commands/engineering-workflow.md
+index b75a55f..741a31e 100644
+--- a/commands/engineering-workflow.md
++++ b/commands/engineering-workflow.md
+@@ -12,10 +12,16 @@ Use the `run-engineering-workflow` skill to process:
+ Keep the interactive main session responsible for requirement questions, scope,
+ approvals, risk escalation, remediation, and the final delivery claim.
+ OpenSpec owns new changes and durable records; `.workflow/` is legacy recovery only.
++Proportionate delegation inside an already authorized scope needs no new approval —
++re-ask only when scope, risk, or reviewer independence materially changes.
+ 
+ Before discovery, apply [Simple Work Fast Path](../skills/run-engineering-workflow/references/quality-profiles.md#simple-work-fast-path).
+-For eligible work, execute and verify in the main session and report in the conversation,
+-without creating task records or entering the formal stages below. If eligibility
++For eligible work, execute and verify host-natively (main session or the host's
++preferred bounded worker) and report in the conversation,
++without creating task records or entering the formal stages below. A clearly scoped
++low-risk behavior fix in a bounded seam qualifies when a regression check proves it;
++authentication, money, secrets, persistent data, migrations, public contracts,
++dependencies, destructive work and unknown risk do not. If eligibility
+ changes, stop and follow the shared escalation rule; do not auto-create a change.
+ 
+ For formal work, retain discovery and explicit confirmation; route by the active change phase:
+@@ -28,20 +34,23 @@ For formal work, retain discovery and explicit confirmation; route by the active
+ 2. Clarify incomplete requirements in the main session and persist them in
+    `proposal.md` and relevant `specs/`.
+ 3. After requirements are accepted, use `plan-solution` in the main session.
+-   Dispatch `workflow-planner` only for critical planning or when planning delegation
+-   is explicitly requested. Update `design.md`, `tasks.md`, and the inlined
++   Dispatch `workflow-planner` for critical planning, when planning delegation is
++   explicitly requested, or when the approved scope clearly benefits from fresh
++   context. Update `design.md`, `tasks.md`, and the inlined
+    `artifacts/context.md` package; implementation needs user plan approval.
+-4. For implementation, dispatch `workflow-implementer` only for a `critical`
+-   change or an explicitly justified fresh-context need. Its prompt must begin
++4. For implementation, dispatch `workflow-implementer` for a `critical` change,
++   or one bounded slice inside an approved scope when fresh context helps. Its prompt must begin
+    `Active change: openspec/changes/<change-id>/` and must carry the assigned slice,
+    the `Read:` paths from `artifacts/context.md`, `May modify:`, and `Verification:`.
+-   Require it to follow the approved RED/GREEN slices in `tasks.md`. Ordinary work
+-   is implemented in the main session.
++   Require it to follow the approved RED/GREEN slices in `tasks.md`, using Matt `tdd`.
++   Ordinary work goes to the host's preferred writer (main session when the host
++   has no specialist policy).
+ 5. Follow `skills/run-engineering-workflow/references/quality-profiles.md` as the
+    single budget. The main session is the only review scheduler. Complete slices
+    with targeted checks, not a full review per slice; wait until the approved
+    delivery scope is complete and checks pass before the full review.
+-   For lightweight work, run a focused check with no default dispatch.
++   For lightweight work, run a focused check with no mandatory formal planner or
++   reviewer; scheduling stays host-native.
+    For standard and critical work, use exactly one independent `workflow-reviewer`
+    through `review-implementation` covering the complete relevant workspace,
+    Standards / Spec, correctness, security, tests and complexity. Critical adds
+@@ -59,6 +68,14 @@ For formal work, retain discovery and explicit confirmation; route by the active
+    then stop and hand the user the verification list. Do not archive the change.
+    Only `/archive-task`, invoked by the user after acceptance, performs archival.
+ 
++For OpenCode, the Slim Orchestrator is the only scheduler and model-bearing
++boundary: route formal implementation through Slim `fixer`, and the single
++independent formal review through Slim `oracle`, with the active OMO-Slim preset
++supplying their models. Include the repository's workflow procedure and bounded
++OpenSpec handoff. Never copy a preset model ID into a managed agent. Unavailable
++or unobservable role routing is `UNVERIFIED`; parent-model inheritance is not
++evidence of role routing.
++
+ Claude Code has no OMP `@task` or `@advisor` role aliases. The planning and review
+ agents use Opus; the implementer inherits the configured worker model. A fresh
+ context is independent, but it is not necessarily a different model.
+diff --git a/evals/workflow-cases.json b/evals/workflow-cases.json
+index ba26bbe..5afd160 100644
+--- a/evals/workflow-cases.json
++++ b/evals/workflow-cases.json
+@@ -24,7 +24,7 @@
+       "name": "simple-docs-with-existing-changes",
+       "state": "clear_local_non_behavioral_typo_request_with_unrelated_unarchived_changes",
+       "expected_stage": "fast-execute",
+-      "required_behavior": "main-session edit and smallest relevant checks without task records",
++      "required_behavior": "host-native edit and smallest relevant checks without task records",
+       "forbidden": ["list changes", "ask create or reuse", "write formal or legacy task state", "dispatch reviewer"]
+     },
+     {
+@@ -33,6 +33,76 @@
+       "expected_stage": "fast-execute",
+       "forbidden": ["run CLI discovery", "initialize OpenSpec", "require task creation"]
+     },
++    {
++      "name": "small-behavior-fix-bounded-seam",
++      "state": "clearly_scoped_low_risk_behavior_fix_inside_one_seam_with_visible_callers",
++      "expected_stage": "fast-execute",
++      "required_behavior": "host-native fix plus a meaningful regression check, no formal record",
++      "forbidden": [
++        "skip the regression check",
++        "create a task record",
++        "treat file count as eligibility"
++      ]
++    },
++    {
++      "name": "high-risk-small-diff-requires-formal",
++      "state": "one_line_fix_touching_authorization_money_secrets_persistent_data_migration_or_public_contract",
++      "expected_stage": "discover-and-confirm",
++      "required_behavior": "escalate to the formal branch despite the tiny diff",
++      "forbidden": ["fast-execute", "claim the diff is too small to matter"]
++    },
++    {
++      "name": "fast-path-behavior-fix-regression",
++      "state": "eligible_bounded_behavior_fix_without_regression_check",
++      "expected_stage": "report-verification-failure",
++      "required_behavior": "add the regression check before claiming the fix verified",
++      "forbidden": ["claim verified without the regression check", "backfill a formal record instead"]
++    },
++    {
++      "name": "openspec-slim-single-orchestrator",
++      "state": "opencode_slim_session_handling_a_formal_change",
++      "expected_stage": "single-orchestrator-dispatch",
++      "required_behavior": "Slim schedules explorer/designer/fixer/oracle and workflow agents on demand, one review budget",
++      "forbidden": [
++        "introduce a second orchestrator",
++        "schedule a second full review",
++        "nest a review inside a writer"
++      ]
++    },
++    {
++      "name": "opencode-slim-role-routing-unverified",
++      "state": "opencode_session_without_slim_role_dispatch_or_unobservable_effective_model",
++      "expected_stage": "report-unverified-role-routing",
++      "required_status": "UNVERIFIED",
++      "required_behavior": "record UNVERIFIED and state that a direct native agent inherits the parent session model",
++      "forbidden": [
++        "copy a preset model ID into a managed agent",
++        "claim the role model was used because the parent model was inherited",
++        "report a static model ID as the verified reviewer model"
++      ]
++    },
++    {
++      "name": "independent-lanes-no-shared-write-files",
++      "state": "two_approved_slices_with_disjoint_write_boundaries",
++      "expected_stage": "single-orchestrator-dispatch",
++      "required_behavior": "run both lanes in parallel, one writer per slice, one shared review budget",
++      "forbidden": [
++        "give one writer both slices",
++        "let the two lanes share a write file",
++        "schedule a review per lane"
++      ]
++    },
++    {
++      "name": "codex-shared-skills-no-native-agents",
++      "state": "codex_loaded_from_shared_skills_without_verified_subagents",
++      "expected_stage": "report-review-unavailable",
++      "required_status": "UNVERIFIED",
++      "required_behavior": "use shared skills and claim only verified capabilities",
++      "forbidden": [
++        "claim Codex native subagent review",
++        "treat main-session self-check as independent review"
++      ]
++    },
+     {
+       "name": "small-behavior-fix-requires-change",
+       "state": "one_line_behavior_or_permission_fix_described_as_simple_with_broken_cli",
+diff --git a/manifests/upstreams.lock.json b/manifests/upstreams.lock.json
+index 1a0700f..4464742 100644
+--- a/manifests/upstreams.lock.json
++++ b/manifests/upstreams.lock.json
+@@ -1,11 +1,11 @@
+ {
+   "schema_version": 2,
+-  "generated_at": "2026-10-12",
++  "generated_at": "2026-10-27",
+   "sources": {
+     "mattpocock-skills": {
+       "local_path": "../mattpocock-skills",
+       "remote": "https://github.com/mattpocock/skills.git",
+-      "revision": "49dd158d1076134a641b33efb035946536778336",
++      "revision": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+       "version_hint": "1.3.1",
+       "license": "MIT",
+       "role": "requirements grilling, domain modeling, module design, TDD, two-axis review, and specification or ticket decomposition"
+@@ -13,8 +13,8 @@
+     "ponytail": {
+       "local_path": "../ponytail",
+       "remote": "https://github.com/DietrichGebert/ponytail.git",
+-      "revision": "2ed6c52c9d7e5e56942508591085fd45dea277d3",
+-      "version_hint": "4.9.0",
++      "revision": "09c434ab73ca43761c5d8b0c5d341926c2fba710",
++      "version_hint": "5.3.2",
+       "license": "MIT",
+       "role": "YAGNI, reuse, native-first implementation, and complexity review"
+     }
+diff --git a/scripts/doctor.ps1 b/scripts/doctor.ps1
+index f4b1e2f..1136234 100644
+--- a/scripts/doctor.ps1
++++ b/scripts/doctor.ps1
+@@ -2,7 +2,7 @@ param(
+   [ValidateSet("User", "Project")]
+   [string]$Scope = "User",
+ 
+-  [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
++  [ValidateSet("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")]
+   [string]$Harness = "Both",
+ 
+   [string]$ProjectPath
+diff --git a/scripts/doctor.py b/scripts/doctor.py
+index 92b506e..fef3885 100644
+--- a/scripts/doctor.py
++++ b/scripts/doctor.py
+@@ -26,6 +26,7 @@ SKILLS = (
+     "archive-task",
+ )
+ AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
++AGENT_FILES = tuple(f"{agent}.md" for agent in AGENTS)
+ UPSTREAM_SKILLS = (
+     "grill-with-docs",
+     "tdd",
+@@ -33,7 +34,7 @@ UPSTREAM_SKILLS = (
+     "ponytail-review",
+     "domain-modeling",
+ )
+-HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "Both", "All")
++HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")
+ 
+ 
+ def parse_args() -> argparse.Namespace:
+@@ -102,6 +103,13 @@ def check_shared_installation(harness: str, scope: str, project: Path | None, ho
+                     valid = False
+                 if not valid:
+                     errors.append(f"Invalid or missing Claude skill link: {entry}; expected {shared / skill}")
++    if selected(harness, "OpenCode"):
++        # OpenCode discovers ~/.agents/skills and .agents/skills natively, so a
++        # copy under its own skills root would shadow the shared tree.
++        legacy.append(opencode_user_root(home) / "skills")
++        if scope == "Project" and project:
++            legacy.append(project / ".agents" / "skills")
++            legacy.append(project / ".opencode" / "skills")
+     # Overrides and ProjectPath=HOME can make a native root the shared root itself.
+     shared_root = shared.resolve()
+     for root in {path.resolve() for path in legacy} - {shared_root}:
+@@ -137,6 +145,49 @@ def omp_user_root(home: Path) -> Path:
+     return home / ".omp" / "agent"
+ 
+ 
++def opencode_user_root(home: Path) -> Path:
++    override = os.environ.get("OPENCODE_CONFIG_DIR", "").strip()
++    if override:
++        return Path(override).expanduser()
++    return home / ".config" / "opencode"
++
++
++def repo_source_root() -> Path | None:
++    """Return the repository that ships the templates, or None when doctor runs alone."""
++    candidate = Path(__file__).resolve().parents[1]
++    return candidate if (candidate / "skills").is_dir() else None
++
++
++def check_managed_drift(
++    source: Path,
++    installed: Path,
++    names: tuple[str, ...],
++    label: str,
++    warnings: list[str],
++) -> None:
++    """Report installed files whose content no longer matches the shipped template.
++
++    Drift is a warning, not an error: a local edit may be intentional, and the
++    installer keeps such edits in the shared backup directory when it refreshes.
++    """
++    for name in names:
++        template = source / name
++        target = installed / name
++        if not template.is_file() or not target.is_file():
++            continue
++        try:
++            same = template.read_bytes() == target.read_bytes()
++        except OSError as exc:
++            warnings.append(f"Could not compare {label} file {target}: {exc}")
++            continue
++        if not same:
++            warnings.append(
++                f"{label} file differs from the shipped template: {target}. "
++                "Re-run the installer to refresh it; a local edit is preserved in "
++                "~/.agents/backups/my-engineering-workflow/."
++            )
++
++
+ def check_skill_whitelist(path: Path, label: str, errors: list[str]) -> None:
+     """OMP hides skills that a non-empty includeSkills allowlist does not cover.
+     An absent file, absent key, or empty list means "no filtering", which is healthy."""
+@@ -310,6 +361,9 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
+     if not (root / "start-engineering-workflow.py").is_file():
+         errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
+     check_omp_overlay(root / "engineering-workflow.yml", errors)
++    source = repo_source_root()
++    if source is not None:
++        check_managed_drift(source / ".omp" / "agents", root / "agents", AGENT_FILES, "OMP agent", warnings)
+     # Plain `omp` discovers skills through the user config.yml allowlist; the overlay
+     # only reaches sessions started by the launcher.
+     check_skill_whitelist(omp_user_root(home) / "config.yml", "user config", errors)
+@@ -329,7 +383,7 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
+                 warnings.append(f"Recommended upstream skill was not found: {upstream}")
+ 
+ 
+-def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
++def check_claude(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
+     executable_exists("claude", errors)
+     root = project / ".claude" if scope == "Project" else home / ".claude"
+ 
+@@ -337,6 +391,16 @@ def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]
+     for command in ("engineering-workflow", "archive-task"):
+         if not (root / "commands" / f"{command}.md").is_file():
+             errors.append(f"Missing Claude command: {command}")
++    source = repo_source_root()
++    if source is not None:
++        check_managed_drift(source / "agents", root / "agents", AGENT_FILES, "Claude agent", warnings)
++        check_managed_drift(
++            source / "commands",
++            root / "commands",
++            ("engineering-workflow.md", "archive-task.md"),
++            "Claude command",
++            warnings,
++        )
+ 
+ 
+ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
+@@ -345,6 +409,9 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
+     pi_user_root = Path(override).expanduser() if override else home / ".pi" / "agent"
+     root = project / ".pi" if scope == "Project" else pi_user_root
+     check_agents(root / "agents", "Pi", errors)
++    source = repo_source_root()
++    if source is not None:
++        check_managed_drift(source / ".pi" / "agents", root / "agents", AGENT_FILES, "Pi agent", warnings)
+     node_modules = pi_user_root / "npm" / "node_modules"
+     subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
+     if not any(pkg.is_dir() for pkg in subagent_pkgs):
+@@ -354,6 +421,142 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
+         )
+ 
+ 
++def frontmatter_model(path: Path) -> str | None:
++    """Return the agent's `model` frontmatter value without parsing the body."""
++    try:
++        text = path.read_text(encoding="utf-8", errors="replace")
++    except OSError:
++        return None
++    match = re.match(r"(?s)\A---\r?\n(.*?)\r?\n---", text)
++    if not match:
++        return None
++    for line in match.group(1).splitlines():
++        hit = re.match(r"\s*model\s*:\s*(.+?)\s*$", line)
++        if hit:
++            return hit.group(1).strip().strip("\"'")
++    return None
++
++
++def check_pi_overrides(scope: str, home: Path, warnings: list[str]) -> None:
++    """Report which Pi workflow overrides exist; never rewrite or judge them.
++
++    Pi agent files must stay model-free so the user's `agentOverrides` keeps
++    winning. The doctor only reports the wiring so a silent model change is
++    visible instead of mysterious.
++    """
++    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
++    pi_user_root = Path(override).expanduser() if override else home / ".pi" / "agent"
++    settings = pi_user_root / "settings.json"
++    if not settings.is_file():
++        return
++    try:
++        body = json.loads(settings.read_text(encoding="utf-8"))
++    except (OSError, json.JSONDecodeError):
++        warnings.append(f"Pi settings could not be parsed, so agent overrides are unknown: {settings}")
++        return
++    overrides = ((body.get("subagents") or {}).get("agentOverrides") or {}) if isinstance(body, dict) else {}
++    configured = [name for name in AGENTS if isinstance(overrides, dict) and name in overrides]
++    if configured:
++        warnings.append(
++            "Pi agentOverrides are user-owned and left untouched for: "
++            + ", ".join(configured)
++            + ". Pi agents declare no model, so those overrides stay effective."
++        )
++    agent_root = pi_user_root / "agents"
++    for name in AGENTS:
++        path = agent_root / f"{name}.md"
++        if not path.is_file():
++            continue
++        model = frontmatter_model(path)
++        if model:
++            warnings.append(
++                f"Pi agent declares its own model ({model}), so a Pi agentOverride cannot take effect: {path}. "
++                "Pi agents should omit `model`."
++            )
++
++
++def check_opencode(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
++    executable_exists("opencode", errors)
++    root = project / ".opencode" if scope == "Project" else opencode_user_root(home)
++
++    check_agents(root / "agents", "OpenCode", errors)
++    for command in ("engineering-workflow", "archive-task"):
++        if not (root / "commands" / f"{command}.md").is_file():
++            errors.append(f"Missing OpenCode command: {command}")
++    for name in AGENTS:
++        path = root / "agents" / f"{name}.md"
++        if not path.is_file():
++            continue
++        model = frontmatter_model(path)
++        if model:
++            warnings.append(
++                f"OpenCode agent pins its own model ({model}), so the user's default model no longer applies: {path}. "
++                "The shipped templates omit `model`."
++            )
++    source = repo_source_root()
++    if source is not None:
++        check_managed_drift(source / ".opencode" / "agents", root / "agents", AGENT_FILES, "OpenCode agent", warnings)
++        check_managed_drift(
++            source / "commands",
++            root / "commands",
++            ("engineering-workflow.md", "archive-task.md"),
++            "OpenCode command",
++            warnings,
++        )
++
++
++def check_codex(home: Path, warnings: list[str]) -> None:
++    """Report what the adapter actually installs, without claiming Codex runtime facts."""
++    warnings.append(
++        "Codex adapter installs the shared skills only: these Markdown definitions do not "
++        "establish native Codex runtime support. Verify native subagent capability for the "
++        "installed Codex client version; if it is unavailable, "
++        "workflow-planner/workflow-implementer/workflow-reviewer cannot run in separate model "
++        "contexts and independent review is UNVERIFIED."
++    )
++    for name in AGENTS:
++        legacy = home / ".codex" / "agents" / f"{name}.md"
++        if not legacy.is_file():
++            continue
++        try:
++            body = legacy.read_text(encoding="utf-8", errors="replace")
++        except OSError:
++            continue
++        if ".trellis/tasks/" in body:
++            warnings.append(
++                f"Stale Trellis-era Codex agent definition remains: {legacy}. "
++                "Re-run the installer to back it up and remove it."
++            )
++
++
++def check_claude_model_aliases(scope: str, project: Path | None, home: Path, warnings: list[str]) -> None:
++    """Report alias collapse without printing credentials or rewriting settings.
++
++    Providers that route both alias slots to one model are common; the point is to
++    make "Opus" versus "Sonnet" selection visible before someone blames the agents.
++    """
++    root = project / ".claude" if scope == "Project" else home / ".claude"
++    settings = root / "settings.json"
++    if not settings.is_file():
++        return
++    try:
++        body = json.loads(settings.read_text(encoding="utf-8"))
++    except (OSError, json.JSONDecodeError):
++        warnings.append(f"Claude settings could not be parsed, so model aliases are unknown: {settings}")
++        return
++    env = body.get("env") if isinstance(body, dict) else None
++    if not isinstance(env, dict):
++        return
++    opus = str(env.get("ANTHROPIC_DEFAULT_OPUS_MODEL") or "").strip()
++    sonnet = str(env.get("ANTHROPIC_DEFAULT_SONNET_MODEL") or "").strip()
++    if opus and sonnet and opus == sonnet:
++        warnings.append(
++            f"Claude Opus and Sonnet aliases both resolve to {sonnet}, so a workflow agent "
++            "that asks for Opus actually runs on that model. Models are user-owned; the "
++            "installer leaves settings.json untouched."
++        )
++
++
+ def main() -> int:
+     args = parse_args()
+     errors: list[str] = []
+@@ -378,9 +581,15 @@ def main() -> int:
+     if selected(args.harness, "OMP"):
+         check_omp(args.scope, project, home, errors, warnings)
+     if selected(args.harness, "Claude"):
+-        check_claude(args.scope, project, home, errors)
++        check_claude(args.scope, project, home, errors, warnings)
++        check_claude_model_aliases(args.scope, project, home, warnings)
+     if selected(args.harness, "Pi"):
+         check_pi(args.scope, project, home, errors, warnings)
++        check_pi_overrides(args.scope, home, warnings)
++    if selected(args.harness, "OpenCode"):
++        check_opencode(args.scope, project, home, errors, warnings)
++    if selected(args.harness, "Codex"):
++        check_codex(home, warnings)
+     for warning in warnings:
+         print(f"WARNING: {warning}", file=sys.stderr)
+     for error in errors:
+diff --git a/scripts/install.ps1 b/scripts/install.ps1
+index 1ae0793..a26676e 100644
+--- a/scripts/install.ps1
++++ b/scripts/install.ps1
+@@ -3,7 +3,7 @@ param(
+   [ValidateSet("User", "Project")]
+   [string]$Scope = "User",
+ 
+-  [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
++  [ValidateSet("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")]
+   [string]$Harness = "Both",
+ 
+   [string]$ProjectPath
+@@ -22,6 +22,14 @@ $agentDirOverride = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR))
+ }
+ $piUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".pi\agent" }
+ $ompUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".omp\agent" }
++$opencodeDirOverride = if ([string]::IsNullOrWhiteSpace($env:OPENCODE_CONFIG_DIR)) {
++  $null
++} else {
++  $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(
++    $env:OPENCODE_CONFIG_DIR
++  )
++}
++$opencodeUserRoot = if ($opencodeDirOverride) { $opencodeDirOverride } else { Join-Path $HOME ".config\opencode" }
+ $skillNames = @(
+   "run-engineering-workflow",
+   "clarify-requirements",
+@@ -49,6 +57,20 @@ $piAgentNames = @(
+   "workflow-implementer.md",
+   "workflow-reviewer.md"
+ )
++$opencodeAgentNames = @(
++  "workflow-planner.md",
++  "workflow-implementer.md",
++  "workflow-reviewer.md"
++)
++$opencodeCommandNames = @(
++  "engineering-workflow.md",
++  "archive-task.md"
++)
++$codexLegacyAgentNames = @(
++  "workflow-planner.md",
++  "workflow-implementer.md",
++  "workflow-reviewer.md"
++)
+ 
+ if ($Scope -eq "Project") {
+   if (-not $ProjectPath) {
+@@ -200,7 +222,10 @@ function Install-SharedLink {
+ function Copy-ManagedFile {
+   param(
+     [Parameter(Mandatory)] [string]$Source,
+-    [Parameter(Mandatory)] [string]$Target
++    [Parameter(Mandatory)] [string]$Target,
++    # Adaptor files can carry user edits (for example hand-added
++    # external_directory entries). Keep a backup instead of silently replacing them.
++    [switch]$BackupOnOverwrite
+   )
+ 
+ 
+@@ -217,6 +242,13 @@ function Copy-ManagedFile {
+   Assert-SafeParents -Path $Target
+   Assert-NotReparsePoint -Path $Target
+   if ($PSCmdlet.ShouldProcess($Target, "install managed workflow file")) {
++    if ($BackupOnOverwrite -and (Test-Path -LiteralPath $Target -PathType Leaf)) {
++      $sameBytes = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash -eq
++        (Get-FileHash -LiteralPath $Target -Algorithm SHA256).Hash
++      if (-not $sameBytes) {
++        Backup-ManagedPath -Path $Target
++      }
++    }
+     New-Item -ItemType Directory -Force -Path $targetRoot | Out-Null
+     Copy-Item -LiteralPath $Source -Destination $Target -Force
+   }
+@@ -325,6 +357,15 @@ if ($Harness -in @('Pi', 'All')) {
+     $legacyRoots += Join-Path $project '.pi/skills'
+   }
+ }
++# OpenCode discovers ~/.agents/skills and .agents/skills natively, so its own
++# skills directory becomes a legacy copy once the shared tree is published.
++if ($Harness -in @('OpenCode', 'All')) {
++  $legacyRoots += Join-Path $opencodeUserRoot 'skills'
++  if ($project) {
++    $legacyRoots += Join-Path $project '.agents/skills'
++    $legacyRoots += Join-Path $project '.opencode/skills'
++  }
++}
+ if ($Harness -in @('Claude', 'All')) {
+   $claudeLinkRoots += Join-Path $HOME '.claude/skills'
+   if ($project) { $claudeLinkRoots += Join-Path $project '.claude/skills' }
+@@ -389,6 +430,15 @@ if ($Harness -in @('Pi', 'All')) {
+     $managedFiles += @{ Source = Join-Path $repoRoot ".pi/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+   }
+ }
++if ($Harness -in @('OpenCode', 'All')) {
++  $root = if ($project) { Join-Path $project '.opencode' } else { $opencodeUserRoot }
++  foreach ($fileName in $opencodeAgentNames) {
++    $managedFiles += @{ Source = Join-Path $repoRoot ".opencode/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
++  }
++  foreach ($fileName in $opencodeCommandNames) {
++    $managedFiles += @{ Source = Join-Path $repoRoot "commands/$fileName"; Target = Join-Path $root "commands/$fileName" }
++  }
++}
+ foreach ($file in $managedFiles) {
+   if (-not (Test-Path -LiteralPath $file.Source -PathType Leaf)) {
+     throw "Managed source file was not found: $($file.Source)"
+@@ -498,6 +548,51 @@ if ($Harness -in @("Pi", "All")) {
+   }
+ }
+ 
++if ($Harness -in @("OpenCode", "All")) {
++  $opencodeRoot = if ($Scope -eq "Project") {
++    Join-Path $project ".opencode"
++  } else {
++    $opencodeUserRoot
++  }
++
++  $opencodeAgents = Join-Path $opencodeRoot "agents"
++  $opencodeCommands = Join-Path $opencodeRoot "commands"
++
++  # These files carry user-owned external_directory entries, so an overwrite is
++  # recoverable through the shared backup directory.
++  foreach ($fileName in $opencodeAgentNames) {
++    Copy-ManagedFile `
++      -Source (Join-Path $repoRoot ".opencode\agents\$fileName") `
++      -Target (Join-Path $opencodeAgents $fileName) `
++      -BackupOnOverwrite
++  }
++
++  foreach ($fileName in $opencodeCommandNames) {
++    Copy-ManagedFile `
++      -Source (Join-Path $repoRoot "commands\$fileName") `
++      -Target (Join-Path $opencodeCommands $fileName) `
++      -BackupOnOverwrite
++  }
++}
++
++if ($Harness -in @("Codex", "Both", "All")) {
++  # Codex has no markdown runtime agents. Older Trellis-era installs left agent
++  # files behind; back up only those whose content still carries the Trellis
++  # signature, and never touch any other file.
++  $codexAgents = Join-Path $HOME ".codex\agents"
++  foreach ($fileName in $codexLegacyAgentNames) {
++    $legacy = Join-Path $codexAgents $fileName
++    if (-not (Test-Path -LiteralPath $legacy -PathType Leaf)) { continue }
++    Assert-SafeParents -Path $legacy
++    Assert-NotReparsePoint -Path $legacy
++    $body = [IO.File]::ReadAllText($legacy)
++    if ($body -notmatch '^---\s' -or $body -notmatch '\.trellis/tasks/') { continue }
++    if ($PSCmdlet.ShouldProcess($legacy, "back up stale Codex Trellis agent definition")) {
++      Backup-ManagedPath -Path $legacy
++    }
++  }
++}
++
+ $resultVerb = if ($WhatIfPreference) { "Planned" } else { "Installed" }
+ Write-Host "$resultVerb $($skillNames.Count) shared workflow skills at $sharedSkills; $Harness adapters at $Scope scope."
+ if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
+@@ -508,3 +603,10 @@ if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
+ if ($Scope -eq "Project" -and $Harness -in @("Pi", "All")) {
+   Write-Host "Start Pi from the trusted project root with: pi"
+ }
++if ($Scope -eq "Project" -and $Harness -in @("OpenCode", "All")) {
++  Write-Host "Start OpenCode from the trusted project root with: opencode"
++}
++if ($Harness -in @("Codex", "Both", "All")) {
++  # Codex gets the shared skills only; this adapter does not establish native runtime agents.
++  Write-Host "Codex adapter installs the shared skills only: no workflow agent files are installed for Codex, which does not establish native subagent support. Verify native subagent capability for the installed Codex client version."
++}
+diff --git a/skills/finish-with-evidence/SKILL.md b/skills/finish-with-evidence/SKILL.md
+index 587e669..61a77aa 100644
+--- a/skills/finish-with-evidence/SKILL.md
++++ b/skills/finish-with-evidence/SKILL.md
+@@ -38,7 +38,7 @@ repository verification directly from this skill; consume recorded evidence.
+    `workflow-reviewer` report with Standards / Spec, correctness/security/tests/
+    complexity coverage; local repairs also require the budgeted focused follow-up
+    and affected checks. The prior full report alone cannot approve unaudited repairs.
+-   Lightweight consumes its main-session focused check, without default dispatch.
++   Lightweight consumes its host-native focused check, without a formal reviewer.
+ 4. Check full/focused rounds, unresolved blockers and the final coverage chain.
+    Missing or stale evidence, unavailable independent review, incomplete scope or
+    conflicting round history: record `UNVERIFIED` and return the precise gap to
+diff --git a/skills/plan-solution/SKILL.md b/skills/plan-solution/SKILL.md
+index cfbaff7..2a9f51f 100644
+--- a/skills/plan-solution/SKILL.md
++++ b/skills/plan-solution/SKILL.md
+@@ -145,7 +145,7 @@ Phase: implement
+ 
+ Keep the package under roughly 1,500 tokens per slice. When the source material
+ is longer, inline the decisive lines and cite the file rather than pasting it.
+-A slice without a context package is planned for a main-session edit, not for
++A slice without a context package is planned for a direct host-native edit, not for
+ dispatch.
+ 
+ ## Decompose The Work
+diff --git a/skills/run-engineering-workflow/SKILL.md b/skills/run-engineering-workflow/SKILL.md
+index af113b6..11c2818 100644
+--- a/skills/run-engineering-workflow/SKILL.md
++++ b/skills/run-engineering-workflow/SKILL.md
+@@ -19,6 +19,23 @@ OpenSpec artifacts (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, and
+ `artifacts/`) are written in the user's language — Chinese by default. Keep code
+ identifiers, paths, commands, log text, OpenSpec filenames, and status tokens
+ (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`) verbatim so they stay greppable.
++
++## Host And Workflow Boundary
++
++The shared quality contract in [quality-profiles.md](references/quality-profiles.md)
++owns delivery rules: acceptance criteria, evidence requirements, risk profiles and
++the single review budget. The host owns scheduling, model choice, tool
++availability and how a delegated role is spawned. Adapter sections below say only
++which roles exist and how to reach them; they never redefine quality.
++
++Delegation is proportionate, not renegotiated each time. An approved plan or an
++already authorized scope covers ordinary dispatch within that scope: create or
++reuse a subagent, hand a bounded slice to it, or run the step in the main session
++when the host supports no delegation. Re-ask only when scope, risk, or the
++reviewer's independence materially changes — not per delegation, and not merely
++because this client exposes another mechanism. One writer per bounded slice and
++one review budget still hold.
++
+ ## Bounded Context And Dispatch Contract
+ 
+ OpenSpec remains the only durable source of new task state. Treat a change id as
+@@ -78,10 +95,14 @@ changing a risk profile.
+ 
+ Read project rules and apply [Simple Work Fast Path](references/quality-profiles.md#simple-work-fast-path)
+ before OpenSpec discovery or CLI access. Judge the current request, not the mere
+-presence of a repository or unrelated old changes.
+-
+-If eligible, execute and verify in the main session without creating task records;
+-report results in the conversation, then return: skip the formal stages below.
++presence of a repository or unrelated old changes. A small, clearly scoped behavior
++fix inside a bounded seam with a regression check is eligible; authentication,
++money, secrets, persistent data, migrations, public contracts, dependencies,
++destructive work and unknown risk are not, however small the diff.
++
++If eligible, execute and verify without creating task records — in the main
++session, or on the host's preferred bounded worker when it has one; report results
++in the conversation, then return: skip the formal stages below.
+ Follow the shared path's stop-and-confirm escalation if the scope changes.
+ Otherwise use the formal branch. Explicit OpenSpec requests and selected change
+ continuations retain that branch and any still-valid selection confirmation.
+@@ -185,8 +206,8 @@ Before formal dispatch, assess the task's risk profile by reading the selected O
+    - **No** → profile is `standard` (normal features, bug fixes, refactors)
+ 3. **State the assessed profile explicitly** before proceeding to routing.
+    Example: "This is a **standard** task (bug fix in presentation layer, no
+-   auth or data changes). Implementation will stay in the main session unless a
+-   bounded worker is justified."
++   auth or data changes). Implementation runs on the host's preferred writer
++   within the approved slice."
+ 
+ When uncertain, default to `standard` and escalate to `critical` only when clear
+ risk signals appear. Never default to `critical` for ordinary feature work.
+@@ -196,12 +217,16 @@ risk signals appear. Never default to `critical` for ordinary feature work.
+ After assessing the profile, route according to the task phase and the assessed
+ risk level. The profile controls dispatch, not just the checklist:
+ 
+-- `lightweight`: keep the work in the main session. Do not dispatch planner,
+-  implementer, checker, or reviewer. Run one focused check before delivery.
+-- `standard`: keep implementation in the main session. The default sole worker
+-  is one independent `workflow-reviewer` through `review-implementation`.
+-  Implementation delegation needs explicit justification and authorization;
+-  it never replaces independent final review. Never dispatch duplicate reviewers.
++- `lightweight`: no mandatory formal planner, implementer, or independent
++  reviewer. Keep scheduling host-native — the main session, or a bounded worker
++  the host prefers — and run one focused check before delivery. Do not spend the
++  review budget on this profile.
++- `standard`: implement on the host's preferred writer — the main session only
++  when the host has no specialist policy. A bounded slice may go to a single
++  worker when fresh context or parallelism genuinely helps; the approved scope
++  already covers it. The default sole reviewer stays one independent
++  `workflow-reviewer` through `review-implementation`; delegation never replaces
++  independent final review. Never dispatch duplicate reviewers.
+ - `critical`: use the full gated path when the change touches auth, secrets,
+   money, persistent data, migrations, public contracts, destructive operations,
+   or a cross-layer release boundary.
+@@ -218,7 +243,8 @@ Phase routing:
+   main session. Only dispatch `workflow-planner` if the task is assessed as
+   `critical` or the user explicitly requests planning delegation.
+ - `planning` with accepted requirements but no reviewed solution:
+-  - For `lightweight` or `standard`: invoke `plan-solution` in the main session.
++  - For `lightweight` or `standard`: run `plan-solution`; use the main session or
++    the host's planning specialist, whichever the host prefers.
+   - For `critical`: in OMP, dispatch `workflow-planner` on `@plan`. In Pi, use
+     the blocking `subagent` tool with `agentScope: "both"` when available;
+     otherwise keep planning in the main session and disclose the lack of fresh
+@@ -230,14 +256,17 @@ Phase routing:
+   is not permission to start implicitly; record the approval in `tasks.md` or the
+   change's verification context.
+ - `in_progress`: read OpenSpec `proposal.md`, the relevant `specs/`, `design.md`,
+-  `tasks.md`, and `artifacts/context.md` before editing. Use ECC `tdd-workflow`
+-  or Matt `tdd` for behavior changes and regression fixes.
+-  - For `lightweight` or `standard`: implement in the main session. Only use a
+-    single bounded worker if explicitly justified by the need for fresh
+-    context.
++  `tasks.md`, and `artifacts/context.md` before editing. Prefer Matt `tdd` for
++  behavior changes and regression fixes; ECC `tdd-workflow` is an optional named
++  alternative when installed, never a default dependency.
++  - For `lightweight` or `standard`: implement on the host's preferred writer —
++    the main session when the host has no specialist policy. Within the approved
++    scope you may hand one bounded slice to a single worker when fresh context or
++    parallelism helps; no extra authorization step. Independent slices run as
++    parallel lanes only when they share no write files.
+   - For `critical`: dispatch `workflow-implementer` on `@task` and require it
+-    to read `skill://tdd-workflow` (or `tdd`) before editing. Keep the handoff
+-    inside the declared file boundary.
++    to read `tdd` (or the configured alternative) before editing. Keep the
++    handoff inside the declared file boundary.
+ - `in_progress` with a `tickets/` directory: recompute the frontier (every
+   `blocked_by` ticket is `done`), advance exactly one ticket per writer, and set
+   that ticket's `state: done` only after its verification command has executed
+@@ -246,7 +275,8 @@ Phase routing:
+ - Code changed: complete each slice with targeted checks, not a full review per slice.
+   The main session is the only review scheduler. Follow the Delivery Review Budget
+   in `references/quality-profiles.md`, including persisted rounds on resume.
+-  - For `lightweight`: run one focused check before delivery.
++  - For `lightweight`: run one focused check before delivery, scheduled natively by
++    the host; no formal reviewer.
+   - For `standard` and `critical`: wait until the approved delivery scope is
+     complete and repository checks pass, then dispatch the one full review via
+     `review-implementation` and `workflow-reviewer`. Cover Standards / Spec,
+@@ -277,11 +307,14 @@ Phase routing:
+ 
+ These limits enforce the profile-based routing rules:
+ 
+-- **Prefer the main session for `lightweight` and `standard` implementation.**
+-  Standard and Critical require the single independent reviewer specified in
+-  `references/quality-profiles.md`. Implementation delegation needs explicit
+-  authorization and justification; never spend the review budget on a writer.
+-- Allow at most one live writer and one review/check worker for a task.
++- **Implement on the host's preferred writer — the main session only when the host
++  has no specialist policy.** Standard and Critical require the single
++  independent reviewer specified in `references/quality-profiles.md`. Within an
++  approved scope you may delegate a bounded slice without re-asking; never spend
++  the review budget on a writer.
++- One writer per bounded, non-overlapping slice. Independent lanes may
++  run in parallel when they share no write files; a slice keeps one writer and at
++  most one review/check worker.
+ - Treat a worker as making progress only when it edits a declared file, runs a
+   relevant check, reports a concrete result, or states a reproducible blocker.
+ - If a worker appears stalled, request one status update based on observed state.
+@@ -352,8 +385,8 @@ responsibilities while preserving Pi's native resource and project-trust model:
+   blocking `subagent` tool with `agentScope: "both"`.
+ 
+ The project must be trusted before Pi loads `.pi` extensions, project agents, or
+-project `.agents/skills`. If `subagent` is unavailable, keep planning,
+-implementation dispatch, and review in the main session, run deterministic
++project `.agents/skills`. If `subagent` is unavailable, keep planning and review
++in the main session, implement directly, run deterministic
+ checks, and report that only context/model independence was unavailable.
+ 
+ ## Claude Code Roles
+@@ -373,6 +406,49 @@ use Sonnet and planning/review should use Opus. If the main session is already
+ Opus, a subagent still provides fresh context but not a different model. Never
+ describe fresh context alone as cross-model independence.
+ 
++## OpenCode Roles
++
++OpenCode runs exactly one orchestrator: the Slim Orchestrator session. It is the
++sole orchestrator and scheduler: it owns discovery, confirmation, risk assessment,
++the writer budget, and the single review budget. Never introduce a second orchestrator, a
++second reviewer pass, or a nested dispatch chain to "cover" more work.
++
++The orchestrator delegates through OpenCode's native specialists:
++
++- `explorer` for bounded read-only investigation the main session would otherwise
++  do itself (the dispatch contract still requires an inlined context package).
++- `designer` for UI, layout, and visual-hierarchy decisions.
++- `fixer` for bounded implementation of an approved slice.
++- `oracle` for a second opinion on a material design or correctness uncertainty.
++
++Formal slices that need this repository's own procedures still use
++`workflow-planner`, `workflow-implementer`, and `workflow-reviewer`; `workflow`
++agents are for strict formal slices and the single independent review, not a
++parallel orchestrator. Review remains one shared review budget from
++`references/quality-profiles.md`, whoever the client schedules.
++
++For OpenCode specifically, Slim owns the model-bearing dispatch boundary. Route
++formal implementation slices through Slim `fixer` and the one independent
++formal review through Slim `oracle`; the active OMO-Slim preset supplies their
++models. Include the repository procedure and the bounded OpenSpec handoff in
++each specialist prompt. The model-free native workflow agents remain available
++for explicit/manual use, but parent-model inheritance is not evidence that
++Slim's role model was used. Never copy a model ID from
++`oh-my-opencode-slim.json` into these templates. If a role cannot be invoked or
++its effective model cannot be observed, record `UNVERIFIED` and state that a
++direct native agent inherits the parent session model instead.
++
++## Adapter Capabilities And Ownership
++
++The six canonical skills under `skills/` are the shared, installer-managed
++source; adapters add managed links or native discovery on top and never fork the
++bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
++`sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
++can differ, and OMP roles resolve through the user's `modelRoles`. Codex shares
++the skills directory, and subagent capability there is claimed only after
++independent verification for that client version — no adapter may promise
++independent review when the client cannot provide it; report `UNVERIFIED` instead.
++
+ ## Precedence
+ 
+ Resolve conflicts in this order:
+diff --git a/skills/run-engineering-workflow/references/quality-profiles.md b/skills/run-engineering-workflow/references/quality-profiles.md
+index 93266f6..ff15969 100644
+--- a/skills/run-engineering-workflow/references/quality-profiles.md
++++ b/skills/run-engineering-workflow/references/quality-profiles.md
+@@ -1,32 +1,52 @@
+ # Quality Profiles
+ 
+-This is the single source of review budgets for every workflow entry point.
++This file is the shared quality contract: it owns acceptance criteria, evidence
++requirements, risk profiles and the review budget for every workflow entry point.
++It does not own which agent runs, which model serves a role, or which tools a
++client exposes — the host owns scheduling, model choice and tool availability.
+ Risk adds relevant checks, never duplicate final reviewers or permission to skip
+ an available check that directly proves changed behavior.
+ 
+ ## Simple Work Fast Path
+ 
+ This is the single source of eligibility for work without an OpenSpec change.
+-Use it only when **all** conditions hold: the request is clear, non-behavioral,
+-local and low-risk; it can finish in the same main session with no formal plan,
+-handoff or delegation; the user has not explicitly requested OpenSpec and is not
+-continuing a selected change; no stricter project record rule applies.
+-Examples: typo/copy/formatting fixes and local configuration or code cleanup
+-proven not to alter behavior. File count or the word "simple" is not sufficient.
+-
+-Behavior includes workflow/agent instructions, not only executable code.
+-Behavior changes, bug fixes and refactors remain Standard or Critical. Security,
+-authentication/authorization, money, secrets, persistent data, migrations, public
+-contracts, dependency changes and destructive operations are never fast-path work.
+-Ambiguous scope must be resolved before eligibility is claimed. CLI errors or
+-failures do not qualify otherwise ineligible work for this path.
++Use it only when **all** conditions hold: the request is clear, local and
++low-risk, and it does not need a formal continuation or an explicit durable
++handoff; the user has not explicitly requested OpenSpec and is not continuing a
++selected change; no stricter project record rule applies.
++
++Two work shapes qualify:
++
++- Non-behavioral edits: typo/copy/formatting fixes, local configuration, or code
++  cleanup proven not to alter behavior.
++- A small behavior fix confined to a bounded seam, where the change is clearly
++  scoped, the affected caller graph is visible, and a regression check proves the
++  fixed behavior. Keep the fix and its regression test in the same change.
++
++File count is never sufficient, and it never disqualifies either: a one-line
++change can be high risk and a five-file change can be trivial. Behavior includes
++workflow/agent instructions, not only executable code. A behavior fix that needs
++a migration, a public contract change, or a design decision is formal work.
++
++Escalate to the formal branch — regardless of how small the diff is — when the
++work touches authentication/authorization, money, secrets, persistent data,
++migrations, public contracts, dependencies or destructive operations, or when
++risk is unknown or cannot be bounded. Behavior changes that fit none of the two
++shapes above, and all refactors, remain Standard or Critical. Ambiguous scope must
++be resolved before eligibility is claimed. CLI errors or failures do not qualify
++otherwise ineligible work for this path.
++
++Fast-path work needs a meaningful regression check for any behavior change, and
++no formal record: report the check in the conversation. Absence of a record is not
++absence of evidence.
+ 
+ - Decide before discovery: an existing `openspec/` directory or unrelated changes
+   do not require task matching, CLI access or initialization for eligible work.
+-- State the fast-path scope briefly, then execute in the main session without a
+-  create/reuse confirmation. Skip formal clarification/planning, dispatch and
+-  default independent review; do not create or update OpenSpec, `.workflow/`,
+-  `.trellis/`, or replacement task/status records, including retroactive artifacts.
++- State the fast-path scope briefly, then execute without a create/reuse
++  confirmation, on the main session or the host's preferred bounded worker. Skip
++  formal clarification/planning dispatch and default independent review; do not
++  create or update OpenSpec, `.workflow/`, `.trellis/`, or replacement task/status
++  records, including retroactive artifacts.
+ - Inspect the relevant diff and run the smallest relevant checks required by the
+   project. Report actual changes, commands/results, `NOT RUN` items and risks in
+   the conversation. A failed/unavailable check is not a verified success or an
+@@ -37,28 +57,52 @@ failures do not qualify otherwise ineligible work for this path.
+   Do not auto-create a record or discard edits during escalation. A selected
+   change continuation keeps its existing confirmation and review history.
+ 
++## Change Completeness
++
++A lazy solution is lazy about code, never about the change. Before calling a change
++complete, list every place it must reach: callers, tests, fixtures, config, and
++exports. A shortcut that leaves a caller, fixture or exported signature broken is
++unfinished work, not a smaller change.
++
++- Keep validation and error paths when you move or merge code; deletion is not a
++  simplification when it removes a trust boundary or failure handling.
++- Non-trivial new logic (a branch, a loop, a parser, money or security handling)
++  leaves one small test or assert-based self-check behind. Trivial edits need none.
++- Ponytail supplies this lens; it never lowers correctness, security,
++  accessibility or required verification.
++
+ ## Lightweight
+ 
+ Use only for non-behavioral documentation, local configuration, or isolated
+ low-risk changes. Reclassify behavior changes as Standard or Critical.
+ 
+-- Keep work in the main session: no default independent reviewer or dispatch.
++- No mandatory formal planner, implementer, or independent reviewer. Keep
++  scheduling host-native: the main session, or a bounded worker the host prefers.
+ - Review scope and `git diff`, then run the smallest relevant runnable check.
+ 
+ ## Standard
+ 
+ Use for normal features, bug fixes, and refactors.
+ 
+-- Implement in the main session and capture RED/GREEN evidence.
++- Implement on the host's preferred writer — the main session only when the host
++  has no specialist policy — and capture RED/GREEN evidence.
+ - Run targeted tests, relevant lint, typecheck, and build.
++- Prefer Matt `tdd` for behavior changes and regression fixes. ECC
++  `tdd-workflow` is an optional named alternative when it is installed and the
++  user or project chooses it; it is never a default dependency, and its absence
++  changes nothing here.
+ - Use exactly one independent `workflow-reviewer` in a fresh context, through
+   `review-implementation`, for the complete relevant workspace. It reports both
+   Standards and Spec, plus correctness, security, tests, and complexity.
+ - Do not run both by default: `review-implementation` is the review procedure,
+   not another review added after `workflow-reviewer`.
+-- The reviewer is the default sole worker. Any implementation delegation needs
+-  explicit justification and user authorization; it never removes independent
+-  final review. Apply the Delivery Review Budget below across all entry points.
++- Inside an already approved scope, delegate with the host's native mechanism
++  (subagent, task, or none) when fresh context or parallelism genuinely helps.
++  The scope approval covers proportionate delegation; re-ask only when the scope,
++  risk, or the reviewer's independence materially changes. Delegation never
++  removes independent final review. One writer per bounded, non-overlapping slice;
++  independent lanes may run in parallel only when they share no write files. Apply
++  the Delivery Review Budget below across all entry points.
+ - If independent review is unavailable, record `UNVERIFIED` and hand off the
+   gap; do not claim normal delivery completion or `REVIEW_STATUS: CLEAN`.
+ 
+@@ -77,8 +121,8 @@ migrations, public contracts, or destructive operations.
+ ## Delivery Review Budget
+ 
+ The main router is the only review scheduler. For each approved delivery scope,
+-allow exactly one full review and at most one focused follow-up. Lightweight
+-keeps its main-session check without default independent review. Standard and
++allow exactly one full review and at most one focused follow-up. Lightweight keeps
++its focused check without default independent review. Standard and
+ Critical use `workflow-reviewer` only; do not append `code-reviewer`, a generic
+ reviewer, native Matt `code-review`, or nested review dispatch by default.
+ 
+@@ -90,7 +134,7 @@ reviewer, native Matt `code-review`, or nested review dispatch by default.
+   the gate. Optional simplification and preference suggestions are non-blocking;
+   they do not trigger repairs or another review by default. `CLEAN` means no
+   blocking findings with required coverage/evidence, not no suggestions at all.
+-- Batch blocking repairs in the main session and rerun affected checks. Use
++- Batch blocking repairs on the implementer side and rerun affected checks. Use
+   `Review mode: focused` for original blocking findings, the repair diff, and
+   directly affected paths only, preferably in the original reviewer context.
+   Do not solicit a new whole-scope optimization list during this follow-up.
+diff --git a/skills/run-engineering-workflow/references/workflow-governance.md b/skills/run-engineering-workflow/references/workflow-governance.md
+index 3aef92e..bf00a47 100644
+--- a/skills/run-engineering-workflow/references/workflow-governance.md
++++ b/skills/run-engineering-workflow/references/workflow-governance.md
+@@ -4,11 +4,27 @@ Read this reference when routing a task, resolving conflicts between
+ integrations, or deciding where durable information belongs.
+ 
+ Before discovery, apply [Simple Work Fast Path](quality-profiles.md#simple-work-fast-path).
+-Eligible work has no task record: execute/check in the main session and report in
+-conversation. Formal work retains the discovery and confirmation contract below;
++Eligible work has no task record: execute/check host-natively — main session or the
++host's preferred bounded worker — and report in conversation. Formal work retains
++the discovery and confirmation contract below;
+ selected change continuations keep their still-valid confirmation. Plan/finish
+ must not turn an eligible fast request into mandatory artifacts.
+ 
++## Host And Workflow Boundary
++
++`quality-profiles.md` is the shared quality contract and owns delivery rules:
++acceptance criteria, evidence requirements, risk profiles and the review budget.
++The host owns scheduling, model choice, tool availability and how a delegated
++role is spawned. Adapter notes below say which roles exist and how to reach
++them; they never restate or relax delivery rules.
++
++An approved plan or an already authorized scope covers ordinary dispatch inside
++that scope, including creating or reusing a subagent. Re-ask only when scope,
++risk, or the reviewer's independence materially changes.
++
++One writer per bounded, non-overlapping slice. Independent lanes may run in
++parallel where they share no write files; they still share the one review budget.
++
+ ## Record Layout
+ 
+ For formal work, OpenSpec is the canonical record system. It owns requirements,
+@@ -91,9 +107,15 @@ contracts, and necessary correctness invariants — not hypothetical future need
+ - Design headings are prompts, not requirements. Omit inapplicable sections or
+   briefly say why; never build migration, monitoring, rollout, or recovery
+   systems just to fill a template.
++- A change is complete only when it reaches every place it must: callers, tests,
++  fixtures, config, and exports. Keep validation and error paths when moving or
++  merging code, and leave one small test or assert-based self-check for
++  non-trivial new logic. Trivial edits need none.
+ 
+ Consult Matt `codebase-design` for real boundaries and Ponytail for simplification
+ when available. This rule applies even when optional upstream skills are absent.
++Matt `tdd` stays the default behavior-change method; ECC `tdd-workflow` is an
++optional named alternative, not a default dependency.
+ 
+ 
+ ## Tickets And Decomposition
+@@ -103,13 +125,14 @@ Three split levels; use the smallest one that fits how the work gets executed:
+ | Level | Use when | Location |
+ | --- | --- | --- |
+ | Slice | Same session, shared module, single writer | OpenSpec `tasks.md` |
+-| Ticket | Independently accepted, cross-session, or multiple writers | OpenSpec task item plus bounded artifact |
++| Ticket | Independently accepted, cross-session, or parallel non-overlapping lanes | OpenSpec task item plus bounded artifact |
+ | Change | Different release unit or independent outcome | Separate OpenSpec change |
+ 
+-OpenSpec `tasks.md` is the execution frontier. One change, one live writer unless
+-an explicit ticket handoff says otherwise. A task is complete only with executed
+-verification evidence in `artifacts/verification.md` (or the repository's
+-approved equivalent). Do not recreate `.workflow/tickets/` for new work.
++OpenSpec `tasks.md` is the execution frontier. Each bounded, non-overlapping slice
++has one writer; independent lanes may run in parallel when their file sets do not
++overlap and the handoff names each lane's write boundary. A task is complete only
++with executed verification evidence in `artifacts/verification.md` (or the
++repository's approved equivalent). Do not recreate `.workflow/tickets/` for new work.
+ 
+ ## Acceptance And Archival
+ 
+diff --git a/tests/contracts.test.js b/tests/contracts.test.js
+index e0531ff..f1fb470 100644
+--- a/tests/contracts.test.js
++++ b/tests/contracts.test.js
+@@ -27,12 +27,18 @@ test("simple work eligibility is centralized without weakening formal gates", ()
+   const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
+   assert.ok(fast, "missing shared simple-work eligibility");
+   assert.match(fast, /all.*conditions/is);
+-  assert.match(fast, /non-behavioral.*local.*low-risk/is);
+-  assert.match(fast, /same.*session.*no.*(?:handoff|delegation)/is);
+-  assert.match(fast, /explicit.*OpenSpec.*selected change/is);
++  assert.match(fast, /local.*low-risk/is);
++  assert.match(fast, /bounded seam/i);
++  assert.match(fast, /regression check/i);
++  assert.match(fast, /no formal record/i);
++  assert.match(fast, /not continuing a\s+selected change/is);
+   assert.match(fast, /stricter project.*(?:record|rule)/is);
+-  assert.match(fast, /behavior.*Standard.*Critical/is);
++  assert.match(
++    fast,
++    /authentication.*money.*secrets.*persistent data.*migrations.*public contracts/is,
++  );
+   assert.match(fast, /dependenc/i);
++  assert.match(fast, /file count.*never sufficient/is);
+   assert.match(fast, /CLI.*(?:error|failure).*not.*(?:qualif|eligib)/is);
+ });
+ 
+@@ -102,7 +108,9 @@ test("simple work routing fixtures cover eligibility and explicit formal intent"
+   for (const [name, stage] of [
+     ["simple-docs-with-existing-changes", "fast-execute"],
+     ["simple-work-without-cli", "fast-execute"],
++    ["small-behavior-fix-bounded-seam", "fast-execute"],
+     ["small-behavior-fix-requires-change", "discover-and-confirm"],
++    ["high-risk-small-diff-requires-formal", "discover-and-confirm"],
+     ["strict-project-requires-change", "discover-and-confirm"],
+     ["selected-change-small-edit", "resume-selected-change"],
+     ["explicit-openspec-small-edit", "discover-and-confirm"],
+@@ -142,7 +150,7 @@ test("fast work retains verification and stops before expanding its scope", () =
+   assert.match(fast, /failed.*not.*success.*CLEAN/is);
+   assert.match(fast, /stop.*implementation.*Preserve.*diffs.*checks.*formal.*confirmation/is);
+   assert.match(fast, /do not auto-create.*discard edits/is);
+-  assert.match(fast, /replacement task\/status records.*retroactive artifacts/is);
++  assert.match(fast, /replacement task\/status\s+records.*retroactive artifacts/is);
+   const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+   for (const [name, stage] of [
+     ["fast-scope-expands", "stop-and-confirm-change"],
+@@ -161,10 +169,12 @@ test("review budget is centralized and consistent across workflow entry points",
+   const lightweight = profiles.split("## Lightweight")[1].split("## Standard")[0];
+   const standard = profiles.split("## Standard")[1].split("## Critical")[0];
+   const critical = profiles.split("## Critical")[1];
+-  assert.match(lightweight, /no default independent reviewer/i);
++  assert.match(lightweight, /no mandatory formal planner.*independent reviewer/is);
+   assert.match(standard, /exactly one independent.*workflow-reviewer/is);
+   assert.match(standard, /Standards.*Spec/s);
+-  assert.match(standard, /implementation delegation.*explicit.*authorization/is);
++  assert.match(standard, /already approved scope.*delegat/is);
++  assert.match(standard, /re-ask only when/is);
++  assert.doesNotMatch(standard, /per-?delegation authorization|always ask before delegating/i);
+   assert.match(critical, /no additional\s+final reviewer/i);
+   for (const file of [
+     "skills/run-engineering-workflow/SKILL.md",
+@@ -178,11 +188,222 @@ test("review budget is centralized and consistent across workflow entry points",
+     assert.doesNotMatch(body, /then Matt `code-review`|then `code-review`, then|either Matt `code-review`|先运行仓库自身检查与 Matt `code-review`|`code-review` 与独立 review 二选一|code-review \+ 仓库检查/, `${file}: duplicate or optional default review`);
+   }
+   const command = read("commands/engineering-workflow.md");
+-  assert.match(command, /lightweight.*no.*dispatch/is);
++  assert.match(command, /lightweight.*no mandatory formal planner/is);
+   assert.match(command, /standard.*critical.*exactly one/is);
+   assert.match(command, /planning delegation.*explicitly requested/is);
+ });
+ 
++test("shared quality contract owns delivery rules while hosts own scheduling and models", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const governance = read("skills/run-engineering-workflow/references/workflow-governance.md");
++  const architecture = read("ARCHITECTURE.md");
++
++  for (const body of [router, governance, architecture]) {
++    assert.match(body, /shared quality contract|共享交付规则|共享质量契约/i);
++    assert.match(body, /host owns|宿主管理|client owns/i);
++    assert.match(body, /scheduling.*models?.*tools?|调度.*模型.*工具/is);
++  }
++  // The workflow states what it owns and what it delegates to the client.
++  assert.match(router, /## Host And Workflow Boundary/);
++  assert.match(router, /acceptance criteria, evidence(?: requirements)?, risk profiles and\s+the single review budget/i);
++  assert.match(router, /scheduling, model choice, tool\s+availability/i);
++});
++
++test("delegation follows the host's native model inside an already authorized scope", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const command = read("commands/engineering-workflow.md");
++
++  for (const [file, body] of [
++    ["skills/run-engineering-workflow/SKILL.md", router],
++    ["skills/run-engineering-workflow/references/quality-profiles.md", profiles],
++    ["commands/engineering-workflow.md", command],
++  ]) {
++    assert.match(body, /authorized scope|already approved scope/is, file);
++    assert.match(body, /re-ask only|ask again only|only when (?:the )?scope.*(?:materially )?changes/is, file);
++    assert.doesNotMatch(body, /never dispatch (?:a )?subagent|always ask before delegating/i, file);
++  }
++  // One writer per bounded slice still holds, and independence still holds.
++  assert.match(router, /one writer per bounded/i);
++  assert.match(router, /independent lanes/i);
++  assert.match(profiles, /exactly one independent `workflow-reviewer`/);
++  assert.match(profiles, /one writer per bounded, non-overlapping slice/i);
++  assert.doesNotMatch(profiles, /repeat per-delegation authorization/i);
++});
++
++test("OpenCode has one Slim orchestrator and never double-orchestrates or double-reviews", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const architecture = read("ARCHITECTURE.md");
++  const section = router.split("## OpenCode Roles")[1]?.split("\n## ")[0];
++  assert.ok(section, "router is missing an OpenCode adapter section");
++  assert.match(section, /Slim/i);
++  assert.match(section, /sole (?:orchestrator|main orchestrator)/i);
++  for (const role of ["explorer", "designer", "fixer", "oracle"]) {
++    assert.match(section, new RegExp(`\\b${role}\\b`, "i"), `OpenCode section missing ${role}`);
++  }
++  assert.match(section, /workflow-planner|workflow-implementer|workflow-reviewer/);
++  assert.match(section, /implementation.*Slim `fixer`|Slim `fixer`.*implementation/is);
++  assert.match(section, /review.*Slim `oracle`|Slim `oracle`.*review/is);
++  assert.match(section, /UNVERIFIED/);
++  assert.match(section, /never introduce a second orchestrator|no second orchestrator/i);
++  assert.match(section, /one shared review budget/i);
++  assert.match(architecture, /^## OpenCode Roles$/m);
++  assert.match(architecture, /Slim/);
++
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  for (const name of ["openspec-slim-single-orchestrator", "independent-lanes-no-shared-write-files"]) {
++    const entry = cases.find((candidate) => candidate.name === name);
++    assert.ok(entry, `missing OpenCode case: ${name}`);
++    assert.ok(entry.required_behavior, `${name}: missing required_behavior`);
++    assert.ok(entry.forbidden?.length, `${name}: missing negative boundary`);
++  }
++});
++
++test("OpenCode formal work routes through Slim fixer and oracle without static model IDs", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const section = router.split("## OpenCode Roles")[1]?.split("\n## ")[0];
++  assert.ok(section, "router is missing an OpenCode adapter section");
++  // Formal implementation is the fixer role; the single independent review is the oracle role.
++  assert.match(section, /formal implementation[^.;]{0,80}Slim `fixer`/is);
++  assert.match(section, /(?:one|single) independent[^.;]{0,60}review[^.;]{0,60}Slim `oracle`/is);
++  assert.match(section, /active (?:OMO-Slim )?preset/i);
++  // An inherited parent model must never be reported as the role's model.
++  assert.match(section, /inheritance is not evidence|not evidence that Slim/i);
++  assert.match(section, /Never copy a model\s+ID/);
++  assert.match(section, /UNVERIFIED/);
++
++  const command = read("commands/engineering-workflow.md");
++  assert.match(command, /Slim `fixer`/);
++  assert.match(command, /Slim `oracle`/);
++  assert.match(command, /active OMO-Slim preset|当前激活的\s*OMO-Slim\s*preset|preset/i);
++  assert.match(command, /UNVERIFIED/);
++
++  const architecture = read("ARCHITECTURE.md");
++  const archSection = architecture.split("## OpenCode Roles")[1].split("\n## ")[0];
++  assert.match(archSection, /Slim `fixer`/);
++  assert.match(archSection, /Slim `oracle`/);
++  assert.match(archSection, /active OMO-Slim\s+preset/i);
++  assert.match(archSection, /UNVERIFIED/);
++  assert.match(archSection, /parent-model inheritance/i);
++
++  const readme = read("README.md");
++  const readmeSection = readme.split("## OpenCode 工作流")[1].split("\n## ")[0];
++  assert.match(readmeSection, /`fixer`[^\n]{0,40}正式实现|正式实现[^\n]{0,40}`fixer`/s);
++  assert.match(readmeSection, /`oracle`[^\n]{0,40}复核|复核[^\n]{0,40}`oracle`/s);
++  assert.match(readmeSection, /preset/);
++  assert.match(readmeSection, /UNVERIFIED/);
++  assert.match(readmeSection, /不[^\n]{0,40}静态|静态[^\n]{0,40}不/);
++  assert.match(readmeSection, /继承[^\n]{0,30}不等于|继承[^\n]{0,30}不是/);
++
++  // Managed OpenCode agents stay model-free: a preset model ID is user config.
++  for (const file of ["workflow-planner.md", "workflow-implementer.md", "workflow-reviewer.md"]) {
++    const body = read(`.opencode/agents/${file}`);
++    assert.doesNotMatch(body, /^model:/m, `${file}: managed agent must not pin a model`);
++    assert.doesNotMatch(body, /oh-my-opencode-slim\.json/, `${file}: must not read preset model IDs`);
++  }
++  // No adapter document may embed a concrete provider/model pair as a fallback default.
++  for (const file of [
++    "skills/run-engineering-workflow/SKILL.md",
++    "commands/engineering-workflow.md",
++    "ARCHITECTURE.md",
++    "README.md",
++  ]) {
++    const body = read(file);
++    assert.doesNotMatch(body, /magpie\/|openai\/gpt|anthropic\/claude-|google\/gemini/i, file);
++  }
++
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  const unverified = cases.find((entry) => entry.name === "opencode-slim-role-routing-unverified");
++  assert.ok(unverified, "missing unverified role-routing case");
++  assert.equal(unverified.required_status, "UNVERIFIED");
++  assert.equal(unverified.expected_stage, "report-unverified-role-routing");
++  assert.ok(unverified.forbidden?.length, "unverified case: missing negative boundary");
++});
++
++test("harness adapters declare only verified capabilities and keep models user-owned", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const architecture = read("ARCHITECTURE.md");
++  const readme = read("README.md");
++
++  for (const [file, body] of [
++    ["skills/run-engineering-workflow/SKILL.md", router],
++    ["ARCHITECTURE.md", architecture],
++    ["README.md", readme],
++  ]) {
++    assert.match(body, /six canonical skills|六个 canonical skill|六个规范技能/is, file);
++    assert.match(body, /managed|受管|共享/is, file);
++    assert.match(body, /models?[^.;]{0,40}user-(?:owned|configured)|模型.*用户(?:所有|配置)/is, file);
++  }
++  assert.match(architecture, /Claude.*model labels|`opus`.*remap/is);
++  assert.match(architecture, /Pi.*overrides?.*differ/is);
++  assert.match(architecture, /Codex.*shared skills?/is);
++  assert.match(architecture, /subagent.*independent(?:ly)? (?:verif\w+)/is);
++  assert.match(architecture, /not claim|never claim|no false promise|no adapter may promise/i);
++  assert.doesNotMatch(router, /Codex (?:supports|provides) native subagents/i);
++});
++
++test("OpenCode appears in install and support enumerations", () => {
++  const readme = read("README.md");
++  const agents = read("AGENTS.md");
++  const architecture = read("ARCHITECTURE.md");
++
++  assert.match(readme, /-Harness OpenCode/);
++  assert.match(readme, /OPENCODE_CONFIG_DIR/);
++  assert.match(readme, /Codex、OMP、Pi 和\s*OpenCode\s*原生发现/);
++  assert.match(readme, /`All`[^。]{0,120}OpenCode/s);
++  assert.match(readme, /OpenCode 只在启动时加载/);
++  assert.match(agents, /\.opencode\//);
++  assert.match(agents, /`All` for Codex[\s\S]{0,120}OpenCode/);
++  assert.match(agents, /OpenCode agent[\s\S]{0,80}model/);
++  assert.match(architecture, /OpenCode discover/);
++  assert.match(architecture, /Pi and OpenCode agents omit `model`/);
++  assert.match(architecture, /Slim `fixer`.*Slim `oracle`/s);
++});
++
++test("Ponytail 5 guidance keeps scope complete and Matt TDD as the default method", () => {
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const governance = read("skills/run-engineering-workflow/references/workflow-governance.md");
++
++  for (const body of [profiles, governance]) {
++    assert.match(body, /callers.*fixtures.*config.*exports/is);
++    assert.match(body, /validation.*error (?:handling|paths)/is);
++    assert.match(body, /self-check/i);
++  }
++  assert.match(profiles, /Matt `tdd`/);
++  assert.match(profiles, /ECC.*optional.*named alternative|named alternative.*ECC/is);
++  assert.match(profiles, /not (?:a )?default dependency|never a default dependency/i);
++});
++
++test("fast-path behavior fixes require a bounded seam and a regression check", () => {
++  const profiles = read("skills/run-engineering-workflow/references/quality-profiles.md");
++  const fast = profiles.split("## Simple Work Fast Path")[1]?.split("## Lightweight")[0];
++  assert.match(fast, /small behavior (?:fix|change)/i);
++  assert.match(fast, /bounded seam/i);
++  assert.match(fast, /regression (?:check|test)/i);
++  assert.match(fast, /escalat/i);
++  assert.match(fast, /auth|authentication/i);
++  assert.match(fast, /migrations/i);
++  assert.match(fast, /destructive/i);
++  assert.match(fast, /unknown risk|risk is unknown/i);
++  assert.match(fast, /file count.*never sufficient/i);
++  // High risk never qualifies, however small the diff.
++  assert.match(fast, /regardless of how small/i);
++
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  for (const name of [
++    "small-behavior-fix-bounded-seam",
++    "high-risk-small-diff-requires-formal",
++    "fast-path-behavior-fix-regression",
++    "openspec-slim-single-orchestrator",
++    "codex-shared-skills-no-native-agents",
++  ]) {
++    const entry = cases.find((candidate) => candidate.name === name);
++    assert.ok(entry, `missing behavior case for ${name}`);
++    assert.ok(entry.expected_stage, `${name}: missing expected_stage`);
++    assert.ok(entry.forbidden?.length, `${name}: missing negative boundary`);
++  }
++});
++
+ test("workspace review and finish reuse a complete independent result", () => {
+   const review = read("skills/review-implementation/SKILL.md");
+   const finish = read("skills/finish-with-evidence/SKILL.md");
+@@ -408,10 +629,12 @@ test("router selects OpenSpec and keeps legacy recovery read-only", () => {
+   assert.match(router, /workflow-planner/);
+   assert.match(router, /workflow-implementer/);
+   assert.match(router, /workflow-reviewer/);
+-  assert.match(router, /lightweight.*main session/s);
+-  assert.match(router, /standard.*main session/s);
++  assert.match(router, /lightweight.*host-native/s);
++  assert.match(router, /standard.*host's preferred writer/s);
++  assert.match(router, /lightweight.*no mandatory formal planner/s);
+   assert.match(router, /critical.*full gated path/s);
+-  assert.match(router, /at most one live writer/);
++  assert.match(router, /one writer per bounded/i);
++  assert.match(router, /independent lanes.*parallel/is);
+   assert.doesNotMatch(router, /After (?:10|15) minutes without progress/);
+   assert.match(router, /Do not interrupt or terminate a worker solely because a duration threshold/);
+   assert.match(router, /stop only on explicit failure, cancellation, or user instruction/);
+@@ -886,7 +1109,7 @@ test("upstream manifest pins auditable revisions and retires Trellis", () => {
+ 
+   assert.equal(
+     manifest.sources["mattpocock-skills"].revision,
+-    "49dd158d1076134a641b33efb035946536778336",
++    "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+   );
+   assert.equal(manifest.sources["mattpocock-skills"].version_hint, "1.3.1");
+   for (const source of Object.values(manifest.sources)) {
+diff --git a/tests/test_shared_installation.py b/tests/test_shared_installation.py
+index 6ccd73d..ecacd03 100644
+--- a/tests/test_shared_installation.py
++++ b/tests/test_shared_installation.py
+@@ -1,4 +1,5 @@
+ """Exercise the public installer/doctor against disposable user and project roots."""
++import json
+ import os
+ import shutil
+ import subprocess
+@@ -24,7 +25,7 @@ class SharedInstallationTests(unittest.TestCase):
+         cls.sources = tempfile.TemporaryDirectory(prefix="workflow source ")
+         base = Path(cls.sources.name)
+         cls.repo = base / "workflow"
+-        for name in ("skills", "agents", ".omp/agents", ".pi/agents", "commands", "config", "scripts"):
++        for name in ("skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"):
+             shutil.copytree(REPO / name, cls.repo / name, ignore=shutil.ignore_patterns("__pycache__"))
+         # The external gate is owned by another repo. Its content is not this seam.
+         gate = base / "omp-extensions" / "workflow-review-gate"
+@@ -48,6 +49,7 @@ class SharedInstallationTests(unittest.TestCase):
+         self.project.mkdir()
+         self.env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home))
+         self.env.pop("PI_CODING_AGENT_DIR", None)
++        self.env.pop("OPENCODE_CONFIG_DIR", None)
+         self.shared = self.home / ".agents" / "skills"
+ 
+     def tearDown(self):
+@@ -104,6 +106,7 @@ class SharedInstallationTests(unittest.TestCase):
+         with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.object(Path, "home", return_value=self.home), \
+              mock.patch.object(doctor, "parse_args", return_value=args), \
+              mock.patch.object(doctor, "executable_exists"), mock.patch.object(doctor, "check_review_gate"), \
++             mock.patch.object(doctor, "repo_source_root", return_value=self.repo), \
+              redirect_stdout(output), redirect_stderr(output):
+             code = doctor.main()
+         return code, output.getvalue()
+@@ -115,14 +118,14 @@ class SharedInstallationTests(unittest.TestCase):
+         # Stub discovery only; doctor does not launch these harnesses.
+         bins = self.base / "bin"
+         bins.mkdir()
+-        for name in ("omp", "pi", "claude"):
++        for name in ("omp", "pi", "claude", "opencode"):
+             path = bins / (name + ".cmd" if os.name == "nt" else name)
+             path.write_text("@exit /b 0\n" if os.name == "nt" else "#!/bin/sh\nexit 0\n", encoding="utf-8")
+             path.chmod(0o755)
+         env = dict(self.env, PATH=str(bins) + os.pathsep + self.env["PATH"])
+         result = subprocess.run([sys.executable, str(self.repo / "scripts/doctor.py"), "--scope", "Project",
+                                  "--harness", "All", "--project-path", str(self.project)],
+-                                env=env, capture_output=True, text=True, timeout=30)
++                                env=env, capture_output=True, text=True, timeout=120)
+         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+         self.assertIn("Workflow installation is healthy.", result.stdout)
+ 
+@@ -311,6 +314,157 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertTrue((self.home / ".omp/agent/agents/workflow-planner.md").is_file())
+         self.assertFalse((self.home / ".claude").exists())
+         self.assertFalse((self.home / ".pi").exists())
++        self.assertFalse((self.home / ".config/opencode").exists())
++        self.assertIn("Codex adapter installs the shared skills only", self.install().stdout)
++
++    def opencode_root(self):
++        return self.home / ".config/opencode"
++
++    def test_opencode_installs_agents_commands_and_migrates_stale_skills(self):
++        stale = self.opencode_root() / "skills" / "plan-solution"
++        stale.mkdir(parents=True)
++        (stale / "SKILL.md").write_text("stale copy", encoding="utf-8")
++        (stale / "custom.txt").write_text("keep me", encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        self.assert_shared()
++        for name in doctor.AGENTS:
++            self.assertTrue((self.opencode_root() / "agents" / f"{name}.md").is_file())
++        for name in ("engineering-workflow", "archive-task"):
++            self.assertEqual(
++                (self.opencode_root() / "commands" / f"{name}.md").read_bytes(),
++                (self.repo / "commands" / f"{name}.md").read_bytes(),
++            )
++        self.assertFalse(stale.exists())
++        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("custom.txt"))
++        self.assertEqual([p.read_text(encoding="utf-8") for p in backups], ["keep me"])
++        # No OpenCode-owned skill copy remains; discovery uses ~/.agents/skills.
++        for name in doctor.SKILLS:
++            self.assertFalse((self.opencode_root() / "skills" / name).exists())
++        self.assertFalse((self.home / ".claude").exists())
++        self.assertFalse((self.home / ".pi").exists())
++
++    def test_opencode_install_is_idempotent_and_preserves_user_model_settings(self):
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        config = self.opencode_root() / "opencode.json"
++        config.write_text('{"model": "user/owned"}\n', encoding="utf-8")
++        agents = self.opencode_root() / "agents" / "workflow-planner.md"
++        before = agents.read_bytes()
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        self.assertEqual(agents.read_bytes(), before)
++        self.assertEqual(config.read_text(encoding="utf-8"), '{"model": "user/owned"}\n')
++        self.assertFalse((self.home / ".agents/backups/my-engineering-workflow").exists())
++
++    def test_local_opencode_agent_edit_is_backed_up_before_refresh(self):
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        agents = self.opencode_root() / "agents" / "workflow-reviewer.md"
++        agents.write_text("local permission tweak", encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        self.assertEqual(agents.read_bytes(), (self.repo / ".opencode/agents/workflow-reviewer.md").read_bytes())
++        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-reviewer.md"))
++        self.assertEqual([p.read_text(encoding="utf-8") for p in backups], ["local permission tweak"])
++
++    def test_opencode_agent_templates_omit_model_and_deny_nested_dispatch(self):
++        for name in doctor.AGENTS:
++            text = (self.repo / ".opencode/agents" / f"{name}.md").read_text(encoding="utf-8")
++            self.assertNotIn("model:", text, name)
++            self.assertIn("task: deny", text, name)
++            self.assertIn("mode: subagent", text, name)
++        reviewer = (self.repo / ".opencode/agents/workflow-reviewer.md").read_text(encoding="utf-8")
++        self.assertIn("edit: deny", reviewer)
++        self.assertIn("bash: deny", reviewer)
++
++    def test_doctor_reports_missing_opencode_adapter_and_drift(self):
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        code, output = self.diagnose("OpenCode")
++        self.assertEqual(code, 0, output)
++        (self.opencode_root() / "commands" / "archive-task.md").unlink()
++        (self.opencode_root() / "agents" / "workflow-planner.md").write_text("drifted", encoding="utf-8")
++        code, output = self.diagnose("OpenCode")
++        self.assertEqual(code, 1, output)
++        self.assertIn("Missing OpenCode command: archive-task", output)
++        self.assertIn("OpenCode agent file differs from the shipped template", output)
++
++    def test_doctor_flags_pi_agent_model_and_leaves_overrides_untouched(self):
++        self.install("-Scope", "User", "-Harness", "Pi")
++        settings = self.home / ".pi/agent/settings.json"
++        original = {
++            "defaultModel": "magpie/auto/gpt-6.1-sol",
++            "subagents": {"agentOverrides": {
++                "workflow-planner": {"model": "magpie/auto/gpt-6.1-sol", "thinking": "xhigh"},
++                "workflow-reviewer": {"model": "magpie/es-grok/grok-4.7"},
++            }},
++        }
++        settings.write_text(json.dumps(original), encoding="utf-8")
++        agent = self.home / ".pi/agent/agents/workflow-planner.md"
++        agent.write_text(agent.read_text(encoding="utf-8").replace(
++            "description:", "model: opus\ndescription:"), encoding="utf-8")
++        code, output = self.diagnose("Pi")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Pi agentOverrides are user-owned and left untouched", output)
++        self.assertIn("workflow-planner, workflow-reviewer", output)
++        self.assertIn("Pi agent declares its own model (opus)", output)
++        self.assertEqual(json.loads(settings.read_text(encoding="utf-8")), original)
++
++    def test_doctor_warns_on_claude_alias_collapse_without_leaking_credentials(self):
++        self.install("-Scope", "User", "-Harness", "Claude")
++        settings = self.home / ".claude/settings.json"
++        settings.write_text(json.dumps({
++            "env": {
++                "ANTHROPIC_DEFAULT_OPUS_MODEL": "es-claude/claude-sonnet-5-5",
++                "ANTHROPIC_DEFAULT_SONNET_MODEL": "es-claude/claude-sonnet-5-5",
++                "ANTHROPIC_AUTH_TOKEN": "super-secret-token",
++            }
++        }), encoding="utf-8")
++        code, output = self.diagnose("Claude")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Claude Opus and Sonnet aliases both resolve to es-claude/claude-sonnet-5-5", output)
++        self.assertIn("leaves settings.json untouched", output)
++        self.assertNotIn("super-secret-token", output)
++        self.assertEqual(json.loads(settings.read_text(encoding="utf-8"))["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"],
++                         "es-claude/claude-sonnet-5-5")
++
++    def test_codex_backs_up_only_trellis_signature_agents(self):
++        codex_agents = self.home / ".codex/agents"
++        codex_agents.mkdir(parents=True)
++        trellis = codex_agents / "workflow-planner.md"
++        trellis.write_text("---\nname: workflow-planner\n---\n\n# Planner\n\n"
++                           "Read the active Trellis task at `.trellis/tasks/<id>/`.\n", encoding="utf-8")
++        foreign = codex_agents / "workflow-reviewer.md"
++        foreign.write_text("---\nname: workflow-reviewer\n---\n\nMy own reviewer.\n", encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "Codex")
++        self.assertFalse(trellis.exists())
++        self.assertEqual(foreign.read_text(encoding="utf-8"), "---\nname: workflow-reviewer\n---\n\nMy own reviewer.\n")
++        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.md"))
++        self.assertEqual(len(backups), 1)
++        self.assertIn(".trellis/tasks/", backups[0].read_text(encoding="utf-8"))
++
++    def test_doctor_reports_codex_skill_only_capability_and_stale_agents(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Codex adapter installs the shared skills only", output)
++        self.assertIn("do not establish native Codex runtime support", output)
++        self.assertIn("independent review is UNVERIFIED", output)
++        self.assertNotIn("run in the main Codex session", output)
++        stale = self.home / ".codex/agents/workflow-reviewer.md"
++        stale.parent.mkdir(parents=True, exist_ok=True)
++        stale.write_text("---\nname: workflow-reviewer\n---\nSee `.trellis/tasks/<id>/`.\n", encoding="utf-8")
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Stale Trellis-era Codex agent definition remains", output)
++
++    def test_opencode_config_dir_override_targets_custom_root(self):
++        override = self.base / "custom opencode"
++        self.env["OPENCODE_CONFIG_DIR"] = str(override)
++        stale = override / "skills" / "plan-solution"
++        stale.mkdir(parents=True)
++        (stale / "SKILL.md").write_text("stale", encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "OpenCode")
++        self.assert_shared()
++        self.assertFalse(stale.exists())
++        self.assertTrue((override / "agents" / "workflow-planner.md").is_file())
++        self.assertTrue((override / "commands" / "engineering-workflow.md").is_file())
++        self.assertFalse((self.home / ".config/opencode").exists())
+ 
+     def test_agent_directory_override_only_moves_adapters_and_legacy_root(self):
+         override = self.base / "custom agent directory"
+@@ -325,5 +479,36 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertFalse((self.home / ".pi").exists())
+ 
+ 
++    def test_doctor_reports_omp_and_claude_adapter_drift(self):
++        self.install("-Harness", "All")
++        omp_agent = self.home / ".omp/agent/agents/workflow-planner.md"
++        omp_agent.write_text(omp_agent.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
++        claude_agent = self.home / ".claude/agents/workflow-reviewer.md"
++        claude_agent.write_text(claude_agent.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
++        claude_command = self.home / ".claude/commands/engineering-workflow.md"
++        claude_command.write_text(claude_command.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
++        code, output = self.diagnose("All")
++        self.assertEqual(code, 0, output)
++        self.assertIn("OMP agent file differs from the shipped template", output)
++        self.assertIn("Claude agent file differs from the shipped template", output)
++        self.assertIn("Claude command file differs from the shipped template", output)
++
++    def test_doctor_reports_project_agents_skills_as_legacy_for_opencode(self):
++        migrated = self.legacy(self.project / ".agents/skills", "plan-solution")
++        result = self.install(
++            "-Scope", "Project", "-Harness", "OpenCode", "-ProjectPath", str(self.project)
++        )
++        self.assertFalse(migrated.exists())
++        self.assertIn("Backup:", result.stdout)
++        stale = self.project / ".agents/skills/plan-solution"
++        stale.mkdir(parents=True)
++        (stale / "SKILL.md").write_text(
++            "---\nname: plan-solution\ndescription: stale copy\n---\nstale\n", encoding="utf-8"
++        )
++        code, output = self.diagnose("OpenCode", "Project")
++        self.assertNotEqual(code, 0, output)
++        self.assertIn(f"Legacy skill entry may shadow shared installation: {stale}", output)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+### UNTRACKED FILE: .opencode/.gitignore
+--- /dev/null
++++ b/.opencode/.gitignore
++node_modules
++package.json
++package-lock.json
++bun.lock
++.gitignore
+\ No newline at end of file
+### UNTRACKED FILE: .opencode/agents/workflow-implementer.md
+--- /dev/null
++++ b/.opencode/agents/workflow-implementer.md
++---
++description: Implement one approved and explicitly delegated OpenSpec slice test-first.
++mode: subagent
++permission:
++  "*": deny
++  read: allow
++  glob: allow
++  grep: allow
++  list: allow
++  skill: allow
++  task: deny
++  edit: allow
++  bash: allow
++  external_directory:
++    "~/.agents/skills/**": allow
++    "~/.config/opencode/skills/**": allow
++    "~/.claude/skills/**": allow
++---
++
++Load `run-engineering-workflow` with the native skill tool before implementing. If
++it cannot be loaded, stop and report the missing skill instead of guessing its
++content.
++
++# Workflow Implementer
++
++Implement exactly one approved slice from the active OpenSpec change.
++
++1. Require the handoff to carry `Active change:`, `Assigned slice:`, `Phase:`,
++   `Read:`, `Must preserve:`, `May modify:`, `Verification:`, and the slice's
++   context package. The dispatch must include the bounded context package, not
++   only file paths. If missing or the change path is unreadable, return
++   `IMPLEMENT_STATUS: INVALID` and edit nothing.
++2. Read only the named artifacts and the paths under `Read:`, including
++   `artifacts/context.md`. Do not scan `openspec/changes/` to guess the active
++   change. Treat that package as settled ground truth: work from its inlined AC
++   text, `file:line` conclusions, and verification command instead of repeating
++   the survey. Open a file only because you will edit it or a load-bearing
++   conclusion looks stale, and report any mismatch with disk as drift.
++3. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
++   RED/GREEN pair at a time on the assigned slice, using the test seam declared in
++   `tasks.md`.
++4. Stay inside `May modify:`. When the correct change needs a file outside that
++   boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
++5. Run the declared `Verification:` commands and report their real outcomes,
++   including failures.
++6. Return: files changed, RED and GREEN evidence with commands, checks not run,
++   and remaining risk. Finish with `IMPLEMENT_STATUS: COMPLETE`.
++
++Do not change OpenSpec status or the session pointer, edit `proposal.md`, `specs/`,
++or `design.md`, commit, push, archive, approve your own work, or claim the change
++is delivered. The main session integrates, reviews, and records evidence.
+### UNTRACKED FILE: .opencode/agents/workflow-planner.md
+--- /dev/null
++++ b/.opencode/agents/workflow-planner.md
++---
++description: Plan one critical or explicitly delegated OpenSpec change in a fresh context.
++mode: subagent
++permission:
++  "*": deny
++  read: allow
++  glob: allow
++  grep: allow
++  list: allow
++  skill: allow
++  task: deny
++  edit: allow
++  bash: allow
++  external_directory:
++    "~/.agents/skills/**": allow
++    "~/.config/opencode/skills/**": allow
++    "~/.claude/skills/**": allow
++---
++
++Load `plan-solution` and `run-engineering-workflow` with the native skill tool
++before planning. If a skill cannot be loaded, stop and report the missing skill
++instead of guessing its content.
++
++# Workflow Planner
++
++Plan the active OpenSpec change from an independent context.
++
++1. Read the active change's `proposal.md`, `specs/`, `design.md` when present,
++   `tasks.md`, `artifacts/context.md`, applicable project specs, relevant code and
++   tests, and existing ADRs.
++2. Follow the loaded `plan-solution` skill. Use `run-engineering-workflow` when
++   artifact ownership, precedence, or the selected quality profile is unclear.
++3. Create or update only the canonical OpenSpec planning artifacts: `design.md`,
++   `tasks.md`, and `artifacts/context.md`. Keep requirements in `proposal.md` and
++   `specs/`. Write every artifact in the user's language (Chinese by default); keep
++   paths, identifiers, commands, and status tokens verbatim.
++4. Map every acceptance criterion to a vertical slice, test seam, RED/GREEN
++   sequence, verification command, and rollback point where applicable.
++5. Return artifact paths, major decisions, alternatives, unresolved risks, and
++   whether the change is ready to move to implementation.
++
++For each dispatchable slice, write its context package into the OpenSpec change
++artifacts: the AC text, the design decisions it rests on, located `file:line`
++conclusions with symbol names, the existing pattern to copy, and the exact
++verification command. When work spans sessions or writers, split it into task
++items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
++than duplicating the plan.
++
++Dispatch precondition: the first two lines of the handoff must identify exactly
++one change and one planning scope — `Active change: openspec/changes/<change-id>/`
++followed by `Assigned slice: planning / all accepted ACs`. The handoff must also
++carry `Phase:`, `Read:`, and `Must preserve:`. Read only that change's artifacts.
++If the change path is missing or unreadable, return `PLANNING_STATUS: INVALID`
++and write nothing.
++
++Do not write production code or tests, create a second plan system, commit, push,
++move a session pointer, archive the change, or guess unresolved product intent.
++Return requirement questions to the interactive main session.
+### UNTRACKED FILE: .opencode/agents/workflow-reviewer.md
+--- /dev/null
++++ b/.opencode/agents/workflow-reviewer.md
++---
++description: Review one OpenSpec change for Standards, Spec, correctness, tests, security and complexity using recorded check evidence.
++mode: subagent
++permission:
++  "*": deny
++  read: allow
++  glob: allow
++  grep: allow
++  list: allow
++  skill: allow
++  task: deny
++  edit: deny
++  bash: deny
++  external_directory:
++    "~/.agents/skills/**": allow
++    "~/.config/opencode/skills/**": allow
++    "~/.claude/skills/**": allow
++---
++
++Load `review-implementation` with the native skill tool before reviewing. If it
++cannot be loaded, stop and report the missing skill instead of guessing its
++content.
++
++This OpenCode reviewer consumes recorded verification evidence from the handoff. It
++cannot execute checks. Mark absent checks NOT RUN; return findings to the main
++session for execution and remediation.
++
++# Workflow Reviewer
++
++Review the active OpenSpec change from a fresh context after implementation and
++repository checks are complete.
++
++Follow the single review budget in `run-engineering-workflow`'s
++`references/quality-profiles.md`. Review Standards and Spec separately in the same
++report. Include relevant committed, staged, unstaged, and explicitly named
++untracked contents from the handoff, not unrelated or sensitive files. Do not
++perform nested dispatch or load native Matt `code-review`; Ponytail is a complexity
++lens, not another agent. A real valid same-material report can be reused at finish;
++only material input changes require fresh review, not appending the report or
++delivery evidence.
++
++1. Read the named change's `proposal.md`, `specs/`, `artifacts/context.md`,
++   optional `design.md` and `tasks.md`, applicable project specs, the complete diff,
++   surrounding code, and relevant tests.
++2. Follow the loaded `review-implementation` skill as the review contract. Use
++   verification and security checks when they are installed and relevant.
++3. Lead with evidence-backed findings ordered by severity. Cite a file and tight
++   line reference for every finding.
++4. Report acceptance-criterion coverage, checks actually run, residual risk, and
++   checks not run. If no findings remain, say so explicitly.
++
++Write findings in the user's language (Chinese by default); keep identifiers,
++paths, commands, and the `REVIEW_STATUS` tokens verbatim.
++
++Dispatch precondition: the handoff must identify one change with
++`Active change: openspec/changes/<change-id>/` and `Assigned slice:`, plus `Phase:`,
++`Read:`, and `Must preserve:`, and must state the boundary with `Review scope:`
++and `Evidence:`. Do not scan `openspec/changes/` or infer a change from conversation
++history. If the change path or evidence scope is missing or unreadable, return
++`REVIEW_STATUS: INVALID`.
++
++Do not edit files, commit, push, move a session pointer, archive, or claim that an
++unexecuted check passed. Return findings to the main session for remediation and
++re-verification.
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/.openspec.yaml
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/.openspec.yaml
++schema: spec-driven
++created: 2026-10-27
++goal: 以 Matt 和 Ponytail 为主，统一技能安装、各端执行边界及验证证据，兼容 OpenCode Slim
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/config-hashes-before-install.json
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/config-hashes-before-install.json
++[
++  {
++    "path": "C:\\Users\\shuan\\.claude\\settings.json",
++    "sha256": "0101E5F1DCD1857B2F44AED32FAA5A94F0F3A2E93C26007156049A391C90B3C0"
++  },
++  {
++    "path": "C:\\Users\\shuan\\.pi\\agent\\settings.json",
++    "sha256": "6213997F41FCD9C592AA9D5E4AC0C12E0D76B520D390DA438C3F81E93AB8407B"
++  },
++  {
++    "path": "C:\\Users\\shuan\\.config\\opencode\\opencode.json",
++    "sha256": "DB89425A5CFDEAE6F86DA71B2AA9CBBADE7348F9F4795988536689C160773A7E"
++  },
++  {
++    "path": "C:\\Users\\shuan\\.config\\opencode\\oh-my-opencode-slim.json",
++    "sha256": "EB7B379BA19B8B768166B85A9356A90CB55923160E16DAB974E6FB05FACF1213"
++  },
++  {
++    "path": "C:\\Users\\shuan\\.codex\\config.toml",
++    "sha256": "F81CDED7B5862D604A6A0A904D6E368B2021DFE6AA9F21F0D8B7DF80ABC1977C"
++  }
++]
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/context.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/context.md
++# 上下文包
++
++## 已确认事实
++- skills/ 六个技能与 ~/.agents/skills 一致；~/.config/opencode/skills 存在四个旧版本。scripts/install.ps1:6 未支持 OpenCode，scripts/doctor.py:36 同样缺少该端。
++- 架构 ARCHITECTURE.md:58 定义规范共享目录及 Claude junction；Both 必须保持 Codex + OMP。
++- quality-profiles.md:52 默认主会话实施，与 Slim 默认 specialist 委派交叉；:77 已有一次完整、最多一次聚焦审查预算，应保留。
++- Claude 本地 Opus/Sonnet 别名均映射 sonnet；Pi settings.subagents.agentOverrides 已有三种 workflow 模型，不得重写。
++- Codex 存在两份引用 Trellis 的旧 Markdown；是否被运行加载未证明。共享技能可发现，不能伪造原生 agent 支持。
++- Slim 本地 D:/opencode-local/oh-my-opencode-slim-3.0.6-pwsh 带 PowerShell 补丁，不替换。OpenCode 已有手工 workflow 代理，缺少源码管理。
++- Ponytail 源码 5.3.2，Claude 插件记录 4.9.0；Matt 最近一次仅 chief-of-staff 变化。更新应使用可验证官方安装入口，备份本地受管理内容，不引入 ECC 默认安装。
++
++## 复验轮次 2：OpenCode / OMO-Slim 模型角色
++- 用户要求完善 OpenCode 适配，并确认复用当前 `align-cross-harness-workflow` 变更；本轮只改变 OpenCode 路由，不改全局 OMO-Slim 配置或模型选择。
++- `~/.config/opencode/oh-my-opencode-slim.json` 当前有 active preset `magpie`，为 `fixer`、`oracle` 分别配置角色模型；具体配置由用户维护，preset 可变化。
++- 当前 `.opencode/agents/workflow-implementer.md`、`.opencode/agents/workflow-reviewer.md` 都是 `mode: subagent` 且无 `model`，直接通过 OpenCode 原生 agent 调用时继承父会话模型，不能自然解析成 Slim `fixer` / `oracle` 角色模型。
++- 实施方案需让 Slim 主协调器调用原生 specialist 角色并传入同一 OpenSpec handoff/审查证据；不在安装器模板复制当前 preset 的静态模型 ID。未证实实际角色调用时不得声称已用角色模型。
++
++## 复验轮次 2 已落地（静态合同）
++- `skills/run-engineering-workflow/SKILL.md`、`commands/engineering-workflow.md`、`README.md`、`ARCHITECTURE.md` 统一表述：正式实现走 Slim `fixer`、唯一独立审查走 Slim `oracle`，模型由当前激活的 OMO-Slim preset 提供；禁止复制预设模型 ID；角色不可调用或无法观察模型时记 `UNVERIFIED`，并说明直接 agent 继承父会话模型不等于角色路由。
++- `tests/contracts.test.js` 新增 `OpenCode formal work routes through Slim fixer and oracle without static model IDs`：校验上述四份文档的措辞、`.opencode/agents/*.md` 无 `model:` 且不读取 `oh-my-opencode-slim.json`、四个适配文档不含具体 provider/model 串。
++- `evals/workflow-cases.json` 新增 `opencode-slim-role-routing-unverified`（`required_status: UNVERIFIED`）。
++- 证据：先以旧措辞运行 `node --test tests/contracts.test.js`，新用例在 `formal implementation ... Slim fixer` 断言处失败（RED）；改文档后 52/52 通过（GREEN）。
++- 限制：静态测试只证明合同与模板状态；Slim 实际把 `fixer`/`oracle` 派发到哪个模型仍为运行时 `UNVERIFIED`，需在真实 OpenCode 会话中观察。
++
++## 边界
++A 仅修改 scripts/install.ps1、scripts/doctor.py、新 OpenCode 适配目录、tests/test_shared_installation.py 及新聚焦测试；B 仅修改 skills/、ARCHITECTURE.md、README.md、AGENTS.md、tests/contracts.test.js、evals/。主会话管理 OpenSpec、upstream lock、本地安装。并行 writers 不共享修改范围。
++
++## 验证命令
++按 tests 的既有运行方式执行聚焦 Node/Python 用例；主会话最终运行 npm test 及 Python unittest discovery。用临时 home 验证安装幂等、备份、未知链接保护及旧副本迁移，再运行真实安装和 doctor。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/review-full.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/review-full.md
++# 完整审查
++
++- 模式：full；REVIEW_STATUS: FINDINGS。
++- 独立上下文：workflow-reviewer，session `ses_e847ac7abffe56FqOiNMD1SuBP`。
++- 前一次仅因缺少 `Review mode` 返回 INVALID，按规则受控替换；未消耗有效实现审查轮次。
++
++## Spec
++- F-001 / MEDIUM / Blocking：`scripts/doctor.py` 的 Claude、OMP 检查未调用受管内容漂移比较；需覆盖 OMP 三代理、Claude 三代理和两命令，对应 User/Project 根。
++- F-002 / MEDIUM / Blocking：OpenCode Project 旧入口检测漏掉项目 `.agents/skills`；应与安装器保持一致。
++- AC-002、AC-003 规则与目标一致；AC-001、AC-004 上述缺口阻断。AC-005 有记录证据支持，未重新执行。
++
++## Standards、安全与复杂度
++- 无另列阻断规范或安全问题；模型所有权、只读 reviewer、单审查预算与用户验收权保留。
++- 安装器先备份后删除、批量预检、未知链接拒绝、幂等性有实现与测试支持。
++- 非阻断：All CLI 集成测试 stub 漏掉 `opencode`，应补齐以消除环境依赖。
++
++## 证据限制
++- reviewer 未执行命令，消费父会话检查记录。
++- 初次完整审查缺少 Git 工具及完整 diff/status 附件，对完整差异覆盖标为 UNVERIFIED。父会话补充 `workspace.diff` / `workspace-status.txt`，聚焦复核须核对该边界后才能完成。
++- 原始规则 RED 输出 NOT CAPTURED；真实跨客户端模型对话 NOT RUN。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/sync-ponytail.ps1
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/sync-ponytail.ps1
++param([string]$UserHome = $env:USERPROFILE)
++$ErrorActionPreference = 'Stop'
++$source = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..\..\..\ponytail\skills'))
++$destination = Join-Path $UserHome '.agents\skills'
++$names = @('ponytail', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help')
++# Preflight all targets before creating any directory; existing content is user-owned.
++foreach ($name in $names) {
++    if (!(Test-Path -LiteralPath (Join-Path $source "$name\SKILL.md"))) { throw "Missing upstream skill: $name" }
++    if (Test-Path -LiteralPath (Join-Path $destination $name)) { throw "Existing skill requires explicit comparison: $name" }
++}
++New-Item -ItemType Directory -Path $destination -Force | Out-Null
++foreach ($name in $names) {
++    Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $destination $name) -Recurse
++    $expected = (Get-FileHash -LiteralPath (Join-Path $source "$name\SKILL.md")).Hash
++    $actual = (Get-FileHash -LiteralPath (Join-Path $destination "$name\SKILL.md")).Hash
++    if ($expected -ne $actual) { throw "Hash mismatch: $name" }
++    Write-Output "Installed $name (SHA256 verified)"
++}
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/upstream-installation.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/upstream-installation.md
++# 上游安装核对
++
++日期：2026-10-27。
++
++- Matt 源码：`5beb35b040e3de97e54fa9e386d7e42d15c295c2`（1.3.1）。对共享技能、Codex、Claude、OpenCode、Pi 的已存在同名技能进行逐文件 SHA256 对比，57 处对应安装没有差异，无需覆盖。
++- 同名例外：共享和 Claude 的 `handoff` 属于 agentmemory（恢复最近会话），Matt 的 `handoff` 用于输出交接文档；保留既有 agentmemory 技能，避免静默改变用途。
++- Claude：通过原生 `claude.exe plugin update ponytail@ponytail --scope user --json` 从 4.9.0 更新到 5.3.2。更新后 hooks/ 和 skills/ 所有源码文件的 SHA256 均相同。CLI 明确要求重启生效。
++- Codex：原缓存虽标为 5.3.2，但 hooks/ 有六处缺失或差异；通过原生 `codex plugin add ponytail@ponytail --json` 刷新，hooks/ 和 skills/ 全部相同。未改写模型/供应商/信任决策。`codex plugin list` 曾在 30 秒超时，改用安装结果和文件散列核实。
++- Ponytail 源码：`09c434ab73ca43761c5d8b0c5d341926c2fba710`（5.3.2）。使用同目录 `sync-ponytail.ps1`，预检目标不存在后，将六个技能发布到 `~/.agents/skills`，逐一验证 SHA256。该操作只增加共享技能，不新增每轮注入插件。
++- 未整套引入 ECC；未替换 Slim 的 PowerShell 补丁；未新增 Pi/OMP 每轮注入；模型、供应商和 Pi overrides 均保留。
++
++静态安装一致性不能证明各客户端实际运行表现。原生插件或代理由下次新会话加载；本次不宣称已执行各客户端端到端对话。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/artifacts/verification.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/verification.md
++# 交付验证
++
++## 交付
++- 状态：awaiting-acceptance；第一轮实现与复核完成，复验轮次 2 的 AC-006 静态合同、差异证据和 focused review 已完成。
++- 范围：共享技能、跨客户端安装与诊断、宿主调度边界、低风险修复流程、上游安装核对。
++- 提交：NOT COMMITTED。
++
++## 验收标准
++| 标准 | 结果 | 证据 |
++| --- | --- | --- |
++| AC-001 | PASS | 用户级 All 安装及复跑幂等；临时 home 迁移测试，含 OpenCode 项目 `.agents/skills` 检查；完整 Python suite 60 tests，1 个 Unix 专用测试在 Windows 跳过 |
++| AC-002 | PASS | `npm test`：51 / 51；OpenCode agent 由 Slim 唯一调度；focused review CLEAN |
++| AC-003 | PASS | `npm test`：快速通道、风险升级、回归检查合同；review Standards/Spec CLEAN |
++| AC-004 | PASS | All doctor PASS，比较 Claude/OMP/Pi/OpenCode 内容并报告别名、Pi overrides、Codex 能力；模型配置 SHA256 不变；回归包含 Claude/OMP 漂移 |
++| AC-005 | PASS | upstream-installation.md + 用户目录真实安装、15 项旧文件备份、幂等、配置 hash 保留、Node 及 Python 验证 |
++| AC-006 | UNVERIFIED | 静态合同已通过：OpenCode 正式实现走 Slim `fixer`、唯一独立复核走 Slim `oracle`，不固化模型 ID；真实 Slim 会话中的角色调用及最终模型仍未运行核实 |
++
++## TDD 证据
++- 规则切片：实施者报告新断言先失败后通过；原始 RED 输出未归档：NOT CAPTURED；GREEN=`npm test`，51 / 51。
++- 诊断修复：独立 worktree 基线 `f8d8636` 上两条新回归用例 `Ran 2 tests, FAILED (failures=1, errors=1)`；修复后 `Ran 2 tests, OK`。完整文件 `python -m unittest tests.test_shared_installation`：28 tests，OK (skipped=1)。
++
++## 验证
++- `npm test`：最终 PASS，52 / 52（包含 OMO-Slim `fixer` / `oracle` 静态路由合同）。
++- `python -m unittest discover -s scripts -p 'test_*.py'`：PASS，4 / 4。
++- `python -m unittest discover -s tests -v`：最终 PASS，Ran 62 tests in 151.360s，OK (skipped=1)。跳过项要求区分大小写的 Unix 文件系统，本机 Windows 不适用。
++- `scripts/install.ps1 -Scope User -Harness All -WhatIf`：PASS；随后真实安装 PASS，重跑没有新备份，验证幂等。
++- `scripts/doctor.ps1 -Scope User -Harness OpenCode`：PASS。
++- `python scripts/doctor.py --scope User --harness All`：当前进程 PATH 未包含 Claude 时报告缺少 `claude`；将既有 `~/.local/bin` 加入该进程 PATH 后 PASS。没有永久改 PATH。
++- Claude/Pi/OpenCode/Slim/Codex 五份配置与 `config-hashes-before-install.json` 逐一比对：全部保持相同 SHA256。
++- 旧技能及手写 OpenCode 代理/命令共 15 项备份：`~/.agents/backups/my-engineering-workflow/418c59a7d9ad4962b23c1bbab0850ad7/`。
++- 仓库 `.claude/skills` 原有 junction 指向共享安装；安装后相应 Git 可见内容一起更新，逐文件核对与规范 skills/ 一致，不是第二套实现。
++- `openspec validate align-cross-harness-workflow --strict`：PASS。
++- `git diff --check`：PASS，末尾空行已修正；Git 换行风格提示不构成检查失败。
++
++## 独立复核
++- 完整复核：REVIEW_STATUS: FINDINGS，见 review-full.md；F-001/F-002 已修复。
++- 修复后 `python -m unittest tests.test_shared_installation`：28 项，OK (skipped=1)；新增两个回归用例单独运行 2 / 2 PASS。修复仅影响 doctor 与该测试文件，先前其余完整检查继续有效。
++- 修复后本机 All doctor：PASS；`git diff --check`：PASS。
++- workspace.diff 与 workspace-status.txt 已重新导出最终 HEAD 到工作区差异，用于补齐 reviewer 无 Git 工具的覆盖缺口。
++- 修复后聚焦复核：前一轮 F-001/F-002 的 `REVIEW_STATUS: CLEAN` 已保留；复验轮次 2 首次因 handoff 缺少显式 `Review mode: focused` 返回 `REVIEW_STATUS: INVALID`，随后一次受控 replacement retry 返回 `REVIEW_STATUS: FINDINGS`（F-003：旧差异附件），补齐附件后证据续审返回 `REVIEW_STATUS: CLEAN`，F-003 resolved。
++
++## 剩余风险与验收
++- 客户端实际端到端对话：NOT RUN；文件一致性和静态合同不能替代真实模型对话。
++- 模型和供应商设置保留；不保证别名背后是不同模型。
++- Codex 是否能在当前版本提供满足该流程要求的独立 subagent/reviewer 尚未端到端验证；doctor 会明确报告该能力边界。需升级独立审查时可先在 Codex 中验证 native subagent，否则将此审查记为 UNVERIFIED。
++- 待用户验收；本次不提交、不推送、不归档。
++
++## 复验轮次 2
++- 范围：OpenCode / OMO-Slim 的实现与独立审查模型路由；保留第一轮证据，不改全局 Slim 配置和模型配置。
++- 状态：已完成本轮静态交付，待用户验收；静态回归、完整检查、差异证据和 focused review 均完成。真实 OpenCode/Slim 端到端角色调用仍为 `UNVERIFIED`。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/design.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/design.md
++# 技术方案
++
++六个 skills 仍以 skills/ 为唯一源码，发布到 ~/.agents/skills。客户端入口采用原生发现或受管理链接；OpenCode 支持与旧副本迁移由安装器显式管理。代理权限按客户端原生格式发布，模型保持用户配置所有权。Codex 优先共享技能与如实能力声明，避免把旧 Markdown 当作原生运行代理。
++
++执行规则：工作流管理范围、验收、审查及证据；宿主管理调度、模型与工具。OpenCode 中 Slim Orchestrator 调度 explorer/designer/fixer/oracle 和必要的 workflow agents，不增加总控。正式实现使用 Slim `fixer` 角色，独立审查使用 Slim `oracle` 角色，让当前激活 preset 负责选模；不把某个 preset 模型 ID 写死进 workflow agent 模板，也不把直接 agent 继承的主会话模型说成 Slim 角色模型。不可用或路由未验证时报告 `UNVERIFIED`。Ponytail 5 的完整修改与有效检查整合到方法说明。
++
++验证：先补相应合同/安装回归用例并证明失败，再实现；各实施 lane 只运行聚焦检查，主会话汇总后运行完整仓库测试一次。安装先备份已知受管理文件，保留未知文件、模型配置及插件补丁。独立 reviewer 仅审查本次范围一次。实际客户端对话与 UI 测试不能以静态检查替代。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/proposal.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/proposal.md
++# 统一跨客户端工程工作流与本地安装
++
++## 目标与授权
++用户已明确授权按本会话分析更新工作流及本地安装。以 Matt + Ponytail 为方法核心，保留各客户端模型与供应商配置；不增加 ECC 默认流水线。Standard 变更。
++
++## 范围与验收标准
++- [ ] AC-001：安装器及 doctor 正式支持 OpenCode，共享六个规范技能，检测并备份迁移已知旧副本；保留 Both = Codex + OMP。
++- [ ] AC-002：各端适配区分共享交付规则与客户端调度；Slim 是 OpenCode 唯一主调度器，一次正式交付仅一套审查预算。
++- [ ] AC-003：范围明确、低风险的小行为修复可采用轻量执行，必须有回归检查；高风险、公共契约、数据迁移继续正式流程。
++- [ ] AC-004：doctor 比较已安装代理/命令内容并报告已知模型别名折叠、Pi overrides 与 Codex 能力差异，不泄露凭据、不擅自改模型。
++- [ ] AC-005：本地 Matt / Ponytail 安装与已审核源码同步；工作流各客户端安装更新，记录备份、差异、执行证据和无法运行的检查。
++- [ ] AC-006：OpenCode 正式实现和独立审查使用 OMO-Slim 当前 preset 的 `fixer` / `oracle` 角色路由，不静态复制模型 ID；角色不可用或路由未验证时明确报告 `UNVERIFIED`，不把继承协调器模型误报为角色模型。
++
++## 范围外
++不升级供应商或模型，不提交/推送，不自动归档，不替换 Slim 的 Windows 修补版本，不给其他项目强制安装，不整套引入 ECC。
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/README.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/README.md
++# align-cross-harness-workflow
++
++统一跨客户端工程工作流与本地安装
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
++## ADDED Requirements
++
++### Requirement: 共享技能与客户端原生安装
++安装器 SHALL 从规范 skills/ 发布六个工作流技能，并支持 OpenCode。Both SHALL 继续表示 Codex + OMP；All SHALL 包含 OpenCode。已知旧副本迁移 SHALL 先备份，未知链接 SHALL 拒绝覆盖。
++
++#### Scenario: OpenCode 旧副本迁移
++- **WHEN** OpenCode 技能目录存在已知工作流旧副本
++- **THEN** 安装器保存旧副本后建立受管理的技能入口，并可检测再次安装是否幂等
++
++### Requirement: 宿主调度与共享质量规则
++工作流 SHALL 定义验收、证据和审查预算，宿主 SHALL 管理调度与模型。OpenCode SHALL 使用 Slim 作为唯一主调度器；正式交付 SHALL 最多一次完整审查和一次针对修正的聚焦审查。
++
++#### Scenario: Slim 委派已授权工作
++- **WHEN** 用户已授权明确范围且 Slim 可以调用对应 specialist
++- **THEN** 工作流允许按宿主能力委派，不要求重复授权或另起总控
++
++### Requirement: 风险决定执行重量
++范围明确、低风险、可验证的小行为修复 MAY 使用轻量流程，且 SHALL 执行有效回归检查。公共契约、认证、持久数据迁移等高风险变更 SHALL 使用正式流程。
++
++#### Scenario: 小行为修复
++- **WHEN** 任务范围明确且没有高风险、正式续接或持久交接要求
++- **THEN** 可直接修改并运行回归检查，不以文件数量作为唯一判断条件
++
++### Requirement: 诊断保留用户配置所有权
++doctor SHALL 比较受管理代理和命令内容，报告 Claude 模型别名折叠、Pi overrides 和 Codex 能力边界；SHALL 不输出凭据或重写模型配置。
++
++#### Scenario: 本地模型配置不同
++- **WHEN** 本地 Pi 配置模型覆盖或 Claude 多个别名指向相同模型
++- **THEN** doctor 报告相关事实，保留原有配置
++
++### Requirement: OpenCode 工作角色使用 Slim 模型路由
++在 OMO-Slim 管理 OpenCode 调度的会话中，正式实现 SHALL 通过 Slim `fixer` 角色调度，独立审查 SHALL 通过 Slim `oracle` 角色调度，使各自遵从当前激活 preset 的模型配置。工作流安装器 SHALL NOT 将某个 preset 的模型 ID 静态写入受管 OpenCode agents；仅当实际通过相应角色调用时，方可报告使用了角色配置模型。角色不可用、模型上下文相同或运行时路由无法核实时，交付记录 SHALL 如实标注 `UNVERIFIED` 或独立性限制。
++
++#### Scenario: Slim active preset supplies implementation and review models
++- **WHEN** 正式工作从启用 OMO-Slim 的 OpenCode 主会话执行
++- **THEN** 实施任务委派给 Slim `fixer`、独立审查委派给 Slim `oracle`，由当前 preset 决定其模型；受管 workflow agent 不固定具体模型 ID
++
++#### Scenario: Slim specialist role unavailable
++- **WHEN** 当前会话未由 OMO-Slim 调度或对应 specialist 角色不可调用
++- **THEN** 工作流不得声称角色模型路由已生效；须标注 `UNVERIFIED`，并说明直接 OpenCode agent 会继承当前会话模型
+### UNTRACKED FILE: openspec/changes/align-cross-harness-workflow/tasks.md
+--- /dev/null
++++ b/openspec/changes/align-cross-harness-workflow/tasks.md
++# 执行清单
++
++用户授权：本会话明确要求按前述分析更新本地安装及工作流，覆盖本方案和可逆安装操作。
++
++- [x] 切片 A：安装器/doctor 支持 OpenCode、Claude/OMP 漂移检测及旧副本迁移；F-001/F-002 已修复并回归通过。
++- [x] 切片 B：共享规则、轻量边界、Slim 协作说明、合同测试（AC-002、AC-003）。
++- [x] 主会话：审核上游并更新锁定记录、同步本地 Matt/Ponytail/工作流、完整验证（AC-005）。
++- [x] 一次独立完整审查，结果见 artifacts/review-full.md。
++- [x] 修复阻断问题，补充完整差异证据，执行唯一一次修复后聚焦复核；审查 CLEAN。
++- [x] 第一轮证据已记录；当时状态 awaiting-acceptance（2026-10-27）。归档及 journal 由用户验收后决定。
++- [x] 复验轮次 2：OpenCode 适配已明确正式实现走 Slim `fixer`、独立审查走 Slim `oracle`，并加入静态合同回归（tests/contracts.test.js、evals/workflow-cases.json）；静态回归、完整检查、差异证据及 focused review 已完成，状态回到 awaiting-acceptance。实际角色调度仍属运行时未验证项。

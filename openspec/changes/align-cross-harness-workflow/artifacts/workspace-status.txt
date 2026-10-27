@@ -1,0 +1,25 @@
+# Regenerated with workspace.diff
+# Base: HEAD; status captured after final AC-006 evidence update.
+ M .claude/skills/finish-with-evidence/SKILL.md
+ M .claude/skills/plan-solution/SKILL.md
+ M .claude/skills/run-engineering-workflow/SKILL.md
+ M .claude/skills/run-engineering-workflow/references/quality-profiles.md
+ M .claude/skills/run-engineering-workflow/references/workflow-governance.md
+ M AGENTS.md
+ M ARCHITECTURE.md
+ M README.md
+ M commands/engineering-workflow.md
+ M evals/workflow-cases.json
+ M manifests/upstreams.lock.json
+ M scripts/doctor.ps1
+ M scripts/doctor.py
+ M scripts/install.ps1
+ M skills/finish-with-evidence/SKILL.md
+ M skills/plan-solution/SKILL.md
+ M skills/run-engineering-workflow/SKILL.md
+ M skills/run-engineering-workflow/references/quality-profiles.md
+ M skills/run-engineering-workflow/references/workflow-governance.md
+ M tests/contracts.test.js
+ M tests/test_shared_installation.py
+?? .opencode/
+?? openspec/changes/align-cross-harness-workflow/

@@ -1,4 +1,5 @@
 """Exercise the public installer/doctor against disposable user and project roots."""
+import json
 import os
 import shutil
 import subprocess
@@ -24,7 +25,7 @@ class SharedInstallationTests(unittest.TestCase):
         cls.sources = tempfile.TemporaryDirectory(prefix="workflow source ")
         base = Path(cls.sources.name)
         cls.repo = base / "workflow"
-        for name in ("skills", "agents", ".omp/agents", ".pi/agents", "commands", "config", "scripts"):
+        for name in ("skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"):
             shutil.copytree(REPO / name, cls.repo / name, ignore=shutil.ignore_patterns("__pycache__"))
         # The external gate is owned by another repo. Its content is not this seam.
         gate = base / "omp-extensions" / "workflow-review-gate"
@@ -48,6 +49,7 @@ class SharedInstallationTests(unittest.TestCase):
         self.project.mkdir()
         self.env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home))
         self.env.pop("PI_CODING_AGENT_DIR", None)
+        self.env.pop("OPENCODE_CONFIG_DIR", None)
         self.shared = self.home / ".agents" / "skills"
 
     def tearDown(self):
@@ -104,6 +106,7 @@ class SharedInstallationTests(unittest.TestCase):
         with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.object(Path, "home", return_value=self.home), \
              mock.patch.object(doctor, "parse_args", return_value=args), \
              mock.patch.object(doctor, "executable_exists"), mock.patch.object(doctor, "check_review_gate"), \
+             mock.patch.object(doctor, "repo_source_root", return_value=self.repo), \
              redirect_stdout(output), redirect_stderr(output):
             code = doctor.main()
         return code, output.getvalue()
@@ -115,14 +118,14 @@ class SharedInstallationTests(unittest.TestCase):
         # Stub discovery only; doctor does not launch these harnesses.
         bins = self.base / "bin"
         bins.mkdir()
-        for name in ("omp", "pi", "claude"):
+        for name in ("omp", "pi", "claude", "opencode"):
             path = bins / (name + ".cmd" if os.name == "nt" else name)
             path.write_text("@exit /b 0\n" if os.name == "nt" else "#!/bin/sh\nexit 0\n", encoding="utf-8")
             path.chmod(0o755)
         env = dict(self.env, PATH=str(bins) + os.pathsep + self.env["PATH"])
         result = subprocess.run([sys.executable, str(self.repo / "scripts/doctor.py"), "--scope", "Project",
                                  "--harness", "All", "--project-path", str(self.project)],
-                                env=env, capture_output=True, text=True, timeout=30)
+                                env=env, capture_output=True, text=True, timeout=120)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Workflow installation is healthy.", result.stdout)
 
@@ -311,6 +314,157 @@ class SharedInstallationTests(unittest.TestCase):
         self.assertTrue((self.home / ".omp/agent/agents/workflow-planner.md").is_file())
         self.assertFalse((self.home / ".claude").exists())
         self.assertFalse((self.home / ".pi").exists())
+        self.assertFalse((self.home / ".config/opencode").exists())
+        self.assertIn("Codex adapter installs the shared skills only", self.install().stdout)
+
+    def opencode_root(self):
+        return self.home / ".config/opencode"
+
+    def test_opencode_installs_agents_commands_and_migrates_stale_skills(self):
+        stale = self.opencode_root() / "skills" / "plan-solution"
+        stale.mkdir(parents=True)
+        (stale / "SKILL.md").write_text("stale copy", encoding="utf-8")
+        (stale / "custom.txt").write_text("keep me", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        self.assert_shared()
+        for name in doctor.AGENTS:
+            self.assertTrue((self.opencode_root() / "agents" / f"{name}.md").is_file())
+        for name in ("engineering-workflow", "archive-task"):
+            self.assertEqual(
+                (self.opencode_root() / "commands" / f"{name}.md").read_bytes(),
+                (self.repo / "commands" / f"{name}.md").read_bytes(),
+            )
+        self.assertFalse(stale.exists())
+        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("custom.txt"))
+        self.assertEqual([p.read_text(encoding="utf-8") for p in backups], ["keep me"])
+        # No OpenCode-owned skill copy remains; discovery uses ~/.agents/skills.
+        for name in doctor.SKILLS:
+            self.assertFalse((self.opencode_root() / "skills" / name).exists())
+        self.assertFalse((self.home / ".claude").exists())
+        self.assertFalse((self.home / ".pi").exists())
+
+    def test_opencode_install_is_idempotent_and_preserves_user_model_settings(self):
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        config = self.opencode_root() / "opencode.json"
+        config.write_text('{"model": "user/owned"}\n', encoding="utf-8")
+        agents = self.opencode_root() / "agents" / "workflow-planner.md"
+        before = agents.read_bytes()
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        self.assertEqual(agents.read_bytes(), before)
+        self.assertEqual(config.read_text(encoding="utf-8"), '{"model": "user/owned"}\n')
+        self.assertFalse((self.home / ".agents/backups/my-engineering-workflow").exists())
+
+    def test_local_opencode_agent_edit_is_backed_up_before_refresh(self):
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        agents = self.opencode_root() / "agents" / "workflow-reviewer.md"
+        agents.write_text("local permission tweak", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        self.assertEqual(agents.read_bytes(), (self.repo / ".opencode/agents/workflow-reviewer.md").read_bytes())
+        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-reviewer.md"))
+        self.assertEqual([p.read_text(encoding="utf-8") for p in backups], ["local permission tweak"])
+
+    def test_opencode_agent_templates_omit_model_and_deny_nested_dispatch(self):
+        for name in doctor.AGENTS:
+            text = (self.repo / ".opencode/agents" / f"{name}.md").read_text(encoding="utf-8")
+            self.assertNotIn("model:", text, name)
+            self.assertIn("task: deny", text, name)
+            self.assertIn("mode: subagent", text, name)
+        reviewer = (self.repo / ".opencode/agents/workflow-reviewer.md").read_text(encoding="utf-8")
+        self.assertIn("edit: deny", reviewer)
+        self.assertIn("bash: deny", reviewer)
+
+    def test_doctor_reports_missing_opencode_adapter_and_drift(self):
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        code, output = self.diagnose("OpenCode")
+        self.assertEqual(code, 0, output)
+        (self.opencode_root() / "commands" / "archive-task.md").unlink()
+        (self.opencode_root() / "agents" / "workflow-planner.md").write_text("drifted", encoding="utf-8")
+        code, output = self.diagnose("OpenCode")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Missing OpenCode command: archive-task", output)
+        self.assertIn("OpenCode agent file differs from the shipped template", output)
+
+    def test_doctor_flags_pi_agent_model_and_leaves_overrides_untouched(self):
+        self.install("-Scope", "User", "-Harness", "Pi")
+        settings = self.home / ".pi/agent/settings.json"
+        original = {
+            "defaultModel": "magpie/auto/gpt-6.1-sol",
+            "subagents": {"agentOverrides": {
+                "workflow-planner": {"model": "magpie/auto/gpt-6.1-sol", "thinking": "xhigh"},
+                "workflow-reviewer": {"model": "magpie/es-grok/grok-4.7"},
+            }},
+        }
+        settings.write_text(json.dumps(original), encoding="utf-8")
+        agent = self.home / ".pi/agent/agents/workflow-planner.md"
+        agent.write_text(agent.read_text(encoding="utf-8").replace(
+            "description:", "model: opus\ndescription:"), encoding="utf-8")
+        code, output = self.diagnose("Pi")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Pi agentOverrides are user-owned and left untouched", output)
+        self.assertIn("workflow-planner, workflow-reviewer", output)
+        self.assertIn("Pi agent declares its own model (opus)", output)
+        self.assertEqual(json.loads(settings.read_text(encoding="utf-8")), original)
+
+    def test_doctor_warns_on_claude_alias_collapse_without_leaking_credentials(self):
+        self.install("-Scope", "User", "-Harness", "Claude")
+        settings = self.home / ".claude/settings.json"
+        settings.write_text(json.dumps({
+            "env": {
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "es-claude/claude-sonnet-5-5",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "es-claude/claude-sonnet-5-5",
+                "ANTHROPIC_AUTH_TOKEN": "super-secret-token",
+            }
+        }), encoding="utf-8")
+        code, output = self.diagnose("Claude")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Claude Opus and Sonnet aliases both resolve to es-claude/claude-sonnet-5-5", output)
+        self.assertIn("leaves settings.json untouched", output)
+        self.assertNotIn("super-secret-token", output)
+        self.assertEqual(json.loads(settings.read_text(encoding="utf-8"))["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"],
+                         "es-claude/claude-sonnet-5-5")
+
+    def test_codex_backs_up_only_trellis_signature_agents(self):
+        codex_agents = self.home / ".codex/agents"
+        codex_agents.mkdir(parents=True)
+        trellis = codex_agents / "workflow-planner.md"
+        trellis.write_text("---\nname: workflow-planner\n---\n\n# Planner\n\n"
+                           "Read the active Trellis task at `.trellis/tasks/<id>/`.\n", encoding="utf-8")
+        foreign = codex_agents / "workflow-reviewer.md"
+        foreign.write_text("---\nname: workflow-reviewer\n---\n\nMy own reviewer.\n", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "Codex")
+        self.assertFalse(trellis.exists())
+        self.assertEqual(foreign.read_text(encoding="utf-8"), "---\nname: workflow-reviewer\n---\n\nMy own reviewer.\n")
+        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.md"))
+        self.assertEqual(len(backups), 1)
+        self.assertIn(".trellis/tasks/", backups[0].read_text(encoding="utf-8"))
+
+    def test_doctor_reports_codex_skill_only_capability_and_stale_agents(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Codex adapter installs the shared skills only", output)
+        self.assertIn("do not establish native Codex runtime support", output)
+        self.assertIn("independent review is UNVERIFIED", output)
+        self.assertNotIn("run in the main Codex session", output)
+        stale = self.home / ".codex/agents/workflow-reviewer.md"
+        stale.parent.mkdir(parents=True, exist_ok=True)
+        stale.write_text("---\nname: workflow-reviewer\n---\nSee `.trellis/tasks/<id>/`.\n", encoding="utf-8")
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Stale Trellis-era Codex agent definition remains", output)
+
+    def test_opencode_config_dir_override_targets_custom_root(self):
+        override = self.base / "custom opencode"
+        self.env["OPENCODE_CONFIG_DIR"] = str(override)
+        stale = override / "skills" / "plan-solution"
+        stale.mkdir(parents=True)
+        (stale / "SKILL.md").write_text("stale", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "OpenCode")
+        self.assert_shared()
+        self.assertFalse(stale.exists())
+        self.assertTrue((override / "agents" / "workflow-planner.md").is_file())
+        self.assertTrue((override / "commands" / "engineering-workflow.md").is_file())
+        self.assertFalse((self.home / ".config/opencode").exists())
 
     def test_agent_directory_override_only_moves_adapters_and_legacy_root(self):
         override = self.base / "custom agent directory"
@@ -323,6 +477,37 @@ class SharedInstallationTests(unittest.TestCase):
         self.assertTrue((override / "start-engineering-workflow.py").is_file())
         self.assertFalse((self.home / ".omp").exists())
         self.assertFalse((self.home / ".pi").exists())
+
+
+    def test_doctor_reports_omp_and_claude_adapter_drift(self):
+        self.install("-Harness", "All")
+        omp_agent = self.home / ".omp/agent/agents/workflow-planner.md"
+        omp_agent.write_text(omp_agent.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
+        claude_agent = self.home / ".claude/agents/workflow-reviewer.md"
+        claude_agent.write_text(claude_agent.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
+        claude_command = self.home / ".claude/commands/engineering-workflow.md"
+        claude_command.write_text(claude_command.read_text(encoding="utf-8") + "\nlocal edit\n", encoding="utf-8")
+        code, output = self.diagnose("All")
+        self.assertEqual(code, 0, output)
+        self.assertIn("OMP agent file differs from the shipped template", output)
+        self.assertIn("Claude agent file differs from the shipped template", output)
+        self.assertIn("Claude command file differs from the shipped template", output)
+
+    def test_doctor_reports_project_agents_skills_as_legacy_for_opencode(self):
+        migrated = self.legacy(self.project / ".agents/skills", "plan-solution")
+        result = self.install(
+            "-Scope", "Project", "-Harness", "OpenCode", "-ProjectPath", str(self.project)
+        )
+        self.assertFalse(migrated.exists())
+        self.assertIn("Backup:", result.stdout)
+        stale = self.project / ".agents/skills/plan-solution"
+        stale.mkdir(parents=True)
+        (stale / "SKILL.md").write_text(
+            "---\nname: plan-solution\ndescription: stale copy\n---\nstale\n", encoding="utf-8"
+        )
+        code, output = self.diagnose("OpenCode", "Project")
+        self.assertNotEqual(code, 0, output)
+        self.assertIn(f"Legacy skill entry may shadow shared installation: {stale}", output)
 
 
 if __name__ == "__main__":

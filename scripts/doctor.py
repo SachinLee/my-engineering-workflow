@@ -26,6 +26,7 @@ SKILLS = (
     "archive-task",
 )
 AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
+AGENT_FILES = tuple(f"{agent}.md" for agent in AGENTS)
 UPSTREAM_SKILLS = (
     "grill-with-docs",
     "tdd",
@@ -33,7 +34,7 @@ UPSTREAM_SKILLS = (
     "ponytail-review",
     "domain-modeling",
 )
-HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "Both", "All")
+HARNESS_CHOICES = ("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")
 
 
 def parse_args() -> argparse.Namespace:
@@ -102,6 +103,13 @@ def check_shared_installation(harness: str, scope: str, project: Path | None, ho
                     valid = False
                 if not valid:
                     errors.append(f"Invalid or missing Claude skill link: {entry}; expected {shared / skill}")
+    if selected(harness, "OpenCode"):
+        # OpenCode discovers ~/.agents/skills and .agents/skills natively, so a
+        # copy under its own skills root would shadow the shared tree.
+        legacy.append(opencode_user_root(home) / "skills")
+        if scope == "Project" and project:
+            legacy.append(project / ".agents" / "skills")
+            legacy.append(project / ".opencode" / "skills")
     # Overrides and ProjectPath=HOME can make a native root the shared root itself.
     shared_root = shared.resolve()
     for root in {path.resolve() for path in legacy} - {shared_root}:
@@ -135,6 +143,49 @@ def omp_user_root(home: Path) -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return home / ".omp" / "agent"
+
+
+def opencode_user_root(home: Path) -> Path:
+    override = os.environ.get("OPENCODE_CONFIG_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+    return home / ".config" / "opencode"
+
+
+def repo_source_root() -> Path | None:
+    """Return the repository that ships the templates, or None when doctor runs alone."""
+    candidate = Path(__file__).resolve().parents[1]
+    return candidate if (candidate / "skills").is_dir() else None
+
+
+def check_managed_drift(
+    source: Path,
+    installed: Path,
+    names: tuple[str, ...],
+    label: str,
+    warnings: list[str],
+) -> None:
+    """Report installed files whose content no longer matches the shipped template.
+
+    Drift is a warning, not an error: a local edit may be intentional, and the
+    installer keeps such edits in the shared backup directory when it refreshes.
+    """
+    for name in names:
+        template = source / name
+        target = installed / name
+        if not template.is_file() or not target.is_file():
+            continue
+        try:
+            same = template.read_bytes() == target.read_bytes()
+        except OSError as exc:
+            warnings.append(f"Could not compare {label} file {target}: {exc}")
+            continue
+        if not same:
+            warnings.append(
+                f"{label} file differs from the shipped template: {target}. "
+                "Re-run the installer to refresh it; a local edit is preserved in "
+                "~/.agents/backups/my-engineering-workflow/."
+            )
 
 
 def check_skill_whitelist(path: Path, label: str, errors: list[str]) -> None:
@@ -310,6 +361,9 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
     if not (root / "start-engineering-workflow.py").is_file():
         errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
     check_omp_overlay(root / "engineering-workflow.yml", errors)
+    source = repo_source_root()
+    if source is not None:
+        check_managed_drift(source / ".omp" / "agents", root / "agents", AGENT_FILES, "OMP agent", warnings)
     # Plain `omp` discovers skills through the user config.yml allowlist; the overlay
     # only reaches sessions started by the launcher.
     check_skill_whitelist(omp_user_root(home) / "config.yml", "user config", errors)
@@ -329,7 +383,7 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
                 warnings.append(f"Recommended upstream skill was not found: {upstream}")
 
 
-def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
+def check_claude(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
     executable_exists("claude", errors)
     root = project / ".claude" if scope == "Project" else home / ".claude"
 
@@ -337,6 +391,16 @@ def check_claude(scope: str, project: Path | None, home: Path, errors: list[str]
     for command in ("engineering-workflow", "archive-task"):
         if not (root / "commands" / f"{command}.md").is_file():
             errors.append(f"Missing Claude command: {command}")
+    source = repo_source_root()
+    if source is not None:
+        check_managed_drift(source / "agents", root / "agents", AGENT_FILES, "Claude agent", warnings)
+        check_managed_drift(
+            source / "commands",
+            root / "commands",
+            ("engineering-workflow.md", "archive-task.md"),
+            "Claude command",
+            warnings,
+        )
 
 
 def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
@@ -345,12 +409,151 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
     pi_user_root = Path(override).expanduser() if override else home / ".pi" / "agent"
     root = project / ".pi" if scope == "Project" else pi_user_root
     check_agents(root / "agents", "Pi", errors)
+    source = repo_source_root()
+    if source is not None:
+        check_managed_drift(source / ".pi" / "agents", root / "agents", AGENT_FILES, "Pi agent", warnings)
     node_modules = pi_user_root / "npm" / "node_modules"
     subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
     if not any(pkg.is_dir() for pkg in subagent_pkgs):
         warnings.append(
             "Optional Pi package pi-subagents was not found. Planning, bounded "
             "implementation, and independent review will remain in the main Pi session.",
+        )
+
+
+def frontmatter_model(path: Path) -> str | None:
+    """Return the agent's `model` frontmatter value without parsing the body."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    match = re.match(r"(?s)\A---\r?\n(.*?)\r?\n---", text)
+    if not match:
+        return None
+    for line in match.group(1).splitlines():
+        hit = re.match(r"\s*model\s*:\s*(.+?)\s*$", line)
+        if hit:
+            return hit.group(1).strip().strip("\"'")
+    return None
+
+
+def check_pi_overrides(scope: str, home: Path, warnings: list[str]) -> None:
+    """Report which Pi workflow overrides exist; never rewrite or judge them.
+
+    Pi agent files must stay model-free so the user's `agentOverrides` keeps
+    winning. The doctor only reports the wiring so a silent model change is
+    visible instead of mysterious.
+    """
+    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+    pi_user_root = Path(override).expanduser() if override else home / ".pi" / "agent"
+    settings = pi_user_root / "settings.json"
+    if not settings.is_file():
+        return
+    try:
+        body = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        warnings.append(f"Pi settings could not be parsed, so agent overrides are unknown: {settings}")
+        return
+    overrides = ((body.get("subagents") or {}).get("agentOverrides") or {}) if isinstance(body, dict) else {}
+    configured = [name for name in AGENTS if isinstance(overrides, dict) and name in overrides]
+    if configured:
+        warnings.append(
+            "Pi agentOverrides are user-owned and left untouched for: "
+            + ", ".join(configured)
+            + ". Pi agents declare no model, so those overrides stay effective."
+        )
+    agent_root = pi_user_root / "agents"
+    for name in AGENTS:
+        path = agent_root / f"{name}.md"
+        if not path.is_file():
+            continue
+        model = frontmatter_model(path)
+        if model:
+            warnings.append(
+                f"Pi agent declares its own model ({model}), so a Pi agentOverride cannot take effect: {path}. "
+                "Pi agents should omit `model`."
+            )
+
+
+def check_opencode(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
+    executable_exists("opencode", errors)
+    root = project / ".opencode" if scope == "Project" else opencode_user_root(home)
+
+    check_agents(root / "agents", "OpenCode", errors)
+    for command in ("engineering-workflow", "archive-task"):
+        if not (root / "commands" / f"{command}.md").is_file():
+            errors.append(f"Missing OpenCode command: {command}")
+    for name in AGENTS:
+        path = root / "agents" / f"{name}.md"
+        if not path.is_file():
+            continue
+        model = frontmatter_model(path)
+        if model:
+            warnings.append(
+                f"OpenCode agent pins its own model ({model}), so the user's default model no longer applies: {path}. "
+                "The shipped templates omit `model`."
+            )
+    source = repo_source_root()
+    if source is not None:
+        check_managed_drift(source / ".opencode" / "agents", root / "agents", AGENT_FILES, "OpenCode agent", warnings)
+        check_managed_drift(
+            source / "commands",
+            root / "commands",
+            ("engineering-workflow.md", "archive-task.md"),
+            "OpenCode command",
+            warnings,
+        )
+
+
+def check_codex(home: Path, warnings: list[str]) -> None:
+    """Report what the adapter actually installs, without claiming Codex runtime facts."""
+    warnings.append(
+        "Codex adapter installs the shared skills only: these Markdown definitions do not "
+        "establish native Codex runtime support. Verify native subagent capability for the "
+        "installed Codex client version; if it is unavailable, "
+        "workflow-planner/workflow-implementer/workflow-reviewer cannot run in separate model "
+        "contexts and independent review is UNVERIFIED."
+    )
+    for name in AGENTS:
+        legacy = home / ".codex" / "agents" / f"{name}.md"
+        if not legacy.is_file():
+            continue
+        try:
+            body = legacy.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if ".trellis/tasks/" in body:
+            warnings.append(
+                f"Stale Trellis-era Codex agent definition remains: {legacy}. "
+                "Re-run the installer to back it up and remove it."
+            )
+
+
+def check_claude_model_aliases(scope: str, project: Path | None, home: Path, warnings: list[str]) -> None:
+    """Report alias collapse without printing credentials or rewriting settings.
+
+    Providers that route both alias slots to one model are common; the point is to
+    make "Opus" versus "Sonnet" selection visible before someone blames the agents.
+    """
+    root = project / ".claude" if scope == "Project" else home / ".claude"
+    settings = root / "settings.json"
+    if not settings.is_file():
+        return
+    try:
+        body = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        warnings.append(f"Claude settings could not be parsed, so model aliases are unknown: {settings}")
+        return
+    env = body.get("env") if isinstance(body, dict) else None
+    if not isinstance(env, dict):
+        return
+    opus = str(env.get("ANTHROPIC_DEFAULT_OPUS_MODEL") or "").strip()
+    sonnet = str(env.get("ANTHROPIC_DEFAULT_SONNET_MODEL") or "").strip()
+    if opus and sonnet and opus == sonnet:
+        warnings.append(
+            f"Claude Opus and Sonnet aliases both resolve to {sonnet}, so a workflow agent "
+            "that asks for Opus actually runs on that model. Models are user-owned; the "
+            "installer leaves settings.json untouched."
         )
 
 
@@ -378,9 +581,15 @@ def main() -> int:
     if selected(args.harness, "OMP"):
         check_omp(args.scope, project, home, errors, warnings)
     if selected(args.harness, "Claude"):
-        check_claude(args.scope, project, home, errors)
+        check_claude(args.scope, project, home, errors, warnings)
+        check_claude_model_aliases(args.scope, project, home, warnings)
     if selected(args.harness, "Pi"):
         check_pi(args.scope, project, home, errors, warnings)
+        check_pi_overrides(args.scope, home, warnings)
+    if selected(args.harness, "OpenCode"):
+        check_opencode(args.scope, project, home, errors, warnings)
+    if selected(args.harness, "Codex"):
+        check_codex(home, warnings)
     for warning in warnings:
         print(f"WARNING: {warning}", file=sys.stderr)
     for error in errors:

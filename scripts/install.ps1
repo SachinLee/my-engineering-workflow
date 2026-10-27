@@ -3,7 +3,7 @@ param(
   [ValidateSet("User", "Project")]
   [string]$Scope = "User",
 
-  [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
+  [ValidateSet("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")]
   [string]$Harness = "Both",
 
   [string]$ProjectPath
@@ -22,6 +22,14 @@ $agentDirOverride = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR)) 
 }
 $piUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".pi\agent" }
 $ompUserRoot = if ($agentDirOverride) { $agentDirOverride } else { Join-Path $HOME ".omp\agent" }
+$opencodeDirOverride = if ([string]::IsNullOrWhiteSpace($env:OPENCODE_CONFIG_DIR)) {
+  $null
+} else {
+  $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(
+    $env:OPENCODE_CONFIG_DIR
+  )
+}
+$opencodeUserRoot = if ($opencodeDirOverride) { $opencodeDirOverride } else { Join-Path $HOME ".config\opencode" }
 $skillNames = @(
   "run-engineering-workflow",
   "clarify-requirements",
@@ -45,6 +53,20 @@ $claudeCommandNames = @(
   "archive-task.md"
 )
 $piAgentNames = @(
+  "workflow-planner.md",
+  "workflow-implementer.md",
+  "workflow-reviewer.md"
+)
+$opencodeAgentNames = @(
+  "workflow-planner.md",
+  "workflow-implementer.md",
+  "workflow-reviewer.md"
+)
+$opencodeCommandNames = @(
+  "engineering-workflow.md",
+  "archive-task.md"
+)
+$codexLegacyAgentNames = @(
   "workflow-planner.md",
   "workflow-implementer.md",
   "workflow-reviewer.md"
@@ -200,7 +222,10 @@ function Install-SharedLink {
 function Copy-ManagedFile {
   param(
     [Parameter(Mandatory)] [string]$Source,
-    [Parameter(Mandatory)] [string]$Target
+    [Parameter(Mandatory)] [string]$Target,
+    # Adaptor files can carry user edits (for example hand-added
+    # external_directory entries). Keep a backup instead of silently replacing them.
+    [switch]$BackupOnOverwrite
   )
 
 
@@ -217,6 +242,13 @@ function Copy-ManagedFile {
   Assert-SafeParents -Path $Target
   Assert-NotReparsePoint -Path $Target
   if ($PSCmdlet.ShouldProcess($Target, "install managed workflow file")) {
+    if ($BackupOnOverwrite -and (Test-Path -LiteralPath $Target -PathType Leaf)) {
+      $sameBytes = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash -eq
+        (Get-FileHash -LiteralPath $Target -Algorithm SHA256).Hash
+      if (-not $sameBytes) {
+        Backup-ManagedPath -Path $Target
+      }
+    }
     New-Item -ItemType Directory -Force -Path $targetRoot | Out-Null
     Copy-Item -LiteralPath $Source -Destination $Target -Force
   }
@@ -325,6 +357,15 @@ if ($Harness -in @('Pi', 'All')) {
     $legacyRoots += Join-Path $project '.pi/skills'
   }
 }
+# OpenCode discovers ~/.agents/skills and .agents/skills natively, so its own
+# skills directory becomes a legacy copy once the shared tree is published.
+if ($Harness -in @('OpenCode', 'All')) {
+  $legacyRoots += Join-Path $opencodeUserRoot 'skills'
+  if ($project) {
+    $legacyRoots += Join-Path $project '.agents/skills'
+    $legacyRoots += Join-Path $project '.opencode/skills'
+  }
+}
 if ($Harness -in @('Claude', 'All')) {
   $claudeLinkRoots += Join-Path $HOME '.claude/skills'
   if ($project) { $claudeLinkRoots += Join-Path $project '.claude/skills' }
@@ -387,6 +428,15 @@ if ($Harness -in @('Pi', 'All')) {
   $root = if ($project) { Join-Path $project '.pi' } else { $piUserRoot }
   foreach ($fileName in $piAgentNames) {
     $managedFiles += @{ Source = Join-Path $repoRoot ".pi/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+  }
+}
+if ($Harness -in @('OpenCode', 'All')) {
+  $root = if ($project) { Join-Path $project '.opencode' } else { $opencodeUserRoot }
+  foreach ($fileName in $opencodeAgentNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot ".opencode/agents/$fileName"; Target = Join-Path $root "agents/$fileName" }
+  }
+  foreach ($fileName in $opencodeCommandNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot "commands/$fileName"; Target = Join-Path $root "commands/$fileName" }
   }
 }
 foreach ($file in $managedFiles) {
@@ -498,6 +548,51 @@ if ($Harness -in @("Pi", "All")) {
   }
 }
 
+if ($Harness -in @("OpenCode", "All")) {
+  $opencodeRoot = if ($Scope -eq "Project") {
+    Join-Path $project ".opencode"
+  } else {
+    $opencodeUserRoot
+  }
+
+  $opencodeAgents = Join-Path $opencodeRoot "agents"
+  $opencodeCommands = Join-Path $opencodeRoot "commands"
+
+  # These files carry user-owned external_directory entries, so an overwrite is
+  # recoverable through the shared backup directory.
+  foreach ($fileName in $opencodeAgentNames) {
+    Copy-ManagedFile `
+      -Source (Join-Path $repoRoot ".opencode\agents\$fileName") `
+      -Target (Join-Path $opencodeAgents $fileName) `
+      -BackupOnOverwrite
+  }
+
+  foreach ($fileName in $opencodeCommandNames) {
+    Copy-ManagedFile `
+      -Source (Join-Path $repoRoot "commands\$fileName") `
+      -Target (Join-Path $opencodeCommands $fileName) `
+      -BackupOnOverwrite
+  }
+}
+
+if ($Harness -in @("Codex", "Both", "All")) {
+  # Codex has no markdown runtime agents. Older Trellis-era installs left agent
+  # files behind; back up only those whose content still carries the Trellis
+  # signature, and never touch any other file.
+  $codexAgents = Join-Path $HOME ".codex\agents"
+  foreach ($fileName in $codexLegacyAgentNames) {
+    $legacy = Join-Path $codexAgents $fileName
+    if (-not (Test-Path -LiteralPath $legacy -PathType Leaf)) { continue }
+    Assert-SafeParents -Path $legacy
+    Assert-NotReparsePoint -Path $legacy
+    $body = [IO.File]::ReadAllText($legacy)
+    if ($body -notmatch '^---\s' -or $body -notmatch '\.trellis/tasks/') { continue }
+    if ($PSCmdlet.ShouldProcess($legacy, "back up stale Codex Trellis agent definition")) {
+      Backup-ManagedPath -Path $legacy
+    }
+  }
+}
+
 $resultVerb = if ($WhatIfPreference) { "Planned" } else { "Installed" }
 Write-Host "$resultVerb $($skillNames.Count) shared workflow skills at $sharedSkills; $Harness adapters at $Scope scope."
 if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
@@ -507,4 +602,11 @@ if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
 }
 if ($Scope -eq "Project" -and $Harness -in @("Pi", "All")) {
   Write-Host "Start Pi from the trusted project root with: pi"
+}
+if ($Scope -eq "Project" -and $Harness -in @("OpenCode", "All")) {
+  Write-Host "Start OpenCode from the trusted project root with: opencode"
+}
+if ($Harness -in @("Codex", "Both", "All")) {
+  # Codex gets the shared skills only; this adapter does not establish native runtime agents.
+  Write-Host "Codex adapter installs the shared skills only: no workflow agent files are installed for Codex, which does not establish native subagent support. Verify native subagent capability for the installed Codex client version."
 }

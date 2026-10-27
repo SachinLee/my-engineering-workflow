@@ -26,9 +26,13 @@ Rules:
   entries to `.claude-plugin/plugin.json`.
 - All three agents (`workflow-planner`, `workflow-implementer`,
   `workflow-reviewer`) are owned and installed by this repository. Keep their
-  root, `.omp/`, and `.pi/` definitions in sync through `scripts/install.ps1`.
+  root, `.omp/`, `.pi/`, and `.opencode/` definitions in sync through
+  `scripts/install.ps1`.
+- OpenCode discovers the shared user-level `~/.agents/skills/` natively, so the
+  installer manages only its agents and two commands there; keep OpenCode agent
+  frontmatter free of `model` so the user's own config decides the model.
 - Preserve `Both` as Codex + OMP for compatibility; use `All` for Codex + OMP +
-  Claude Code + Pi.
+  Claude Code + Pi + OpenCode.
 - Keep implementation and final review in separate model contexts when the
   active harness supports it.
 - Update `manifests/upstreams.lock.json` only after reviewing upstream changes.

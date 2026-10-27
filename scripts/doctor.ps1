@@ -2,7 +2,7 @@ param(
   [ValidateSet("User", "Project")]
   [string]$Scope = "User",
 
-  [ValidateSet("Codex", "OMP", "Claude", "Pi", "Both", "All")]
+  [ValidateSet("Codex", "OMP", "Claude", "Pi", "OpenCode", "Both", "All")]
   [string]$Harness = "Both",
 
   [string]$ProjectPath

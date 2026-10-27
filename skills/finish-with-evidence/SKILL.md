@@ -38,7 +38,7 @@ repository verification directly from this skill; consume recorded evidence.
    `workflow-reviewer` report with Standards / Spec, correctness/security/tests/
    complexity coverage; local repairs also require the budgeted focused follow-up
    and affected checks. The prior full report alone cannot approve unaudited repairs.
-   Lightweight consumes its main-session focused check, without default dispatch.
+   Lightweight consumes its host-native focused check, without a formal reviewer.
 4. Check full/focused rounds, unresolved blockers and the final coverage chain.
    Missing or stale evidence, unavailable independent review, incomplete scope or
    conflicting round history: record `UNVERIFIED` and return the precise gap to

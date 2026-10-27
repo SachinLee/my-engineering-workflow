@@ -28,7 +28,12 @@ AI 会话之间的上下文连续性。
 | `.trellis/` | 更早的历史记录 | 只读；不运行脚本、不安装 injector |
 | Matt Pocock Skills | 需求追问、领域建模、TDD、模块边界、双轴 review | 作为默认工程方法 |
 | Ponytail | YAGNI、复用、stdlib/native 优先 | 只用于复杂度控制，不降低质量要求 |
-本仓库目前提供六个 skill：
+
+这些组件之上有一条**共享质量契约**：它只负责交付规则——验收标准、证据要求、风险等级和
+审查预算。谁来调度、用哪个模型、客户端暴露哪些工具，归宿主（Codex、Claude Code、OpenCode、
+OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用”，不重写质量标准。
+
+本仓库目前提供六个 canonical skill（安装器统一管理的同一份源码）：
 
 | Skill | 用途 |
 | --- | --- |
@@ -123,7 +128,7 @@ INVALID 派发，不允许进入实现）。
 | 档位 | 用在什么时候 | 写在哪里 |
 | --- | --- | --- |
 | 切片 | 同一会话内顺序完成、共享模块、只有一个 writer | `tasks.md` 的 `### 切片 N` |
-| 工单 | 每片能独立验收、需要跨会话续接、或多 writer 并行 | `tickets/NN-<slug>.md` |
+| 工单 | 每片能独立验收、需要跨会话续接、或互不重叠的并行 lane | `tickets/NN-<slug>.md` |
 | 多任务 | 不同发布单元、不同仓库、可各自独立收口 | 多个 task 目录 + 一个总控 task |
 
 工单文件头部固定字段：
@@ -139,8 +144,9 @@ writer: main          # main | workflow-implementer
 ---
 ```
 
-调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；一次工单只给一个
-writer；验证命令真正跑过并把证据写进 `artifacts/verification.md` 后，才能把 `state` 改成 `done`。
+调度规则：frontier = 全部 `blocked_by` 已 `done` 的 `ready` 工单；每个有界且不重叠的切片只给一个
+writer，文件集不重叠的独立 lane 可以并行，但共用同一套审查预算；验证命令真正跑过并把证据写进
+`artifacts/verification.md` 后，才能把 `state` 改成 `done`。
 换会话或换客户端续接时，重新读 `tickets/` 算 frontier，不靠上一段聊天回忆进度。
 工单正文不重写切片计划，直接引用 `tasks.md#切片-N` 和它的上下文包。
 
@@ -293,8 +299,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 ## 安装本仓库的 Skill
 
-六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP 和 Pi
-原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
+六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
+OpenCode 原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
 仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
 
 首次安装或更新全部平台，在本仓库根目录执行：
@@ -306,7 +312,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 更新仓库后重跑同一条安装命令即可，无需逐个平台分别安装 skill。`Scope` 默认是 `User`，
 只决定 agents、commands 和 OMP 配置等适配文件的位置；即使选择 `Project`，skill 正文仍在
-用户级共享目录。`Harness` 默认仍为 `Both`（Codex + OMP）。
+用户级共享目录。`Harness` 默认仍为 `Both`（Codex + OMP），`All` 同时覆盖 Codex、OMP、
+Claude Code、Pi 和 OpenCode。
 
 ### 全局安装到 Codex
 
@@ -352,7 +359,30 @@ Pi 会在 `/reload` 或新会话后刷新 agent catalog。
 pi install npm:@narumitw/pi-subagents
 ```
 
-### 安装到项目，同时支持四个平台
+### 全局安装到 OpenCode
+
+```powershell
+.\scripts\install.ps1 -Scope User -Harness OpenCode
+.\scripts\doctor.ps1 -Scope User -Harness OpenCode
+```
+
+OpenCode 原生发现共享的 `~/.agents/skills/`，所以安装器不为它复制 skill 正文，只管理
+三个 agent 和 `/engineering-workflow`、`/archive-task` 两个 command，写入
+`~/.config/opencode/`（设置了 `OPENCODE_CONFIG_DIR` 时改用它）；`-Scope Project` 则写入目标
+项目的 `.opencode/`。OpenCode 适配只声明做完共享安装后原生发现的 skill，不再复制一份正文；
+受管范围只有这三个 agent 和两个 command。agent 文件不带 `model` 和模型供应商，实际模型仍由你的 OpenCode 配置
+决定：模板只固定 `mode: subagent` 和权限，因此换模型只需改用户自己的配置。
+
+OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开一个新会话（不能只靠
+`/reload` 之类热加载），旧会话看不到新增的 agent。安装器同样会清理
+`~/.config/opencode/skills/` 和项目 `.opencode/skills/` 中的旧 skill 入口。也可直接使用
+`python scripts/doctor.py --scope User --harness OpenCode` 检查同一组文件。
+
+OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开一个新会话（不能只靠
+`/reload` 之类热加载），旧会话看不到新增的 agent。安装器同样会清理
+`~/.config/opencode/skills/` 和项目 `.opencode/skills/` 中的旧 skill 入口。
+
+### 安装到项目，同时支持五个平台
 
 目标项目不需要任何外部记录系统，直接安装即可：
 
@@ -369,14 +399,15 @@ pi install npm:@narumitw/pi-subagents
 - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
 - 三个 Claude agent、`/engineering-workflow` 和 `/archive-task` 到项目 `.claude/`。
 - 三个 Pi agent 到 `.pi/agents/`。
+- 三个 OpenCode agent 和两个 command 到项目 `.opencode/`。
 
 安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
 OMP 的 `workflow-review-gate` 扩展继续随适配安装。
 先按共享快速通道判断：简单任务无需建档；正式工作在确认后使用项目内的 OpenSpec change。
 `.workflow/` 仅保留为 legacy 恢复输入，不为新工作创建或更新。
 
-只需要一个平台时使用 `Codex`、`OMP`、`Claude` 或 `Pi`。为兼容旧用法，`Both` 仍只表示
-Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可以预览安装器将替换的受管目录
+只需要一个平台时使用 `Codex`、`OMP`、`Claude`、`Pi` 或 `OpenCode`。为兼容旧用法，`Both` 仍只表示
+Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi + OpenCode。先用 `-WhatIf` 可以预览安装器将替换的受管目录
 和文件。
 
 个人电脑推荐使用全局安装。项目级安装用于把适配文件放在项目中，**不再隔离 skill
@@ -405,8 +436,8 @@ Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi。先用 `-WhatIf` 可
 
 ### 一次性全局准备
 
-Codex、Claude Code 和 Pi 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
-OMP adapter。也可以一次安装全部四个平台：
+Codex、Claude Code、Pi 和 OpenCode 的全局安装命令见上一节。需要经常使用 OMP 时，再全局安装一次
+OMP adapter。也可以一次安装全部五个平台：
 
 ```powershell
 .\scripts\install.ps1 -Scope User -Harness OMP
@@ -545,8 +576,8 @@ ompw --continue
 主路由先按共享快速通道分流；只有正式任务才澄清需求、形成方案并等待明确批准：
 
 ```text
-简单任务 -> 主会话执行 -> diff / 最小相关检查 -> 对话交付（不建档）
-正式任务 -> OpenSpec discovery / 确认 -> 澄清 / 规划 -> 等待批准 -> 主会话 TDD 实现
+简单任务 -> 宿主原生执行（主会话或宿主首选 worker）-> diff / 最小相关检查 -> 对话交付（不建档）
+正式任务 -> OpenSpec discovery / 确认 -> 澄清 / 规划 -> 等待批准 -> 宿主首选 writer 做 TDD 实现
   -> 仓库检查 -> 一个 @advisor 独立复核（Standards / Spec）-> 必要修复及定向复核
   -> 证据交付 -> awaiting-acceptance ->（你验收并明确要求后）归档
 ```
@@ -626,7 +657,7 @@ PRD、ticket、plan 或 outcome。
 | --- | --- | --- |
 | 需求模糊 | `clarify-requirements`；复杂需求先用 Matt `grill-with-docs` | `grill-with-docs` 内部调用 `grilling` + `domain-modeling`，结论写入当前任务 `proposal.md` |
 | 方案设计 | `plan-solution` + Matt `codebase-design` | 生成 `design.md`、`tasks.md` 和 `context.md` 读取清单 |
-| 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 默认在主会话执行；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
+| 实现/修 bug | Matt `tdd`；疑难 bug 用 `diagnosing-bugs` | 由宿主首选 writer 执行（无专门策略时用主会话）；`critical` 才 dispatch `workflow-implementer`，遵循 RED/GREEN slice |
 | 质量检查 | 仓库自身检查 | 验证测试、lint、类型和构建；不自动调用原生 Matt `code-review` |
 | 独立复核 | `review-implementation` / `workflow-reviewer`；Ponytail 作为审查方法 | Standard / Critical 在一个新上下文报告 Standards / Spec 等维度，不嵌套派发 |
 | 收尾 | `finish-with-evidence` | 把真实命令和结果写入 `artifacts/verification.md`，逐条勾 AC，置 `awaiting-acceptance` 后交给你验收 |
@@ -646,7 +677,7 @@ tasks、上下文包与已有验证证据，再核对代码、测试及 `git sta
 本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
 在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
 
-本仓库安装器目前原生管理 Codex、Claude Code、OMP 和 Pi。其他支持 agentskills.io 的客户端
+本仓库安装器目前原生管理 Codex、Claude Code、OMP、Pi 和 OpenCode。其他支持 agentskills.io 的客户端
 可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
 
 ```powershell
@@ -777,7 +808,7 @@ OMP 更新和记录系统无关：如果使用的是项目级安装，还要对�
 | --- | --- | --- |
 | 主路由、需求追问、最终决策 | 主会话 | `@default` |
 | 方案规划 | `workflow-planner` | `@plan` |
-| TDD 实现（仅 critical） | `workflow-implementer` | `@task` |
+| TDD 实现（critical 或已批准的有界切片） | `workflow-implementer` | `@task` |
 | 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
 | 最终只读复核 | `workflow-reviewer` | `@advisor` |
 | 高风险或失败升级 | 主会话/专项 agent | `@default` 或 `@slow` |
@@ -812,7 +843,7 @@ claude --plugin-dir "D:\my-works\claude-skills\my-engineering-workflow" --model 
 | --- | --- | --- |
 | 主路由、需求追问、批准、修复、交付 | 主会话 | 启动时选择的模型 |
 | 方案规划 | `workflow-planner` | `opus` |
-| TDD 实现（仅 critical） | `workflow-implementer` | `sonnet` |
+| TDD 实现（critical 或已批准的有界切片） | `workflow-implementer` | `sonnet` |
 | 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
 | 最终只读复核 | `workflow-reviewer` | `opus` |
 
@@ -830,12 +861,38 @@ hook 帮忙注入上下文。Claude 实现 agent 的 tools 不含 `Skill`，因�
 外部 skill；TDD 由 `tasks.md` 中的 RED/GREEN vertical slice、主会话 dispatch prompt、
 仓库原生验证和单次独立 review 共同约束，不能依赖嵌套 Skill 派发。
 
+`opus` / `sonnet` 只是本仓库给出的模型标签，不是固定承诺：`agents/*.md` 里的 `model`
+字段归你所有，可以按可用模型重映射。改完重跑 `install.ps1 -Harness Claude` 即可生效。
+
+## OpenCode 工作流
+
+OpenCode 端只有一个调度器：**Slim Orchestrator**。它负责发现、确认、风险评估、写入
+预算和唯一的审查预算；不要再加第二个 orchestrator、第二遍 review 或嵌套派发链。
+
+Slim 通过 OpenCode 原生 specialist 干活：
+
+| 角色 | 用途 |
+| --- | --- |
+| `explorer` | 有界只读调研（仍按上下文包规则派发） |
+| `designer` | 界面、布局、视觉层级 |
+| `fixer` | 已批准切片的有界实现 |
+| `oracle` | 重大设计或正确性不确定时的第二意见 |
+| `workflow-planner` / `workflow-implementer` / `workflow-reviewer` | 仅用于严格正式切片和那一次独立复核 |
+
+`workflow` agents 是 Slim 可以调用的 specialist，不是第二套控制面。一次正式交付仍然只有
+一套审查预算（见 `quality-profiles.md`）。OpenCode 的模型归属用户自己的配置；
+六个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
+
+正式实现通过 Slim `fixer` 角色路由，那一次独立复核通过 Slim `oracle` 角色路由，两个角色由当前激活的 OMO-Slim preset 决定模型。
+不要把某个 preset 的模型 ID 静态写进受管 agent 或本文档；`.opencode/agents/` 里的 `model` 字段保持空缺。
+角色不可调用或无法观察实际模型时，记录 `UNVERIFIED`；直接调用不带 `model` 的 workflow agent 只会继承父会话模型，继承不等于角色路由。
+
 ## 使用方法
 
 ### 1. 第一次在项目中使用
 
 直接说明需求即可。主路由先按共享资格判断快速通道：非行为性、局部、低风险且需求明确的小改动，
-在主会话直接执行、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
+由宿主原生方式直接执行（主会话或宿主首选 worker）、检查 diff 和最小相关验证，结果在对话中交代；不询问建任务、不创建 OpenSpec 或其他任务记录。
 行为变更、风险不符或有正式记录/交接要求时，再进入匹配与确认。执行中范围扩大先停下，再确认升级。
 在 Codex 中输入以下内容，或在 Claude Code 中执行 `/engineering-workflow` 后附带同一需求：
 
@@ -887,9 +944,9 @@ RED 测试 -> 最小实现 -> GREEN -> 重构 -> 仓库验证 -> 单次独立复
 ```
 
 在 OMP 中，只有 `critical` 任务才会把已批准的切片交给 `workflow-implementer`，默认使用
-`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务留在主会话实现。在 Claude
-Code 中调用本仓库的 `workflow-implementer`，同样按已批准的 `tasks.md` 执行 RED/GREEN
-slice。主会话继续负责范围、升级和最终决策。
+`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务由宿主首选 writer 实现，没有专门
+策略时用主会话。在 Claude Code 中调用本仓库的 `workflow-implementer`，同样按已批准的
+`tasks.md` 执行 RED/GREEN slice。主会话继续负责范围、升级和最终决策。
 
 ### 5. 独立复核
 `lightweight` 默认不派独立 reviewer。`standard` / `critical` 统一按
@@ -928,13 +985,18 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
 
 | 等级 | 适用场景 | 主要要求 |
 | --- | --- | --- |
-| `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查 |
-| `standard` | 普通功能、bug fix、重构 | 主会话 RED/GREEN 与仓库检查，加一个独立 `workflow-reviewer` 完成 Standards / Spec 等维度 |
+| 快速通道 | 无行为改动，或范围明确、接缝有界且带回归检查的小行为修复 | 宿主原生执行、diff、最小相关检查；不建档，也不因此缺少证据 |
+| `lightweight` | 文档、配置、低风险局部改动 | 范围检查、diff、最小可运行检查；无强制正式 planner/reviewer，调度由宿主决定 |
+| `standard` | 普通功能、bug fix、重构 | 宿主首选 writer 做 RED/GREEN 与仓库检查，加一个独立 `workflow-reviewer` 完成 Standards / Spec 等维度 |
 | `critical` | 认证、资金、密钥、迁移、公共接口、破坏性操作 | Standard 全部要求，加安全、集成、回滚和关键路径 E2E；仍是一个最终 reviewer |
 
-详细配置随主路由打包在
+快速通道不是按文件数判断的：一行改动也可能高风险，五个文件也可能是纯格式。认证、资金、
+密钥、持久数据、迁移、公共契约、依赖、破坏性操作或无法界定风险时，一律走正式流程。
+详细资格、风险升级与审查预算随主路由打包在
 [quality-profiles.md](skills/run-engineering-workflow/references/quality-profiles.md)。风险等级
-不能覆盖项目自身更严格的要求。
+不能覆盖项目自身更严格的要求。方法默认用 Matt `tdd`；ECC `tdd-workflow` 只是可选替代，
+不是默认依赖。模型选择始终归用户配置：Claude 的 `opus` / `sonnet` 标签可重映射，Pi agent
+省略 `model` 以便继承或覆盖。
 
 ## 冲突处理规则
 

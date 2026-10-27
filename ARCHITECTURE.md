@@ -6,10 +6,11 @@
 2. `.workflow/` remains a recoverable legacy record system; `.trellis/` remains read-only historical input. Neither is a new-work authority.
 3. Matt-style practices improve requirements, domain language, module seams, TDD, and Spec-versus-Standards review.
 4. Ponytail supplies a final pressure against unnecessary complexity.
-5. This repository supplies routing, ownership, profiles, independent review, Codex, OMP, Claude Code, and Pi adapters, plus migration and evidence tooling.
+5. This repository supplies routing, ownership, profiles, independent review, Codex, OpenCode, OMP, Claude Code, and Pi adapters, plus migration and evidence tooling.
 
 ## Design Rules
 
+- The shared quality contract owns delivery rules: acceptance criteria, evidence, risk profiles, and the review budget. The host owns scheduling, model choice, and tool availability. Adapters map roles; they never restate quality.
 - Store one fact in one authoritative place: OpenSpec for formal work; eligible fast work creates no task state, legacy records only for recovery.
 - Pass bounded context packages between AI sessions instead of copying full context or passing path lists alone.
 - Load state with reads, never with head-of-input injection. An injector that places volatile content before the conversation history invalidates the prompt cache for the entire session.
@@ -27,7 +28,7 @@
 ```text
 request
   -> classify current request before discovery (quality-profiles.md#simple-work-fast-path)
-     -> eligible: main-session edit -> diff + smallest relevant checks -> report in conversation
+     -> eligible: host-native edit -> diff + smallest relevant checks -> report in conversation
         (no task records; scope/risk grows -> stop, preserve diff/checks, confirm formal change)
      -> formal: continue below; selected change continuation keeps its record
   -> read openspec/config.yaml and discover unarchived changes (openspec_compat
@@ -38,8 +39,8 @@ request
   -> clarify requirements (proposal.md with checkboxed ACs and specs/*.md)
   -> plan solution in design.md, tasks.md, and artifacts/context.md
   -> user approval, OpenSpec change -> in_progress (task frontier when split)
-  -> Matt TDD with an inlined 上下文包 (main session by default,
-     workflow-implementer when critical)
+  -> Matt TDD with an inlined 上下文包 (host's preferred writer, or main session
+     when the host has no specialist policy; workflow-implementer when critical)
   -> repository verification (budget: quality-profiles.md)
   -> one independent workflow-reviewer for Standards / Spec and
      correctness/security/complexity (standard and critical)
@@ -59,9 +60,10 @@ canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings
 
 `skills/` owns canonical source. The installer publishes six skills and the assembled
 OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
-OMP, and Pi discover that directory natively; Claude uses per-skill directory links
+OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
 (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
-only harness adapters: agents, commands, OMP config, launcher, and review gate.
+only harness adapters: agents, commands, OMP config, launcher, review gate, and
+the OpenCode agent/command set.
 Project scope shares skill versions across projects. Both remains Codex + OMP.
 
 Selected harness legacy copies, including target-project copies in Project scope,
@@ -113,7 +115,42 @@ main configured model
 ```
 
 The workflow installs only its six skills and three provider-independent Pi
-agents. Pi agents omit a fixed `model` and inherit the active Pi model; they
-never use OMP `@role` aliases. If `@narumitw/pi-subagents` is not installed,
-planning, bounded implementation, and independent review fall back to the main
-session and must disclose the loss of fresh-context review.
+agents. Pi agents omit a fixed `model` and inherit the active Pi model; user or
+trusted-project overrides can differ per agent. They never use OMP `@role` aliases.
+If `@narumitw/pi-subagents` is not installed, planning, bounded implementation,
+and independent review fall back to the main session and must disclose the loss of
+fresh-context review.
+
+## OpenCode Roles
+
+```text
+Slim Orchestrator (sole orchestrator, sole scheduler)
+  -> explorer (bounded read-only investigation)
+  -> designer (UI, layout, visual hierarchy)
+  -> fixer (bounded implementation of an approved slice)
+  -> oracle (second opinion on material uncertainty)
+  -> workflow-planner / workflow-implementer / workflow-reviewer
+     (strict formal slices and the single independent review only)
+  -> main-session remediation, evidence, and the delivery claim
+```
+
+Slim is the only orchestrator. The workflow agents are specialists it may call,
+not a parallel control plane; adding a second orchestrator or a second review pass
+breaks the per-slice writer rule and the one-review-budget rule. Review still comes
+from the single budget in `quality-profiles.md`.
+Formal implementation is routed through Slim `fixer` and the single independent
+review through Slim `oracle`; those roles select models from the active OMO-Slim
+preset. The model-free workflow agent files are procedures, not model bindings.
+If a role cannot be invoked or its effective model cannot be verified, report
+`UNVERIFIED` instead of treating parent-model inheritance as role routing.
+
+## Adapter Capabilities And Ownership
+
+The six canonical skills are installer-managed and shared; adapters add managed
+links or native discovery and never fork the bodies. Model selection stays
+user-owned: Claude agent definitions carry `opus` and `sonnet` labels a user may
+remap, Pi and OpenCode agents omit `model` so user overrides can differ, and OMP roles resolve
+through the user's `modelRoles`. Codex and OpenCode consume the shared skills directory, and
+subagent capability is asserted only after independent verification for that client
+version. No adapter may promise independent review a client cannot provide; report
+`UNVERIFIED` with the precise gap instead.

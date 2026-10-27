@@ -24,7 +24,7 @@
       "name": "simple-docs-with-existing-changes",
       "state": "clear_local_non_behavioral_typo_request_with_unrelated_unarchived_changes",
       "expected_stage": "fast-execute",
-      "required_behavior": "main-session edit and smallest relevant checks without task records",
+      "required_behavior": "host-native edit and smallest relevant checks without task records",
       "forbidden": ["list changes", "ask create or reuse", "write formal or legacy task state", "dispatch reviewer"]
     },
     {
@@ -32,6 +32,76 @@
       "state": "independently_eligible_non_behavioral_formatting_without_openspec_cli",
       "expected_stage": "fast-execute",
       "forbidden": ["run CLI discovery", "initialize OpenSpec", "require task creation"]
+    },
+    {
+      "name": "small-behavior-fix-bounded-seam",
+      "state": "clearly_scoped_low_risk_behavior_fix_inside_one_seam_with_visible_callers",
+      "expected_stage": "fast-execute",
+      "required_behavior": "host-native fix plus a meaningful regression check, no formal record",
+      "forbidden": [
+        "skip the regression check",
+        "create a task record",
+        "treat file count as eligibility"
+      ]
+    },
+    {
+      "name": "high-risk-small-diff-requires-formal",
+      "state": "one_line_fix_touching_authorization_money_secrets_persistent_data_migration_or_public_contract",
+      "expected_stage": "discover-and-confirm",
+      "required_behavior": "escalate to the formal branch despite the tiny diff",
+      "forbidden": ["fast-execute", "claim the diff is too small to matter"]
+    },
+    {
+      "name": "fast-path-behavior-fix-regression",
+      "state": "eligible_bounded_behavior_fix_without_regression_check",
+      "expected_stage": "report-verification-failure",
+      "required_behavior": "add the regression check before claiming the fix verified",
+      "forbidden": ["claim verified without the regression check", "backfill a formal record instead"]
+    },
+    {
+      "name": "openspec-slim-single-orchestrator",
+      "state": "opencode_slim_session_handling_a_formal_change",
+      "expected_stage": "single-orchestrator-dispatch",
+      "required_behavior": "Slim schedules explorer/designer/fixer/oracle and workflow agents on demand, one review budget",
+      "forbidden": [
+        "introduce a second orchestrator",
+        "schedule a second full review",
+        "nest a review inside a writer"
+      ]
+    },
+    {
+      "name": "opencode-slim-role-routing-unverified",
+      "state": "opencode_session_without_slim_role_dispatch_or_unobservable_effective_model",
+      "expected_stage": "report-unverified-role-routing",
+      "required_status": "UNVERIFIED",
+      "required_behavior": "record UNVERIFIED and state that a direct native agent inherits the parent session model",
+      "forbidden": [
+        "copy a preset model ID into a managed agent",
+        "claim the role model was used because the parent model was inherited",
+        "report a static model ID as the verified reviewer model"
+      ]
+    },
+    {
+      "name": "independent-lanes-no-shared-write-files",
+      "state": "two_approved_slices_with_disjoint_write_boundaries",
+      "expected_stage": "single-orchestrator-dispatch",
+      "required_behavior": "run both lanes in parallel, one writer per slice, one shared review budget",
+      "forbidden": [
+        "give one writer both slices",
+        "let the two lanes share a write file",
+        "schedule a review per lane"
+      ]
+    },
+    {
+      "name": "codex-shared-skills-no-native-agents",
+      "state": "codex_loaded_from_shared_skills_without_verified_subagents",
+      "expected_stage": "report-review-unavailable",
+      "required_status": "UNVERIFIED",
+      "required_behavior": "use shared skills and claim only verified capabilities",
+      "forbidden": [
+        "claim Codex native subagent review",
+        "treat main-session self-check as independent review"
+      ]
     },
     {
       "name": "small-behavior-fix-requires-change",

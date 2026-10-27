@@ -1,0 +1,22 @@
+[
+  {
+    "path": "C:\\Users\\shuan\\.claude\\settings.json",
+    "sha256": "0101E5F1DCD1857B2F44AED32FAA5A94F0F3A2E93C26007156049A391C90B3C0"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.pi\\agent\\settings.json",
+    "sha256": "6213997F41FCD9C592AA9D5E4AC0C12E0D76B520D390DA438C3F81E93AB8407B"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.config\\opencode\\opencode.json",
+    "sha256": "DB89425A5CFDEAE6F86DA71B2AA9CBBADE7348F9F4795988536689C160773A7E"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.config\\opencode\\oh-my-opencode-slim.json",
+    "sha256": "EB7B379BA19B8B768166B85A9356A90CB55923160E16DAB974E6FB05FACF1213"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.codex\\config.toml",
+    "sha256": "F81CDED7B5862D604A6A0A904D6E368B2021DFE6AA9F21F0D8B7DF80ABC1977C"
+  }
+]

@@ -4,10 +4,26 @@ Read this reference when routing a task, resolving conflicts between
 integrations, or deciding where durable information belongs.
 
 Before discovery, apply [Simple Work Fast Path](quality-profiles.md#simple-work-fast-path).
-Eligible work has no task record: execute/check in the main session and report in
-conversation. Formal work retains the discovery and confirmation contract below;
+Eligible work has no task record: execute/check host-natively — main session or the
+host's preferred bounded worker — and report in conversation. Formal work retains
+the discovery and confirmation contract below;
 selected change continuations keep their still-valid confirmation. Plan/finish
 must not turn an eligible fast request into mandatory artifacts.
+
+## Host And Workflow Boundary
+
+`quality-profiles.md` is the shared quality contract and owns delivery rules:
+acceptance criteria, evidence requirements, risk profiles and the review budget.
+The host owns scheduling, model choice, tool availability and how a delegated
+role is spawned. Adapter notes below say which roles exist and how to reach
+them; they never restate or relax delivery rules.
+
+An approved plan or an already authorized scope covers ordinary dispatch inside
+that scope, including creating or reusing a subagent. Re-ask only when scope,
+risk, or the reviewer's independence materially changes.
+
+One writer per bounded, non-overlapping slice. Independent lanes may run in
+parallel where they share no write files; they still share the one review budget.
 
 ## Record Layout
 
@@ -91,9 +107,15 @@ contracts, and necessary correctness invariants — not hypothetical future need
 - Design headings are prompts, not requirements. Omit inapplicable sections or
   briefly say why; never build migration, monitoring, rollout, or recovery
   systems just to fill a template.
+- A change is complete only when it reaches every place it must: callers, tests,
+  fixtures, config, and exports. Keep validation and error paths when moving or
+  merging code, and leave one small test or assert-based self-check for
+  non-trivial new logic. Trivial edits need none.
 
 Consult Matt `codebase-design` for real boundaries and Ponytail for simplification
 when available. This rule applies even when optional upstream skills are absent.
+Matt `tdd` stays the default behavior-change method; ECC `tdd-workflow` is an
+optional named alternative, not a default dependency.
 
 
 ## Tickets And Decomposition
@@ -103,13 +125,14 @@ Three split levels; use the smallest one that fits how the work gets executed:
 | Level | Use when | Location |
 | --- | --- | --- |
 | Slice | Same session, shared module, single writer | OpenSpec `tasks.md` |
-| Ticket | Independently accepted, cross-session, or multiple writers | OpenSpec task item plus bounded artifact |
+| Ticket | Independently accepted, cross-session, or parallel non-overlapping lanes | OpenSpec task item plus bounded artifact |
 | Change | Different release unit or independent outcome | Separate OpenSpec change |
 
-OpenSpec `tasks.md` is the execution frontier. One change, one live writer unless
-an explicit ticket handoff says otherwise. A task is complete only with executed
-verification evidence in `artifacts/verification.md` (or the repository's
-approved equivalent). Do not recreate `.workflow/tickets/` for new work.
+OpenSpec `tasks.md` is the execution frontier. Each bounded, non-overlapping slice
+has one writer; independent lanes may run in parallel when their file sets do not
+overlap and the handoff names each lane's write boundary. A task is complete only
+with executed verification evidence in `artifacts/verification.md` (or the
+repository's approved equivalent). Do not recreate `.workflow/tickets/` for new work.
 
 ## Acceptance And Archival
 
