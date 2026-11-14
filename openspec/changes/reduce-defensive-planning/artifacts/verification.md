@@ -4,7 +4,7 @@
 
 - 状态：`awaiting-acceptance`；实现、验证和独立复核完成，待用户验收。
 - 日期：2026-11-14。
-- 范围：共享规划指导、10 个合成案例、手工 A/B 协议和合同测试。OMP 暂停；未发布到用户级 skills，未修改宿主模型、权限或插件配置。
+- 范围：共享规划指导、10 个合成案例、手工 A/B 协议和合同测试。OMP 暂停；用户授权后已发布到四个非 OMP 宿主的用户级安装，未修改宿主模型、权限或插件配置。
 - 模型试点：`NOT RUN`；材料交付不构成模型行为改善证据。
 
 ## 验收标准
@@ -77,11 +77,24 @@
 
 ## 提交与边界
 
-- `NOT COMMITTED`；检查基点为 `620e1b169ffad92390ea0a244f742ccd19e32806`，暂存区为空。
+- 代码提交：`3043df321282c6b50afb1a983dc343d5aed4ec0d`（13 files）；已正常推送 `origin/main`，`git ls-remote origin refs/heads/main` 与提交哈希一致。独立审查的检查基点为 `620e1b169ffad92390ea0a244f742ccd19e32806`。
 - 本 change 以外的用户已有修改保留；未接受、归档任何 change，未写 `.workflow/` 或 `.trellis/`。
 
 ## 剩余风险与验收
 
 - 模型行为效果 `NOT RUN`；10 例是合成数据，即使后续运行也仅作方向性证据。
-- 实际安装/宿主发现新版本 `NOT RUN`；本次只交付 canonical 源码，旧项目级 skill 副本仍需后续安装流程处理。
+- 四个非 OMP 宿主的用户级实际安装和 doctor 已通过；新会话中的实际模型路由/规则遵循 `NOT RUN`。既有项目级旧 skill 副本仍可能遮蔽用户级安装，本次未在源码仓库执行 Project 迁移。
 - 已完成交付，当前为 `awaiting-acceptance`。用户验收及归档尚未执行；待用户明确要求后再处理归档。
+
+## 用户授权后的提交与本地安装（2026-11-14）
+
+- 用户明确要求提交、推送并安装到本地；继续跳过 OMP，未归档 change。
+- 提交前从暂存区导出本轮规则、引用、案例、协议及测试，运行 `node --test <暂存快照>/tests/planning-simplicity.test.js`：6/6 PASS，确认未混入原有 project-standards hunks。
+- 四次实际执行 `pwsh -NoProfile -File scripts/install.ps1 -Scope User -Harness <Codex|Claude|Pi|OpenCode>` 均 exit 0；7 个共享 skills 位于 `C:/Users/shuan/.agents/skills`，相关宿主适配器已更新。逐项读取确认反事实规则和 plan-solution 引用存在。
+- 四次执行 `python scripts/doctor.py --scope User --harness <Codex|Claude|Pi|OpenCode>` 均 exit 0，输出 `Workflow installation is healthy.`。
+- doctor 保留的提醒：Codex 原生独立子代理能力需另证；Claude Opus/Sonnet 当前映射同一模型；Pi 用户 agentOverrides 继续有效。OpenCode 无 warning。
+- 9 项模型/权限/插件/OMP 配置文件安装前后 SHA256 一致，无受保护配置变化。
+- 安装前备份 14 个适配器文件至 `C:/Users/shuan/.agents/backups/my-engineering-workflow/local-install-b43e4d6b45da482a83ae2fd7e1884b33`。
+- 安装器另备份两个旧共享 skill 至 `C:/Users/shuan/.agents/backups/my-engineering-workflow/70e59ef5c34140dba209a6c563f28e5e`；三个旧 OpenCode agent 至 `C:/Users/shuan/.agents/backups/my-engineering-workflow/8c48e6cabfeb4919879d9657d114cfa1`。
+- 安装后 `.claude/skills` 共享入口反映相同规则变化；仅将本轮反事实准则及引用的对应 hunks 作为补充提交，不包含该文件里既有项目规范改动。实际补充提交哈希可用 `git log --oneline -- .claude/skills/run-engineering-workflow/references/workflow-governance.md` 查询。
+- 本记录追加发布/安装证据不改变已独立审查的规则、案例或测试内容；实际 A/B 试点仍为 `NOT RUN`。

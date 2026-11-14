@@ -215,7 +215,9 @@ Before handing off:
 - Confirm every dispatchable slice has a context package with inlined AC text,
   located code, and the exact verification command.
 - Check proposed extra mechanisms against the shared Evidence-Based Planning
-  rule. Remove unsupported mechanisms from both the design and execution tasks;
+  rule. Apply its counterfactual test: keep a mechanism only when removing it
+  would break an explicit AC or necessary invariant in a reachable scenario.
+  Remove unsupported mechanisms from both the design and execution tasks;
   preserve necessary safeguards. Use Ponytail's simplicity ladder when available,
   not as a substitute for establishing necessity.
 - Record unresolved technical risk instead of presenting guesses as decisions.
