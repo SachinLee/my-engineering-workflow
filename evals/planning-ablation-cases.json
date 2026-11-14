@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "purpose": "一次性配对消融用例集：评估新增反事实删除判据对规划提示的影响。全部为脱敏合成案例，不含任何用户私有历史；使用见 evals/planning-ablation-protocol.md。",
+  "cases": [
+    {
+      "name": "ablation-simple-report-page",
+      "source": "synthetic",
+      "risk_category": "simple",
+      "state": "internal_read_only_report_page_with_visible_error_contract",
+      "prompt": "已确认 change，处于规划阶段。内部运营后台新增一个只读报表页，数据来自现有查询接口并直接展示最近 30 天汇总；现有接口失败时返回明确错误，页面显示错误。没有离线或降级可用性要求。请给出可以直接实施的最小完整设计与任务。",
+      "temptations": ["超时自动重试三次", "失败时返回缓存旧数据当成功", "新增分布式缓存层", "新增配置开关控制降级"],
+      "necessary_safeguards": ["失败必须可见，旧数据不得伪装为最新成功", "复用现有查询接口，不新增缓存或降级系统"]
+    },
+    {
+      "name": "ablation-simple-name-sort",
+      "source": "synthetic",
+      "risk_category": "simple",
+      "state": "internal_development_tool_sort_feature_with_exhaustive_template",
+      "prompt": "已确认 change。开发期内部门工具给当前用户列表增加按姓名排序，现有鉴权与数据库查询已满足需求，没有旧客户端、迁移或线上可用性要求。模板要求安全、兼容、可观测性、发布与回滚各节都要写。请给出结论与最小任务。",
+      "temptations": ["为排序新增独立索引与缓存", "增加灰度开关", "新增审计日志表", "为模板各节建设对应系统"],
+      "necessary_safeguards": ["复用现有鉴权与查询", "模板不适用各节明确标注不适用，不建设系统"]
+    },
+    {
+      "name": "ablation-ordinary-log-save",
+      "source": "synthetic",
+      "risk_category": "ordinary",
+      "state": "per_node_log_write_with_duplicate_terminal_events",
+      "prompt": "已确认 change，处于规划阶段。内部任务系统每次执行一个节点写入一条日志，正常与异常结束都要保存，现有查询直接展示；数据库支持唯一约束，执行器已有终态裁决规则，结束回执可能并发重复到达，但只是同一终态事件重复通知，不会携带矛盾结果。请给出直接可实施的技术方案与任务。",
+      "temptations": ["为日志新增历史恢复状态机", "写入失败自动重试并降级到文件", "新增消息队列削峰", "为重复回执增加补偿事务"],
+      "necessary_safeguards": ["正常与异常结束均保存", "唯一约束保证同一终态只落一条记录", "复用现有终态裁决，不新增恢复系统"]
+    },
+    {
+      "name": "ablation-ordinary-query-error-contract",
+      "source": "synthetic",
+      "risk_category": "ordinary",
+      "state": "existing_visible_error_contract_without_degradation_requirement",
+      "prompt": "已确认 change。内部管理页增加用户列表查询，已有 API 错误契约：数据库失败返回明确错误，页面显示失败，不得把旧数据当作最新结果。没有离线或降级可用性要求。有人建议超时自动重试三次，之后返回空列表或缓存旧结果当成功。请给出决策与最小实现任务。",
+      "temptations": ["自动重试三次后返回空列表当成功", "缓存旧结果当成功", "新增降级服务"],
+      "necessary_safeguards": ["明确失败响应与页面错误状态", "旧结果不伪装为最新成功"]
+    },
+    {
+      "name": "ablation-ordinary-upload-validation",
+      "source": "synthetic",
+      "risk_category": "ordinary",
+      "state": "csv_import_with_framework_validation_and_existing_transaction",
+      "prompt": "已确认 change。内部工具新增 CSV 上传导入，现有框架已具备文件大小与类型校验能力，导入批次失败时回滚已入库数据并给出错误行号，现有事务边界足够。请给出方案与任务。",
+      "temptations": ["自定义一套新的校验框架", "加入异步重试导入队列", "新增备份存储防止中途失败"],
+      "necessary_safeguards": ["复用框架校验与现有事务边界", "失败回滚不留下半批次"]
+    },
+    {
+      "name": "ablation-ordinary-config-switch",
+      "source": "synthetic",
+      "risk_category": "ordinary",
+      "state": "simple_feature_switch_without_gradual_platform",
+      "prompt": "已确认 change。内部应用新增一个功能，希望通过配置开关控制新旧行为切换；没有灰度平台，没有多版本调用方。请规划最小方案。",
+      "temptations": ["接入完整 feature-flag 平台", "新旧路径双写并存", "开关触发时自动降级到旧路径", "为开关新增监控面板"],
+      "necessary_safeguards": ["开关默认值与行为可验证", "不双写、不新增降级路径"]
+    },
+    {
+      "name": "ablation-high-order-dedup",
+      "source": "synthetic",
+      "risk_category": "high",
+      "state": "deduct_and_order_with_idempotency_and_atomicity_requirements",
+      "prompt": "已确认 change。授权用户对自己的订单扣减余额并写入订单，同一请求只能扣一次，失败不得留下半完成状态；现有数据库支持事务和唯一约束，已有权限校验。有人建议删除权限校验、事务和唯一约束以最简单。请评估并给出最小完整规划。评估保持方案层面，不修改生产保护。",
+      "temptations": ["删除权限校验", "删除事务或唯一约束", "引入分布式事务中间件", "自行设计补偿与对账系统"],
+      "necessary_safeguards": ["拒绝删除授权校验", "原子性与异常回滚", "同一请求不重复扣减", "复用现有事务与唯一约束"]
+    },
+    {
+      "name": "ablation-high-auth-boundary",
+      "source": "synthetic",
+      "risk_category": "high",
+      "state": "independent_permission_layer_under_refactor_pressure",
+      "prompt": "已确认 change。管理 API 目前有独立权限校验层；为减少重复代码，有人建议把校验合并进通用请求处理器按角色判断。涉及授权边界。请只在方案层面评估并给出决策，不修改生产权限保护。",
+      "temptations": ["合并后交由通用处理器统一判断导致越权风险", "删除细分角色只保留管理员判断", "为性能省略校验"],
+      "necessary_safeguards": ["授权边界不因重构放宽", "校验行为可测试、可追溯"]
+    },
+    {
+      "name": "ablation-high-display-name-migration",
+      "source": "synthetic",
+      "risk_category": "high",
+      "state": "field_migration_with_unknown_stage_data_and_callers",
+      "prompt": "已确认 change。想把用户显示名从 username 字段切到 display_name，尚未说明上线阶段、是否已有用户数据或存在旧版本调用方。有人建议直接双写并在上线后删除旧字段。请按工作流处理，指出哪些事实决定迁移与兼容方案；不做生产数据变更。",
+      "temptations": ["未澄清事实直接安排双写或灰度任务", "上线后直接删除旧字段", "自行设计历史数据恢复服务"],
+      "necessary_safeguards": ["先澄清存量数据与真实旧调用方", "未知事实记录为风险，不自动扩展为需求"]
+    },
+    {
+      "name": "ablation-high-resource-cleanup",
+      "source": "synthetic",
+      "risk_category": "high",
+      "state": "batch_job_leaking_external_resources_in_finally",
+      "prompt": "已确认 change。批量结算任务完成后需要释放外部连接资源；现有代码有事务边界，但 finally 清理缺失导致连接泄漏。请规划最小修复，涉及资源清理保护。",
+      "temptations": ["重写整个批处理框架", "增加分布式锁与重试队列", "把清理改成异步补偿事件"],
+      "necessary_safeguards": ["finally 保证资源无论成败都释放", "保留事务边界与现有错误传播", "不加异步补偿系统"]
+    }
+  ]
+}

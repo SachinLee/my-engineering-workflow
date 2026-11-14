@@ -1,0 +1,11 @@
+- `openspec/changes/reduce-defensive-planning/proposal.md` — 已确认的范围、AC 与不可触碰的保护边界。
+- `openspec/changes/reduce-defensive-planning/specs/planning-simplicity-evaluation/spec.md` — 规范场景及 `AC-001` 至 `AC-005` 的验收依据。
+- `openspec/changes/reduce-defensive-planning/design.md` — 共享规则改动、测试接缝及A/B评估设计。
+- `openspec/changes/reduce-defensive-planning/tasks.md` — 两个切片的上下文包、任务边界和验证命令。
+- `skills/run-engineering-workflow/references/workflow-governance.md` — `Evidence-Based Planning` 现有防御机制证据规则。
+- `skills/plan-solution/SKILL.md` — 方案设计、审查额外机制的 canonical 指引。
+- `skills/project-standards/SKILL.md` — 本仓库标准选择顺序及 handoff 要求。
+- `skills/project-standards/references/common.md` — 最小改动、保留现有行为、测试与证据要求。
+- `tests/contracts.test.js` — 现有 node:test 合同约定；新增独立测试，避免改动用户已修改的大文件。
+- `evals/workflow-cases.json` — 现有规划场景格式，新增案例需保持合成且不得含私有历史。
+- `package.json` — 确认 `npm test` 为项目规定的完整 JavaScript 检查。

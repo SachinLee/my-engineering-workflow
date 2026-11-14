@@ -99,6 +99,9 @@ contracts, and necessary correctness invariants — not hypothetical future need
   unresolved risk instead of turning uncertainty into a feature. A short inline
   rationale for a disputed mechanism is enough; do not create another checklist
   or require a separate justification for every ordinary error-handling line.
+- Counterfactual test: keep a non-trivial defensive mechanism only when removing
+  it would break an explicit AC or necessary invariant in a currently reachable
+  scenario; otherwise drop it from design and tasks and record the risk.
 - Simplicity must preserve required security, data integrity, concurrency
   correctness, resource cleanup, and applicable compatibility, observability,
   accessibility, and rollback. Reuse existing safeguards; visible failure can
