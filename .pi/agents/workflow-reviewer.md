@@ -32,6 +32,8 @@ Spec and correctness/security/tests/complexity for the complete relevant committ
 staged, unstaged and explicitly named untracked workspace. Focused mode checks the
 prior blocking findings, repair diff and directly affected paths using recorded
 repair checks; preserve prior coverage of unchanged inputs, not a new full survey.
+Under Standards, consume the handoff's selected `project-standards` brief and
+project overrides; do not invent generic stack rules or add a review round.
 Keep unrelated or sensitive files out of scope. Do not perform nested dispatch or
 append `code-reviewer` or native Matt `code-review`; Ponytail is a lens in this report.
 Use the main session's recorded verification; do not expand shell rights. Return

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Standards"
+  short_description: "Select relevant project and stack rules"
+  default_prompt: "Use $project-standards to select the rules this slice needs and inline them in the handoff."

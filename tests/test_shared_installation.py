@@ -1,6 +1,7 @@
 """Exercise the public installer/doctor against disposable user and project roots."""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -25,7 +26,12 @@ class SharedInstallationTests(unittest.TestCase):
         cls.sources = tempfile.TemporaryDirectory(prefix="workflow source ")
         base = Path(cls.sources.name)
         cls.repo = base / "workflow"
-        for name in ("skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"):
+        names = ["skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"]
+        # .codex/agents ships with this change; copy it only once it exists so the
+        # RED run fails on assertions instead of dying in setUpClass.
+        if (REPO / ".codex/agents").is_dir():
+            names.append(".codex/agents")
+        for name in names:
             shutil.copytree(REPO / name, cls.repo / name, ignore=shutil.ignore_patterns("__pycache__"))
         # The external gate is owned by another repo. Its content is not this seam.
         gate = base / "omp-extensions" / "workflow-review-gate"
@@ -83,11 +89,16 @@ class SharedInstallationTests(unittest.TestCase):
         foreign.write_text("unrelated", encoding="utf-8")
         self.install("-Scope", "User", "-Harness", "All")
         self.assert_shared()
-        for root in (".codex/skills", ".omp/agent/skills", ".pi/agent/skills"):
+        for root in (".codex/skills", ".omp/agent/skills"):
             for name in doctor.SKILLS:
                 self.assertFalse((self.home / root / name).exists())
-        for name in doctor.SKILLS:
-            self.assertEqual((self.home / ".claude/skills" / name).resolve(), (self.shared / name).resolve())
+        for root in (".claude/skills", ".pi/agent/skills"):
+            for name in doctor.SKILLS:
+                entry = self.home / root / name
+                self.assertTrue(entry.is_dir(), entry)
+                self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
+        for name in doctor.AGENTS:
+            self.assertTrue((self.home / ".codex/agents" / f"{name}.toml").is_file())
         for root in (".claude", ".omp/agent", ".pi/agent"):
             for name in doctor.AGENTS:
                 self.assertTrue((self.home / root / "agents" / f"{name}.md").is_file())
@@ -249,7 +260,7 @@ class SharedInstallationTests(unittest.TestCase):
         self.assertEqual(saved, sorted(map(str, originals)))
         self.assertIn("Backup:", result.stdout)
         for old in originals:
-            if ".claude" in old.parts:
+            if ".claude" in old.parts or ".pi" in old.parts:
                 self.assertEqual(old.resolve(), (self.shared / old.name).resolve())
             else:
                 self.assertFalse(old.exists())
@@ -315,7 +326,7 @@ class SharedInstallationTests(unittest.TestCase):
         self.assertFalse((self.home / ".claude").exists())
         self.assertFalse((self.home / ".pi").exists())
         self.assertFalse((self.home / ".config/opencode").exists())
-        self.assertIn("Codex adapter installs the shared skills only", self.install().stdout)
+        self.assertIn("Codex adapter installs 3 native workflow agent TOML files", self.install().stdout)
 
     def opencode_root(self):
         return self.home / ".config/opencode"
@@ -438,13 +449,19 @@ class SharedInstallationTests(unittest.TestCase):
         self.assertEqual(len(backups), 1)
         self.assertIn(".trellis/tasks/", backups[0].read_text(encoding="utf-8"))
 
-    def test_doctor_reports_codex_skill_only_capability_and_stale_agents(self):
+    def test_doctor_reports_codex_capability_layers_and_stale_agents(self):
         self.install("-Scope", "User", "-Harness", "Codex")
         code, output = self.diagnose("Codex")
         self.assertEqual(code, 0, output)
-        self.assertIn("Codex adapter installs the shared skills only", output)
-        self.assertIn("do not establish native Codex runtime support", output)
-        self.assertIn("independent review is UNVERIFIED", output)
+        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
+        if doctor.tomllib is None:
+            self.assertIn("Static TOML validation: UNVERIFIED", output)
+            self.assertIn("Statically discoverable: unknown", output)
+            self.assertNotIn("Statically discoverable: yes", output)
+        else:
+            self.assertIn("Statically discoverable: yes", output)
+        self.assertIn("Runtime discovery, delegation, and independent review: UNVERIFIED", output)
+        self.assertNotIn("do not establish native Codex runtime support", output)
         self.assertNotIn("run in the main Codex session", output)
         stale = self.home / ".codex/agents/workflow-reviewer.md"
         stale.parent.mkdir(parents=True, exist_ok=True)
@@ -472,12 +489,32 @@ class SharedInstallationTests(unittest.TestCase):
         self.legacy(override / "skills")
         self.install("-Scope", "User", "-Harness", "All")
         self.assert_shared()
-        self.assertFalse((override / "skills/run-engineering-workflow").exists())
+        entry = override / "skills" / "run-engineering-workflow"
+        self.assertTrue(doctor.is_directory_link(entry), entry)
+        self.assertEqual(entry.resolve(), (self.shared / "run-engineering-workflow").resolve())
         self.assertTrue((override / "agents/workflow-planner.md").is_file())
         self.assertTrue((override / "start-engineering-workflow.py").is_file())
         self.assertFalse((self.home / ".omp").exists())
         self.assertFalse((self.home / ".pi").exists())
 
+
+    def test_project_standards_is_the_seventh_shared_skill(self):
+        self.install("-Harness", "All")
+        self.assertIn("project-standards", doctor.SKILLS)
+        self.assert_shared()
+        shared = self.shared / "project-standards"
+        for reference in (
+            "references/common.md",
+            "references/java.md",
+            "references/spring-mybatis-plus.md",
+            "references/project-agents-template.md",
+        ):
+            self.assertTrue((shared / reference).is_file(), reference)
+        self.assertEqual(
+            (self.home / ".claude/skills/project-standards").resolve(), shared.resolve()
+        )
+        code, output = self.diagnose("All")
+        self.assertEqual(code, 0, output)
 
     def test_doctor_reports_omp_and_claude_adapter_drift(self):
         self.install("-Harness", "All")
@@ -508,6 +545,277 @@ class SharedInstallationTests(unittest.TestCase):
         code, output = self.diagnose("OpenCode", "Project")
         self.assertNotEqual(code, 0, output)
         self.assertIn(f"Legacy skill entry may shadow shared installation: {stale}", output)
+
+    # --- Codex native TOML roles (AC-009) ---
+
+    def codex_agents(self):
+        return self.home / ".codex/agents"
+
+    def test_codex_installs_model_free_native_toml_roles(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        for name in doctor.AGENTS:
+            path = self.codex_agents() / f"{name}.toml"
+            self.assertTrue(path.is_file(), path)
+            text = path.read_text(encoding="utf-8")
+            self.assertRegex(text, rf'(?m)^\s*name\s*=\s*"{name}"\s*$')
+            self.assertRegex(text, r'(?m)^\s*developer_instructions\s*=\s*"""')
+            for forbidden in ("model", "model_provider", "model_reasoning_effort", "sandbox_mode"):
+                self.assertIsNone(
+                    re.search(rf"(?m)^\s*{forbidden}\s*=", text), f"{path}: {forbidden}"
+                )
+
+    def test_codex_toml_sources_declare_required_contract_fields(self):
+        source = REPO / ".codex/agents"
+        self.assertTrue(source.is_dir())
+        for name in doctor.AGENTS:
+            text = (source / f"{name}.toml").read_text(encoding="utf-8")
+            for key in ("name", "description", "developer_instructions"):
+                self.assertRegex(text, rf"(?m)^\s*{key}\s*=")
+            for forbidden in ("model", "model_provider", "model_reasoning_effort", "sandbox_mode"):
+                self.assertIsNone(re.search(rf"(?m)^\s*{forbidden}\s*=", text), f"{name}: {forbidden}")
+
+    def test_codex_toml_install_is_idempotent_and_backs_up_local_edits(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        planner = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(planner.is_file(), planner)
+        before = planner.read_text(encoding="utf-8")
+        planner.write_text(before + "\n# local edit\n", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "Codex")
+        self.assertEqual(planner.read_text(encoding="utf-8"), before)
+        backups = list(
+            (self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.toml")
+        )
+        self.assertEqual(len(backups), 1)
+        self.assertIn("# local edit", backups[0].read_text(encoding="utf-8"))
+        self.install("-Scope", "User", "-Harness", "Codex")
+        self.assertEqual(
+            list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.toml")),
+            backups,
+        )
+
+    def test_codex_install_preserves_user_roles_and_config(self):
+        codex = self.home / ".codex"
+        codex.mkdir(parents=True)
+        (codex / "config.toml").write_text('model_provider = "magpie"\n', encoding="utf-8")
+        agents = codex / "agents"
+        agents.mkdir()
+        (agents / "fixer.toml").write_text('name = "fixer"\n', encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "Codex")
+        self.assertEqual((codex / "config.toml").read_text(encoding="utf-8"), 'model_provider = "magpie"\n')
+        self.assertEqual((agents / "fixer.toml").read_text(encoding="utf-8"), 'name = "fixer"\n')
+        self.assertEqual(
+            sorted(p.name for p in agents.glob("*.toml")),
+            ["fixer.toml", "workflow-implementer.toml", "workflow-planner.toml", "workflow-reviewer.toml"],
+        )
+
+    def test_codex_project_scope_installs_toml_into_project_root(self):
+        self.install("-Scope", "Project", "-Harness", "Codex", "-ProjectPath", str(self.project))
+        self.assert_shared()
+        for name in doctor.AGENTS:
+            self.assertTrue((self.project / ".codex/agents" / f"{name}.toml").is_file())
+            self.assertFalse((self.home / ".codex/agents" / f"{name}.toml").exists())
+
+    def test_codex_unknown_toml_link_is_rejected_before_publication(self):
+        outside = self.base / "outside toml"
+        outside.mkdir()
+        self.directory_link(self.home / ".codex/agents/workflow-planner.toml", outside)
+        self.install("-Scope", "User", "-Harness", "Codex", success=False)
+        self.assertFalse(self.shared.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    # --- Pi native shared skill links (AC-010) ---
+
+    def pi_skill_root(self):
+        return self.home / ".pi/agent/skills"
+
+    def test_pi_installs_native_shared_skill_links(self):
+        self.install("-Scope", "User", "-Harness", "Pi")
+        self.assert_shared()
+        root = self.pi_skill_root()
+        for name in doctor.SKILLS:
+            entry = root / name
+            self.assertTrue(doctor.is_directory_link(entry), entry)
+            self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
+
+    def test_pi_legacy_skill_copy_is_backed_up_before_link(self):
+        self.legacy(self.pi_skill_root())
+        result = self.install("-Scope", "User", "-Harness", "Pi")
+        self.assertIn("Backup:", result.stdout)
+        self.assertTrue(doctor.is_directory_link(self.pi_skill_root() / "run-engineering-workflow"))
+        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("custom.txt"))
+        self.assertEqual(len(backups), 1)
+
+    def test_pi_unknown_skill_link_is_rejected(self):
+        outside = self.base / "outside skills"
+        outside.mkdir()
+        self.directory_link(self.pi_skill_root() / "plan-solution", outside)
+        self.install("-Scope", "User", "-Harness", "Pi", success=False)
+        self.assertFalse(self.shared.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_pi_link_install_is_idempotent(self):
+        self.install("-Scope", "User", "-Harness", "Pi")
+        before = sorted((p.name, p.resolve()) for p in self.pi_skill_root().iterdir())
+        self.install("-Scope", "User", "-Harness", "Pi")
+        after = sorted((p.name, p.resolve()) for p in self.pi_skill_root().iterdir())
+        self.assertEqual(before, after)
+
+    def test_pi_project_scope_links_user_and_project_roots(self):
+        self.install("-Scope", "Project", "-Harness", "Pi", "-ProjectPath", str(self.project))
+        self.assert_shared()
+        for root in (self.pi_skill_root(), self.project / ".pi/skills"):
+            for name in doctor.SKILLS:
+                entry = root / name
+                self.assertTrue(doctor.is_directory_link(entry), entry)
+                self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
+
+    def test_both_preserves_codex_plus_omp_without_pi_links(self):
+        self.install()
+        self.assert_shared()
+        self.assertFalse((self.home / ".pi").exists())
+
+    # --- Doctor layering for Codex and Pi ---
+
+    def test_doctor_errors_on_missing_codex_toml(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        path = self.codex_agents() / "workflow-implementer.toml"
+        self.assertTrue(path.is_file(), path)
+        path.unlink()
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Missing Codex native workflow agent", output)
+
+    def test_doctor_errors_on_model_key_in_codex_toml(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        planner = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(planner.is_file(), planner)
+        planner.write_text(
+            planner.read_text(encoding="utf-8") + '\nmodel = "opus"\n', encoding="utf-8"
+        )
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn("declares a model key", output)
+
+    def test_doctor_warns_on_codex_toml_drift(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        planner = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(planner.is_file(), planner)
+        planner.write_text(planner.read_text(encoding="utf-8") + "\n# local edit\n", encoding="utf-8")
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Codex agent file differs from the shipped template", output)
+
+    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
+    def test_doctor_rejects_empty_codex_toml(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        path = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(path.is_file(), path)
+        path.write_text("", encoding="utf-8")
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Codex workflow agent is empty", output)
+        # Presence and validity stay separate reports.
+        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
+        self.assertIn("Statically discoverable: no", output)
+        self.assertNotIn("Statically discoverable: yes", output)
+
+    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
+    def test_doctor_rejects_invalid_codex_toml_syntax(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        path = self.codex_agents() / "workflow-implementer.toml"
+        self.assertTrue(path.is_file(), path)
+        path.write_text(
+            'name = "workflow-implementer"\ndescription = "unterminated\n', encoding="utf-8"
+        )
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn("is not valid TOML", output)
+        self.assertIn("Statically discoverable: no", output)
+        self.assertNotIn("Statically discoverable: yes", output)
+
+    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
+    def test_doctor_rejects_codex_toml_missing_required_field(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        path = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(path.is_file(), path)
+        text = "\n".join(
+            line for line in path.read_text(encoding="utf-8").splitlines()
+            if not line.startswith("description =")
+        )
+        path.write_text(text, encoding="utf-8")
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn("is missing a non-empty string field: description", output)
+        self.assertIn("Statically discoverable: no", output)
+        self.assertNotIn("Statically discoverable: yes", output)
+
+    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
+    def test_doctor_rejects_codex_toml_role_name_mismatch(self):
+        self.install("-Scope", "User", "-Harness", "Codex")
+        path = self.codex_agents() / "workflow-reviewer.toml"
+        self.assertTrue(path.is_file(), path)
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                'name = "workflow-reviewer"', 'name = "workflow-planner"'
+            ),
+            encoding="utf-8",
+        )
+        code, output = self.diagnose("Codex")
+        self.assertEqual(code, 1, output)
+        self.assertIn(
+            "declares name 'workflow-planner', expected 'workflow-reviewer'", output
+        )
+        self.assertIn("Statically discoverable: no", output)
+        self.assertNotIn("Statically discoverable: yes", output)
+
+    def test_doctor_never_claims_static_yes_without_tomllib(self):
+        # No parser means no syntax/field/name verdict, even for a file whose
+        # bare `description = 42` would pass a naive line scanner.
+        self.install("-Scope", "User", "-Harness", "Codex")
+        planner = self.codex_agents() / "workflow-planner.toml"
+        self.assertTrue(planner.is_file(), planner)
+        planner.write_text(
+            'name = "workflow-planner"\ndescription = 42\n'
+            'developer_instructions = "not a real role"\n',
+            encoding="utf-8",
+        )
+        with mock.patch.object(doctor, "tomllib", None):
+            self.assertEqual(
+                doctor.parse_codex_agent(planner.read_text(encoding="utf-8")), (None, None)
+            )
+            code, output = self.diagnose("Codex")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
+        self.assertIn("Static TOML validation: UNVERIFIED", output)
+        self.assertIn("Statically discoverable: unknown", output)
+        self.assertNotIn("Statically discoverable: yes", output)
+        self.assertIn("Codex agent file differs from the shipped template", output)
+
+    def test_doctor_reports_pi_native_entries_and_runtime_unknown(self):
+        self.install("-Scope", "User", "-Harness", "Pi")
+        code, output = self.diagnose("Pi")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Pi native shared skill entry installed: 7/7", output)
+        self.assertIn("Runtime skill loading and delegation: UNVERIFIED", output)
+        self.assertNotIn("Legacy skill entry", output)
+
+    def test_doctor_errors_on_invalid_pi_skill_link(self):
+        self.install("-Scope", "User", "-Harness", "Pi")
+        entry = self.pi_skill_root() / "plan-solution"
+        if entry.exists():
+            entry.rmdir() if os.name == "nt" else entry.unlink()
+        entry.mkdir(parents=True)
+        shutil.copy2(self.shared / "plan-solution/SKILL.md", entry / "SKILL.md")
+        code, output = self.diagnose("Pi")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Invalid or missing Pi skill link", output)
+
+    def test_doctor_pi_link_root_equal_to_shared_is_not_legacy(self):
+        self.env["PI_CODING_AGENT_DIR"] = str(self.home / ".agents")
+        self.install("-Scope", "User", "-Harness", "Pi")
+        code, output = self.diagnose("Pi")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("Legacy skill entry", output)
 
 
 if __name__ == "__main__":

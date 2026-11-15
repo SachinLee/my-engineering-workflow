@@ -11,6 +11,7 @@ const skillNames = [
   "review-implementation",
   "finish-with-evidence",
   "archive-task",
+  "project-standards",
 ];
 const agentNames = [
   "workflow-planner.md",
@@ -330,7 +331,7 @@ test("harness adapters declare only verified capabilities and keep models user-o
     ["ARCHITECTURE.md", architecture],
     ["README.md", readme],
   ]) {
-    assert.match(body, /six canonical skills|六个 canonical skill|六个规范技能/is, file);
+    assert.match(body, /seven canonical skills|七个 canonical skill|七个规范技能/is, file);
     assert.match(body, /managed|受管|共享/is, file);
     assert.match(body, /models?[^.;]{0,40}user-(?:owned|configured)|模型.*用户(?:所有|配置)/is, file);
   }
@@ -349,7 +350,8 @@ test("OpenCode appears in install and support enumerations", () => {
 
   assert.match(readme, /-Harness OpenCode/);
   assert.match(readme, /OPENCODE_CONFIG_DIR/);
-  assert.match(readme, /Codex、OMP、Pi 和\s*OpenCode\s*原生发现/);
+  assert.match(readme, /Codex、OMP 和\s*OpenCode\s*原生发现/);
+  assert.match(readme, /Claude Code 与 Pi 通过受管理的原生目录链接/);
   assert.match(readme, /`All`[^。]{0,120}OpenCode/s);
   assert.match(readme, /OpenCode 只在启动时加载/);
   assert.match(agents, /\.opencode\//);
@@ -1279,4 +1281,149 @@ test("The proposal title rule is installed into new projects, not only this repo
   assert.match(doctor, /TITLE_RULE_ANCHOR, detect_project_mode/);
   assert.match(doctor, /def _check_proposal_title_rule\(/);
   assert.match(doctor, /_check_proposal_title_rule\(project, warnings\)/);
+});
+
+test("specialist routing is on demand and keeps the formal handoff and one review gate", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
+
+  // One shared reference owns how the main agent picks specialists.
+  assert.match(routing, /^# Specialist Routing$/m);
+  for (const mode of ["explore", "research", "implement", "consult", "review"]) {
+    assert.match(routing, new RegExp(`\\b${mode}\\b`, "i"), `missing mode ${mode}`);
+  }
+  assert.match(routing, /not (?:a )?(?:mandatory|forced).*(?:stage )?pipeline/i);
+  assert.match(routing, /task shape/i);
+  assert.match(routing, /main (?:agent|session).*(?:coordinat|integrat)/is);
+  // Small, already-understood work stays in the main session.
+  assert.match(routing, /already (?:hold|have)\w* the context/is);
+  assert.match(routing, /read-only explor\w*.*(?:before|precede).*(?:formal )?change/is);
+  assert.match(routing, /context package/i);
+  assert.match(routing, /(?:must not|never) (?:weaken|bypass|replace).*(?:independent|review)/is);
+  assert.match(routing, /consult\w*.*not.*(?:an? )?(?:extra|additional).*(?:review|gate)/is);
+
+  // The router points at the shared reference instead of duplicating the matrix.
+  assert.match(router, /## Specialist Routing/);
+  assert.match(router, /references\/specialist-routing\.md/);
+  assert.match(router, /main session already holds the context/is);
+
+  // OpenCode keeps one orchestrator and routes formal roles like the router does.
+  const opencode = routing.slice(routing.indexOf("## OpenCode")).split("\n## ")[0];
+  assert.match(opencode, /Slim `fixer`/);
+  assert.match(opencode, /Slim\s+`oracle`/);
+  assert.match(opencode, /repository procedure.{0,100}bounded OpenSpec handoff/is);
+  assert.match(opencode, /never copy a preset model ID/i);
+  assert.match(opencode, /UNVERIFIED/);
+});
+
+test("Pi dispatch covers activation, fresh context, async runs, and output boundaries", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
+  const pi = router.split("## Pi Roles")[1].split("\n## ")[0];
+
+  assert.match(pi, /subagents_enable/);
+  assert.match(pi, /use it directly; do not call the\s+loader/is);
+  assert.match(pi, /next (?:model )?request|following model request/i);
+  assert.match(pi, /(?:absent|unavailable).*until|until.*activation/i);
+  assert.match(pi, /options\.agentScope.*both|agentScope.*both/is);
+  assert.match(pi, /options\.context.*fresh|context: "fresh"/);
+  assert.match(pi, /options\.context.*fresh.{0,160}implement/is);
+  assert.match(pi, /runtime schema/i);
+  assert.match(pi, /async/i);
+  assert.match(pi, /completion (?:event|notice)/i);
+  assert.match(pi, /failed.*(?:status|run)|(?:status|run).*failed/is);
+  assert.match(pi, /UNVERIFIED/);
+  assert.match(pi, /self-(?:review|audit)/i);
+
+  // Native helpers keep explicit contexts and write boundaries.
+  assert.match(routing, /subagents_enable/);
+  assert.match(routing, /use it\s+directly and do not call a\s+loader/is);
+  assert.match(routing, /options\.agentScope: "both"/);
+  assert.match(routing, /context: "fresh".{0,120}implement/is);
+  assert.match(routing, /defaultContext: fork|oracle.{0,80}fork/is);
+  assert.match(routing, /scout.*(?:bash|write)/is);
+  assert.match(routing, /not (?:a )?(?:hard )?read-only|(?:bash|write).{0,80}not.{0,20}read-only/is);
+  assert.match(routing, /oracle.{0,80}read-only.{0,80}not a sandbox.{0,80}bash/is);
+  assert.match(routing, /researcher.*(?:web|pi-web-access)/is);
+  assert.match(routing, /(?:never|do not).{0,80}(?:context\.md|plan\.md|research\.md)/is);
+  assert.match(routing, /output.{0,60}(?:main session|authori[sz]ed)/is);
+});
+
+test("Pi launch params keep output top-level and only real options nested", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
+  const pi = router.split("## Pi Roles")[1].split("\n## ")[0];
+
+  // pi-subagents v0.88 rejects options.output with
+  // "'output' is a top-level field, not an option."
+  assert.match(pi, /rejects?\s+`options\.output`/i);
+  assert.match(routing, /rejects?\s+`options\.output`/i);
+  assert.match(pi, /`output`[^.\n]{0,40}top-level/is);
+  assert.match(routing, /`output`[^.\n]{0,40}top-level/is);
+  assert.match(pi, /top-level field, not an option/is);
+
+  // The documented invocation must parse as the runtime JSON shape itself,
+  // not merely describe it in prose.
+  const block = pi.match(/```json\n([\s\S]*?)\n```/);
+  assert.ok(block, "Pi Roles needs a complete JSON invocation example");
+  const launch = JSON.parse(block[1]);
+  assert.equal(launch.agent, "workflow-reviewer");
+  assert.equal(typeof launch.task, "string");
+  assert.ok(Object.hasOwn(launch, "output"), "output must be a top-level launch field");
+  assert.ok(
+    launch.output === false || typeof launch.output === "string",
+    "output must be a path string or false",
+  );
+  assert.ok(launch.options && typeof launch.options === "object");
+  assert.equal(Object.hasOwn(launch.options, "output"), false, "output must not be nested under options");
+  assert.equal(launch.options.agentScope, "both");
+  assert.equal(launch.options.context, "fresh");
+  assert.equal(launch.options.timeoutMs, 2147483647);
+  for (const key of ["agentScope", "context", "timeoutMs"]) {
+    assert.equal(Object.hasOwn(launch, key), false, `${key} belongs under options`);
+  }
+});
+
+test("Codex native capability is conditional and never claimed from installation", () => {
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
+  const start = routing.indexOf("## Codex");
+  assert.ok(start >= 0, "missing Codex capability section");
+  const codex = routing.slice(start).split("\n## ")[0];
+
+  assert.match(codex, /install\w*.{0,60}(?:not|never).{0,40}(?:prove|evidence|support)/is);
+  assert.match(codex, /(?:only|just).{0,40}(?:after|when).{0,40}(?:proven|verified)|(?:claim|report).{0,40}only.{0,40}verified/is);
+  assert.match(codex, /UNVERIFIED/);
+  assert.match(codex, /may implement\s+directly/is);
+  assert.match(codex, /self-review never stands in for/is);
+  assert.match(codex, /no `?codex exec --agent`?/i);
+  assert.doesNotMatch(router, /Codex (?:supports|provides) native subagents/i);
+  // The router itself must not treat a shipped agent file as runtime support.
+  assert.match(router, /install\w*.{0,80}(?:not|never).{0,60}(?:prove|evidence)/is);
+});
+
+test("routing fixtures cover on-demand dispatch, Pi activation, and conditional Codex", () => {
+  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
+  const required = [
+    ["task-shape-routing-no-forced-pipeline", "dispatch-by-task-shape"],
+    ["pi-subagents-enable-next-turn", "activate-then-dispatch"],
+    ["pi-async-completion-or-failure", "handle-async-completion"],
+    ["pi-subagent-output-boundary", "return-output-to-main-session"],
+    ["pi-reviewer-unavailable-unverified", "report-review-unavailable"],
+    ["codex-native-capability-conditional", "report-conditional-capability"],
+  ];
+  for (const [name, stage] of required) {
+    const entry = cases.find((item) => item.name === name);
+    assert.ok(entry, `missing routing case: ${name}`);
+    assert.equal(entry.expected_stage, stage, name);
+    assert.ok(entry.forbidden && entry.forbidden.length, `${name}: missing negative boundary`);
+  }
+
+  assert.equal(cases.find((item) => item.name === "pi-reviewer-unavailable-unverified").required_status, "UNVERIFIED");
+  assert.equal(cases.find((item) => item.name === "codex-native-capability-conditional").required_status, "UNVERIFIED");
+
+  // The skills-only Codex case must keep the unverified framing instead of
+  // implying that loading a definition proves native support.
+  const legacy = cases.find((item) => item.name === "codex-shared-skills-no-native-agents");
+  assert.match(legacy.state, /(?:without|no).*verified/i);
 });

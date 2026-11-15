@@ -1,0 +1,43 @@
+ M .claude/skills/plan-solution/SKILL.md
+ M .claude/skills/review-implementation/SKILL.md
+ M .claude/skills/run-engineering-workflow/SKILL.md
+ M .omp/agents/workflow-implementer.md
+ M .omp/agents/workflow-planner.md
+ M .omp/agents/workflow-reviewer.md
+ M .opencode/agents/workflow-implementer.md
+ M .opencode/agents/workflow-planner.md
+ M .opencode/agents/workflow-reviewer.md
+ M .pi/agents/workflow-implementer.md
+ M .pi/agents/workflow-planner.md
+ M .pi/agents/workflow-reviewer.md
+ M ARCHITECTURE.md
+ M README.md
+ M agents/workflow-implementer.md
+ M agents/workflow-planner.md
+ M agents/workflow-reviewer.md
+ M config/omp-workflow.yml
+ M evals/workflow-cases.json
+ M openspec/changes/align-cross-harness-workflow/artifacts/context.md
+ M openspec/changes/align-cross-harness-workflow/artifacts/verification.md
+ M openspec/changes/align-cross-harness-workflow/design.md
+ M openspec/changes/align-cross-harness-workflow/proposal.md
+ M openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
+ M openspec/changes/align-cross-harness-workflow/tasks.md
+ M scripts/doctor.py
+ M scripts/install.ps1
+ M skills/plan-solution/SKILL.md
+ M skills/review-implementation/SKILL.md
+ M skills/run-engineering-workflow/SKILL.md
+ M tests/contracts.test.js
+ M tests/test_shared_installation.py
+?? .claude/skills/run-engineering-workflow/references/specialist-routing.md
+?? .codex/
+?? openspec/changes/add-portable-project-standards/
+?? openspec/changes/align-cross-harness-workflow/artifacts/pi-smoke-round3.json
+?? openspec/changes/align-cross-harness-workflow/artifacts/review-round3.md
+?? openspec/changes/align-cross-harness-workflow/artifacts/workspace-round3-status.txt
+?? openspec/changes/align-cross-harness-workflow/artifacts/workspace-round3.diff
+?? openspec/changes/repair-cross-harness-runtime/
+?? skills/project-standards/
+?? skills/run-engineering-workflow/references/specialist-routing.md
+?? tests/project-standards.test.js

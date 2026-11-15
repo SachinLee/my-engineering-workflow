@@ -13,3 +13,11 @@
 
 ## 范围外
 不升级供应商或模型，不提交/推送，不自动归档，不替换 Slim 的 Windows 修补版本，不给其他项目强制安装，不整套引入 ECC。
+
+## 复验轮次 3：Pi / Codex 按需专长协作（2026-11-14）
+用户授权实施前述方案并明确复用本 change。本轮为新批准的交付范围，独立于前两轮材料；保留旧审查记录，本轮预算为一次完整审查、最多一次修复后聚焦复核。质量级别 Standard。
+- AC-007：主代理负责协调、整合与证据，按任务形状选择 explore / research / implement / consult / review；已掌握上下文的小改动及上下文密集文档可直接完成，不强制全阶段流水线。只读探索可先于正式 change；正式实施及最终独立审查保留 OpenSpec 上下文包与质量门槛。
+- AC-008：Pi 显式处理 subagents_enable 激活、发现和异步完成；复用 scout / researcher / oracle 时限定 fresh context、写入边界和可用工具；正式角色仍由 workflow agents 提供。缺失独立 reviewer 必须 UNVERIFIED，不允许主代理自审冒充。
+- AC-009：Codex 安装原生、无固定模型的 workflow TOML 角色；保留已有自定义角色和用户配置。只有实际证明发现和调用才报告运行能力，不把安装成功或新上下文等同跨模型。
+- AC-010：安装器提供 Pi 原生共享 skill 入口；doctor 区分已安装、静态可发现、运行验证未知，保持 Both 兼容。契约与安装回归先 RED 后 GREEN；真实运行烟测如受限须明确 UNVERIFIED。
+- 本轮不安装新调度器、不更改 toolActivation 或模型配置、不引入默认 evidence-auditor / delegate，不更改其他任务状态。

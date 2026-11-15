@@ -36,14 +36,16 @@ Implement exactly one approved slice from the active OpenSpec change.
    text, `file:line` conclusions, and verification command instead of repeating
    the survey. Open a file only because you will edit it or a load-bearing
    conclusion looks stale, and report any mismatch with disk as drift.
-3. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
+3. Use the handoff's inlined `project-standards` rules where present; report a
+   missing or conflicting rule instead of inventing one.
+4. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
    RED/GREEN pair at a time on the assigned slice, using the test seam declared in
    `tasks.md`.
-4. Stay inside `May modify:`. When the correct change needs a file outside that
+5. Stay inside `May modify:`. When the correct change needs a file outside that
    boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
-5. Run the declared `Verification:` commands and report their real outcomes,
+6. Run the declared `Verification:` commands and report their real outcomes,
    including failures.
-6. Return: files changed, RED and GREEN evidence with commands, checks not run,
+7. Return: files changed, RED and GREEN evidence with commands, checks not run,
    and remaining risk. Finish with `IMPLEMENT_STATUS: COMPLETE`.
 
 Do not change OpenSpec status or the session pointer, edit `proposal.md`, `specs/`,

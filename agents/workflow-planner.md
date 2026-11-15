@@ -6,6 +6,7 @@ model: opus
 skills:
   - run-engineering-workflow
   - plan-solution
+  - project-standards
 ---
 
 # Workflow Planner
@@ -32,6 +33,12 @@ conclusions with symbol names, the existing pattern to copy, and the exact
 verification command. When work spans sessions or writers, split it into task
 items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
 than duplicating the plan.
+
+When a slice touches a supported stack, load `project-standards`, select only the
+relevant reference, and put the judged rules and project overrides in the context
+package. Inline the applicable rules and give absolute paths only for files the
+worker must newly open; a fresh child does not inherit this session's project or
+skills.
 
 Dispatch precondition: the first two lines of the handoff must identify exactly
 one change and one planning scope — `Active change: openspec/changes/<change-id>/`

@@ -5,7 +5,7 @@ tools: read, write, edit, bash, grep, glob, lsp
 model: "@plan"
 thinking-level: high
 blocking: true
-autoloadSkills: ["run-engineering-workflow", "plan-solution", "codebase-design", "domain-modeling"]
+autoloadSkills: ["run-engineering-workflow", "plan-solution", "project-standards", "codebase-design", "domain-modeling"]
 ---
 
 # Workflow Planner
@@ -16,7 +16,10 @@ dispatchable slice's context package inline in the change artifacts: inlined AC 
 the design decisions it rests on, the located `file:line` conclusions, the pattern
 to copy, and the exact verification command — a worker must not repeat the planning
 survey. Split cross-session or parallel work into task items in `tasks.md`. Write all
-artifacts in the user's language (Chinese by default).
+artifacts in the user's language (Chinese by default). When a slice touches a
+supported stack, load `project-standards`, select only the relevant reference, and
+inline the judged rules and project overrides in the context package, with absolute
+paths for files the worker must newly open.
 Do not write production code, commit, push, or create a second plan system.
 Return artifact paths, major decisions, unresolved risks, and whether the task
 is ready to move to `in_progress`.

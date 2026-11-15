@@ -46,6 +46,10 @@ verification command. When work spans sessions or writers, split it into task
 items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
 than duplicating the plan.
 
+When a slice touches a supported stack, load `project-standards`, select only the
+relevant reference, and inline the judged rules and project overrides in the slice
+context package. Give absolute paths for files the worker must newly open.
+
 Dispatch precondition: the first two lines of the handoff must identify exactly
 one change and one planning scope — `Active change: openspec/changes/<change-id>/`
 followed by `Assigned slice: planning / all accepted ACs`. The handoff must also

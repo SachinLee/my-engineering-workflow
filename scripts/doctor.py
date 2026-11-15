@@ -14,6 +14,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:  # Python 3.11+; 3.9/3.10 use the flat-role scanner below instead of a dependency.
+    import tomllib
+except ImportError:  # pragma: no cover - exercised on Python 3.9/3.10 and by tests
+    tomllib = None  # type: ignore[assignment]
+
 
 from openspec_compat import TITLE_RULE_ANCHOR, detect_project_mode
 
@@ -24,9 +29,12 @@ SKILLS = (
     "review-implementation",
     "finish-with-evidence",
     "archive-task",
+    "project-standards",
 )
 AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
 AGENT_FILES = tuple(f"{agent}.md" for agent in AGENTS)
+CODEX_AGENT_FILES = tuple(f"{agent}.toml" for agent in AGENTS)
+CODEX_AGENT_FIELDS = ("name", "description", "developer_instructions")
 UPSTREAM_SKILLS = (
     "grill-with-docs",
     "tdd",
@@ -70,6 +78,31 @@ def is_directory_link(path: Path) -> bool:
     )
 
 
+def pi_skill_link_roots(scope: str, project: Path | None, home: Path) -> list[Path]:
+    """Return the native Pi skill roots the installer manages as shared links."""
+    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+    roots = [(Path(override).expanduser() if override else home / ".pi" / "agent") / "skills"]
+    if scope == "Project" and project:
+        roots.append(project / ".pi" / "skills")
+    shared = home / ".agents" / "skills"
+    try:
+        shared_key = shared.resolve()
+    except (OSError, RuntimeError):
+        shared_key = shared
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for root in roots:
+        try:
+            key = root.resolve()
+        except (OSError, RuntimeError):
+            key = root
+        if key == shared_key or key in seen:
+            continue
+        seen.add(key)
+        unique.append(root)
+    return unique
+
+
 def check_shared_installation(harness: str, scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
     shared = home / ".agents" / "skills"
     check_skills(shared, "shared", errors)
@@ -86,10 +119,19 @@ def check_shared_installation(harness: str, scope: str, project: Path | None, ho
         if scope == "Project" and project:
             legacy.append(project / ".omp" / "skills")
     if selected(harness, "Pi"):
-        override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
-        legacy.append((Path(override).expanduser() if override else home / ".pi" / "agent") / "skills")
+        # Pi loads <agent-dir>/skills and .pi/skills natively; the installer keeps
+        # a managed link from each root to the shared tree instead of a copy.
+        for root in pi_skill_link_roots(scope, project, home):
+            for skill in SKILLS:
+                entry = root / skill
+                try:
+                    valid = is_directory_link(entry) and entry.is_dir() and entry.resolve() == (shared / skill).resolve()
+                except (OSError, RuntimeError):
+                    valid = False
+                if not valid:
+                    errors.append(f"Invalid or missing Pi skill link: {entry}; expected {shared / skill}")
         if scope == "Project" and project:
-            legacy.extend((project / ".agents" / "skills", project / ".pi" / "skills"))
+            legacy.append(project / ".agents" / "skills")
     if selected(harness, "Claude"):
         roots = [home / ".claude" / "skills"]
         if scope == "Project" and project:
@@ -412,6 +454,20 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
     source = repo_source_root()
     if source is not None:
         check_managed_drift(source / ".pi" / "agents", root / "agents", AGENT_FILES, "Pi agent", warnings)
+    link_roots = pi_skill_link_roots(scope, project, home)
+    if link_roots:
+        shared = home / ".agents" / "skills"
+        installed = 0
+        for link_root in link_roots:
+            for skill in SKILLS:
+                entry = link_root / skill
+                try:
+                    if is_directory_link(entry) and entry.is_dir() and entry.resolve() == (shared / skill).resolve():
+                        installed += 1
+                except (OSError, RuntimeError):
+                    continue
+        warnings.append(f"Pi native shared skill entry installed: {installed}/{len(link_roots) * len(SKILLS)}")
+        warnings.append("Runtime skill loading and delegation: UNVERIFIED")
     node_modules = pi_user_root / "npm" / "node_modules"
     subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
     if not any(pkg.is_dir() for pkg in subagent_pkgs):
@@ -505,15 +561,87 @@ def check_opencode(scope: str, project: Path | None, home: Path, errors: list[st
         )
 
 
-def check_codex(home: Path, warnings: list[str]) -> None:
-    """Report what the adapter actually installs, without claiming Codex runtime facts."""
-    warnings.append(
-        "Codex adapter installs the shared skills only: these Markdown definitions do not "
-        "establish native Codex runtime support. Verify native subagent capability for the "
-        "installed Codex client version; if it is unavailable, "
-        "workflow-planner/workflow-implementer/workflow-reviewer cannot run in separate model "
-        "contexts and independent review is UNVERIFIED."
-    )
+def parse_codex_agent(text: str) -> tuple[dict[str, object] | None, str | None]:
+    """Parse one Codex role TOML and require its contract fields.
+
+    Returns ``(fields, None)`` when valid, ``(None, problem)`` when invalid, and
+    ``(None, None)`` when no parser is available. Python 3.9/3.10 have no
+    ``tomllib`` and no TOML dependency may be added, so no syntax, field, or
+    role-name verdict is possible there. The caller owns role-name matching.
+    """
+    if tomllib is None:
+        return None, None
+    if text.startswith("\ufeff"):
+        text = text[1:]
+    if not text.strip():
+        return None, "is empty"
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        return None, f"is not valid TOML ({exc})"
+    missing = [
+        key
+        for key in CODEX_AGENT_FIELDS
+        if not isinstance(data.get(key), str) or not str(data[key]).strip()
+    ]
+    if missing:
+        return None, "is missing a non-empty string field: " + ", ".join(missing)
+    return data, None
+
+
+def check_codex(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
+    """Report installed artifacts, static discoverability, and unknown runtime facts."""
+    root = project / ".codex" if scope == "Project" and project else home / ".codex"
+    agents = root / "agents"
+    installed = 0
+    valid = 0
+    for name in AGENTS:
+        path = agents / f"{name}.toml"
+        if not path.is_file():
+            errors.append(f"Missing Codex native workflow agent: {path}")
+            continue
+        installed += 1
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            errors.append(f"Codex workflow agent could not be read ({exc}): {path}")
+            continue
+        # Text-only concerns stay diagnosable even without a TOML parser.
+        if re.search(r"(?m)^\s*(?:model|model_provider|model_reasoning_effort)\s*=", text):
+            errors.append(f"Codex workflow agent declares a model key: {path}")
+        elif re.search(r"(?m)^\s*sandbox_mode\s*=", text):
+            errors.append(f"Codex workflow agent declares sandbox_mode: {path}")
+        data, problem = parse_codex_agent(text)
+        if data is None and problem is None:
+            continue
+        if problem is not None:
+            errors.append(f"Codex workflow agent {problem}: {path}")
+            continue
+        declared = str(data["name"]).strip()
+        if declared != name:
+            errors.append(
+                f"Codex workflow agent declares name {declared!r}, expected {name!r}: {path}"
+            )
+            continue
+        valid += 1
+    source = repo_source_root()
+    if source is not None:
+        check_managed_drift(source / ".codex" / "agents", agents, CODEX_AGENT_FILES, "Codex agent", warnings)
+    warnings.append(f"Codex native workflow agent TOMLs installed: {installed}/{len(AGENTS)}")
+    if tomllib is None:
+        warnings.append(
+            "Static TOML validation: UNVERIFIED (tomllib is unavailable on this Python; "
+            "re-run doctor with Python 3.11+ to validate TOML syntax, required fields, and role names)"
+        )
+        warnings.append("Statically discoverable: unknown")
+    else:
+        if valid != installed:
+            warnings.append(
+                f"Codex native workflow agent TOMLs with a valid role contract: {valid}/{len(AGENTS)}"
+            )
+        discoverable = installed == len(AGENTS) and valid == len(AGENTS)
+        warnings.append(f"Statically discoverable: {'yes' if discoverable else 'no'}")
+    warnings.append("Runtime discovery, delegation, and independent review: UNVERIFIED")
     for name in AGENTS:
         legacy = home / ".codex" / "agents" / f"{name}.md"
         if not legacy.is_file():
@@ -589,7 +717,7 @@ def main() -> int:
     if selected(args.harness, "OpenCode"):
         check_opencode(args.scope, project, home, errors, warnings)
     if selected(args.harness, "Codex"):
-        check_codex(home, warnings)
+        check_codex(args.scope, project, home, errors, warnings)
     for warning in warnings:
         print(f"WARNING: {warning}", file=sys.stderr)
     for error in errors:

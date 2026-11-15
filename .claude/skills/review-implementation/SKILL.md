@@ -40,7 +40,8 @@ unrelated user changes identifiable and untouched.
 
 The handoff carries `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
 `Must preserve:`, `Review mode:`, `Review scope:`, and `Evidence:`. Inline the known ACs, design
-and verification conclusions; identify the base, file list, diff/current contents,
+and verification conclusions plus the selected `project-standards` brief and its
+absolute source paths; identify the base, file list, diff/current contents,
 requirements and actual check results. The selected proposal/specs own Spec;
 do not seek another issue or `.scratch/` requirement to override them. A Pi
 read-only reviewer consumes recorded check evidence, not shell privileges.
@@ -70,8 +71,9 @@ stays `UNVERIFIED`, not `CLEAN` or normal completion.
 3. Security and data integrity: inspect input boundaries, authorization,
    secrets, injection, destructive behavior, persistence, migrations, and
    rollback when applicable.
-4. Project compliance: compare the change with `AGENTS.md`, project specs,
-   established local patterns, and public contracts.
+4. Project compliance: compare the change with `AGENTS.md`, project specs, the
+   selected `project-standards` rules, established local patterns, and public
+   contracts. Check only the selected references; do not add a review round.
 5. Maintainability and complexity: identify unnecessary abstraction,
    duplication, dependencies, configuration, compatibility paths, and dead code
    without weakening required safeguards.

@@ -36,6 +36,25 @@ reviewer's independence materially changes — not per delegation, and not merel
 because this client exposes another mechanism. One writer per bounded slice and
 one review budget still hold.
 
+## Specialist Routing
+
+The main session owns coordination, integration, and the evidence trail. Route
+by task shape, not by a stage template: `explore` for a read-only survey,
+`research` for external sources, `implement` for a bounded write slice,
+`consult` for a second opinion, and `review` for the single independent review.
+Read [specialist-routing.md](references/specialist-routing.md) for the shared
+task-shape matrix, the per-host capability boundaries, and the quality rules it
+must not duplicate.
+
+When the main session already holds the context — a small scoped edit, a
+documentation change, a targeted fix it just investigated — do the work
+directly; do not manufacture a five-stage pipeline. Read-only exploration may
+precede a formal change creation. Formal implementation and the final
+independent review still use the bounded OpenSpec handoff above: the context
+package, one writer per slice, and one shared review budget. Consultation is
+advice, not an additional review gate, and the main session's self-check never
+stands in for the independent review.
+
 ## Bounded Context And Dispatch Contract
 
 OpenSpec remains the only durable source of new task state. Treat a change id as
@@ -246,9 +265,9 @@ Phase routing:
   - For `lightweight` or `standard`: run `plan-solution`; use the main session or
     the host's planning specialist, whichever the host prefers.
   - For `critical`: in OMP, dispatch `workflow-planner` on `@plan`. In Pi, use
-    the blocking `subagent` tool with `agentScope: "both"` when available;
-    otherwise keep planning in the main session and disclose the lack of fresh
-    context.
+    the blocking `subagent` tool with `options.agentScope: "both"` when
+    available; otherwise keep planning in the main session and disclose the lack
+    of fresh context.
   - Only dispatch a planner if the task is assessed as `critical` or when the
     main session cannot resolve a material design uncertainty.
 - `planning` with complete OpenSpec artifacts: start implementation only after the
@@ -375,19 +394,64 @@ Pi does not use OMP `@role` aliases or the OMP overlay. Keep these
 responsibilities while preserving Pi's native resource and project-trust model:
 
 - Main session: active Pi model, interactive clarification, approvals,
-  remediation, evidence, and final delivery claim.
-- Solution planning: `workflow-planner` through the blocking `subagent` tool
-  with `agentScope: "both"`; the installed definition inherits the active Pi
+  coordination, integration, remediation, evidence, and final delivery claim.
+- Solution planning: `workflow-planner` through the `subagent` tool with
+  `options.agentScope: "both"`; the installed definition inherits the active Pi
   model unless a user or trusted project definition selects another model.
-- TDD implementation: `workflow-implementer` through the blocking `subagent`
-  tool with the active task path and approved RED/GREEN slices.
-- Independent final review: the read-only `workflow-reviewer` through the
-  blocking `subagent` tool with `agentScope: "both"`.
+- TDD implementation: `workflow-implementer` with the active change path and
+  approved RED/GREEN slices.
+- Independent final review: the read-only `workflow-reviewer` with
+  `options.agentScope: "both"`.
 
 The project must be trusted before Pi loads `.pi` extensions, project agents, or
-project `.agents/skills`. If `subagent` is unavailable, keep planning and review
-in the main session, implement directly, run deterministic
-checks, and report that only context/model independence was unavailable.
+project `.agents/skills`. Activation and discovery are separate from delegation.
+When the live tool list already has `subagent`, use it directly; do not call the
+loader. Only when `subagent` is absent and `subagents_enable` is present — a
+fresh, unrestricted session on a model that accepts a new tool mid-conversation
+— call `subagents_enable({})`: it launches no work and exposes `subagent` on the
+next model request, together with `bg_wait` and `subagent_supervisor`. An older
+session may expose neither `subagents_enable` nor `subagent`; installing and
+reloading alone does not add them. Inspect the tools actually present before
+claiming a dispatch: a loader-only session has no `subagent` until activation
+succeeds, while a direct `subagent` needs no loader.
+
+Use the installed runtime schema for each launch: `agent`, `task`, and `output`
+are top-level fields, while `agentScope`, `context`, and `timeoutMs` are passed
+under `options`. `output` is a top-level field, not an option: pi-subagents
+rejects `options.output` with `'output' is a top-level field, not an option.`
+A complete review dispatch:
+
+```json
+{
+  "agent": "workflow-reviewer",
+  "task": "<bounded handoff: Active change, Assigned slice, Phase, Read, Must preserve, Review mode, Review scope, Evidence>",
+  "output": false,
+  "options": {
+    "agentScope": "both",
+    "context": "fresh",
+    "timeoutMs": 2147483647
+  }
+}
+```
+
+Set `output` to a path only when the findings belong in an authorized artifact;
+`false` returns them to the main session. Pass `options.agentScope: "both"` for
+the workflow roles above and `options.context: "fresh"` for explore, research,
+implement, and review so the specialist sees only the bounded handoff; `oracle`
+defaults to forked context, so an explicit fresh context is required for an
+independent read. `async` is the default: wait for the completion event or
+report once, treat a failed run as a terminal status, and never silently switch
+execution mode, retry a slice, or downgrade the review.
+
+Bounds for reused native helpers are in
+[specialist-routing.md](references/specialist-routing.md): `scout` and
+`researcher` default to writing `context.md` and `research.md`, and `scout`
+holds `bash`/`write`. Direct their output to the main session or an authorized
+artifact; never create a shadow plan, context, or research file. If `subagent`
+or an independent `workflow-reviewer` is unavailable, keep implementation and
+deterministic checks in the main session and report `UNVERIFIED` for the review
+gap. The main agent's self-review cannot stand in for independent review; state
+plainly that context/model independence was unavailable.
 
 ## Claude Code Roles
 
@@ -440,14 +504,16 @@ direct native agent inherits the parent session model instead.
 
 ## Adapter Capabilities And Ownership
 
-The six canonical skills under `skills/` are the shared, installer-managed
+The seven canonical skills under `skills/` are the shared, installer-managed
 source; adapters add managed links or native discovery on top and never fork the
 bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
 `sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
 can differ, and OMP roles resolve through the user's `modelRoles`. Codex shares
 the skills directory, and subagent capability there is claimed only after
-independent verification for that client version — no adapter may promise
-independent review when the client cannot provide it; report `UNVERIFIED` instead.
+independent verification for that client version. Installing agent definitions
+does not prove runtime discovery or invocation of native roles; report runtime
+support only after both are verified. No adapter may promise independent review
+when the client cannot provide it; report `UNVERIFIED` instead.
 
 ## Precedence
 
@@ -455,9 +521,15 @@ Resolve conflicts in this order:
 
 1. User and platform instructions.
 2. Repository `AGENTS.md` and OpenSpec governance conventions.
-3. Active OpenSpec change artifacts and applicable project specs.
+3. Active OpenSpec change artifacts, applicable project specs, and the project
+   standards brief selected by `project-standards`.
 4. This routing skill.
 5. Upstream skill defaults.
+
+When an applicable stack reference is needed, load `project-standards`, select
+only the relevant reference, and put the judged rules into the slice handoff.
+Do not replace project conventions with generic stack advice, and do not add a
+review round or model route for standards.
 
 OpenSpec owns new state and records. Matt-style skills provide clarification,
 design, TDD, and two-axis review; Ponytail owns complexity reduction;

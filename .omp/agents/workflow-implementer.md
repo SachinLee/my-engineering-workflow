@@ -23,14 +23,16 @@ edit nothing.
    Work from the package's inlined AC text, `file:line` conclusions, and verification
    command instead of repeating the planning survey; open a file only to edit it or
    when a load-bearing conclusion looks stale, and report drift.
-2. Follow the preloaded `tdd` skill. Work one RED/GREEN pair at a time on the
+2. Apply the handoff's inlined `project-standards` rules; report a missing or
+   conflicting rule instead of inventing one.
+3. Follow the preloaded `tdd` skill. Work one RED/GREEN pair at a time on the
    assigned slice using the test seam declared in `tasks.md`.
-3. Stay inside `May modify:`. When the correct change needs a file outside that
+4. Stay inside `May modify:`. When the correct change needs a file outside that
    boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
-4. Run the declared `Verification:` commands and report their real outcomes,
+5. Run the declared `Verification:` commands and report their real outcomes,
    including failures. Apply `ponytail-review` to your own diff before returning
    and re-run affected checks after any simplification.
-5. Return files changed, RED and GREEN evidence with commands, checks not run,
+6. Return files changed, RED and GREEN evidence with commands, checks not run,
    and remaining risk. Finish with exactly one status line:
    `IMPLEMENT_STATUS: COMPLETE`, `BLOCKED`, or `INVALID`.
 

@@ -33,7 +33,7 @@ AI 会话之间的上下文连续性。
 审查预算。谁来调度、用哪个模型、客户端暴露哪些工具，归宿主（Codex、Claude Code、OpenCode、
 OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用”，不重写质量标准。
 
-本仓库目前提供六个 canonical skill（安装器统一管理的同一份源码）：
+本仓库目前提供七个 canonical skill（安装器统一管理的同一份源码）：
 
 | Skill | 用途 |
 | --- | --- |
@@ -43,6 +43,7 @@ OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用
 | `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
 | `$finish-with-evidence` | 核对并复用已有证据，写入 `artifacts/verification.md`；不再派审核或直接重跑检查 |
 | `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
+| `$project-standards` | 只选与本切片相关的项目/技术栈规范，内联到规划、实施和审核交接；首期含通用、Java、Spring MyBatis-Plus 引用 |
 
 ## 核心产物
 
@@ -299,8 +300,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
 
 ## 安装本仓库的 Skill
 
-六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
-OpenCode 原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
+七个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP 和
+OpenCode 原生发现这个用户级目录，Claude Code 与 Pi 通过受管理的原生目录链接访问同一份内容。
 仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
 
 首次安装或更新全部平台，在本仓库根目录执行：
@@ -326,6 +327,12 @@ PowerShell 7 `pwsh`）：
 
 安装完成后重启 Codex App 或重新启动 Codex CLI。
 
+安装器同时发布无固定模型的 `workflow-planner` / `workflow-implementer` /
+`workflow-reviewer` 原生 TOML 角色；保留你的 `explorer`、`fixer`、`oracle` 等自定义角色，
+不重写 `config.toml`。原生角色能否发现、是否需要启用 subagents，以及实际能否调用，
+取决于当前 Codex 版本和会话工具。`doctor` 的静态检查不等于运行时证明；缺少独立审查时
+仍报告 `UNVERIFIED`，不会用主代理自审冒充。安装后应在新会话做一次最小委派验证。
+
 ### 全局安装到 Claude Code
 
 ```powershell
@@ -333,7 +340,7 @@ PowerShell 7 `pwsh`）：
 .\scripts\doctor.ps1 -Scope User -Harness Claude
 ```
 
-这会发布共享 skills，并在 `~/.claude/skills/` 为六个 skill 建立目录链接，安装
+这会发布共享 skills，并在 `~/.claude/skills/` 为七个 skill 建立目录链接，安装
 `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个 agent 和
 `/engineering-workflow` / `/archive-task` 两个命令。Windows 使用 junction，macOS / Linux
 使用 symlink；链接目标始终是对应的共享 skill。重新启动 Claude Code 后生效。
@@ -345,19 +352,24 @@ PowerShell 7 `pwsh`）：
 .\scripts\doctor.ps1 -Scope User -Harness Pi
 ```
 
-这会把六个 skill 发布到 `~/.agents/skills/`，把 provider-independent 的
+这会把七个 skill 发布到 `~/.agents/skills/`，在 `~/.pi/agent/skills/` 建立指向共享正文的受管目录链接，把 provider-independent 的
 `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
 `model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
 `.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
 该用户目录存放 Pi / OMP 的适配文件、定位旧副本，skill 共享目录仍是 `~/.agents/skills/`。
-Pi 会在 `/reload` 或新会话后刷新 agent catalog。
+安装后重启 Pi 以加载共享 skill 入口和 agents；随后可用 `/reload` 刷新 agent catalog。
 
-方案规划、有界实现和独立复核需要 Pi subagents 扩展；没有它时主路由会在主会话内执行并记录缺少
-独立上下文：
+按需委派需要 Pi subagents 扩展；本适配对齐 `nicobailon/pi-subagents`。未安装或工具不可用时，
+主会话可继续允许直接执行的工作，但正式交付缺少独立 reviewer 必须记为 `UNVERIFIED`：
 
 ```powershell
-pi install npm:@narumitw/pi-subagents
+pi install npm:pi-subagents
 ```
+
+新会话先检查当前可用工具：若已有 `subagent`，直接按工作流规则选择专长并派发；若只有
+`subagents_enable`，先调用它，再在下一次模型请求中使用出现的 `subagent`。启用工具本身不等于已派发任务。
+后台任务通过扩展的完成通知返回；等待通知并检查结果，不需要模型反复轮询。需独立审查的工作，
+如果 reviewer 无法启动或返回有效报告，应记录 `UNVERIFIED`，不能由主会话自审替代。
 
 ### 全局安装到 OpenCode
 
@@ -393,12 +405,13 @@ OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开�
 
 安装器会同步：
 
-- 六个 canonical skill 只发布到用户级 `~/.agents/skills/`。
+- 七个 canonical skill 只发布到用户级 `~/.agents/skills/`。
 - Claude 用户级和项目级 `.claude/skills/` 建立逐 skill 链接，不复制正文。
 - 三个 OMP agent 到 `.omp/agents/`。
 - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
 - 三个 Claude agent、`/engineering-workflow` 和 `/archive-task` 到项目 `.claude/`。
 - 三个 Pi agent 到 `.pi/agents/`。
+- 三个 Codex 原生角色到 `.codex/agents/`，保持用户模型配置不变。
 - 三个 OpenCode agent 和两个 command 到项目 `.opencode/`。
 
 安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
@@ -416,7 +429,7 @@ Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi + OpenCode。先用 `-
 
 ### 从旧副本迁移及恢复
 
-安装器只处理六个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
+安装器只处理七个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
 `~/.codex/skills/`、OMP / Pi 的用户 `skills/`，以及 Claude 的旧正文副本；Project 范围还会
 处理指定项目的 `.agents/skills/`、`.omp/skills/`、`.pi/skills/`、`.claude/skills/` 中对应的
 受管入口。Claude 入口随后建立共享链接。其他项目的旧副本不会被全盘扫描，需要在该项目
@@ -674,17 +687,17 @@ tasks、上下文包与已有验证证据，再核对代码、测试及 `git sta
 
 ### 其他客户端
 
-本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
+本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装七个 canonical skill。
 在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
 
 本仓库安装器目前原生管理 Codex、Claude Code、OMP、Pi 和 OpenCode。其他支持 agentskills.io 的客户端
-可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
+可使用 `skills` CLI 从本地仓库安装七个 canonical skill：
 
 ```powershell
 npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
   --global `
   --agent <agent-id> `
-  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence archive-task `
+  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence archive-task project-standards `
   --yes --copy --full-depth
 ```
 
@@ -697,8 +710,8 @@ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
 
 ## Pi 工作流
 
-Pi 原生扫描 `~/.pi/agent/skills/`、`~/.agents/skills/`、项目 `.pi/skills/` 和项目
-`.agents/skills/`。使用 `-Harness Pi` 后无需 launcher；从已信任的项目根目录直接运行：
+安装器为 Pi 的原生 skills 目录建立到 `~/.agents/skills/` 的受管入口，避免依赖某个版本
+是否扫描共享目录的假设。使用 `-Harness Pi` 后无需 launcher；从已信任的项目根目录直接运行：
 
 ```powershell
 pi
@@ -714,20 +727,28 @@ pi
 /skill:run-engineering-workflow 处理这个需求：...
 ```
 
-Pi 中的阶段分工如下：
+### 按需协调，而非固定流水线
 
-| 阶段 | Pi 执行者 | 上下文/模型规则 |
-| --- | --- | --- |
-| 主路由、需求追问、批准、修复、交付 | 主会话 | 当前 Pi 模型 |
-| 方案规划 | `workflow-planner` | blocking `subagent`；默认继承当前模型 |
-| TDD 实现 | `workflow-implementer` | blocking `subagent`；默认继承当前模型 |
-| 质量检查 | 仓库自身检查 | 主会话执行；Matt 原生审查仅供用户显式调用 |
-| 最终只读复核 | `workflow-reviewer` | blocking `subagent`；默认继承当前模型 |
+主代理负责判断、分派、整合和交付证据；并非每个需求都经过全部角色：
+
+- 不熟悉代码库或外部资料：按需调用 `scout` / `researcher`，已知路径读取不另派侦察。
+- 已明确的有界实现：调用 `workflow-implementer`；已持有上下文的小修改和文档可直接做。
+- 重大不确定性：按需咨询 `oracle`，不是每次交付的额外审查门。
+- 关键或明确要求的方案：使用 `workflow-planner`，不为每个普通任务预先规划一轮。
+- Standard / Critical 正式交付：保留一次 fresh-context `workflow-reviewer` 独立复核。
+
+完整触发/不触发条件见 [specialist-routing](skills/run-engineering-workflow/references/specialist-routing.md)。
+扩展自带的通用 `reviewer` 不替代工作流审查契约，`evidence-auditor` / `delegate` 不作为默认阶段。
+
+若当前工具只有 `subagents_enable`，先激活，下一轮检查是否出现委派工具；激活成功不等于
+已启动子代理。`toolActivation: auto` 的旧会话也可能两者都没有，应新开会话核实，不能立即
+认定未安装。安装器不会替你更改激活模式。按运行时 schema 使用 fresh context、明确写范围，
+异步任务等待完成事件，不反复轮询；只有下一步立即依赖结果时才阻塞等待。
 
 Pi 不读取 OMP 的 `engineering-workflow.yml`，也不识别 `@plan`、`@task`、`@advisor`。
 本仓库的 Pi agents 因此不硬编码 `model`。若 planner/reviewer 没有配置不同模型，它们仍然
 提供 fresh context，但不能称为跨模型复核。planner / implementer / reviewer 全部由本仓库
-安装，任务上下文只通过 dispatch prompt 里的显式路径传递；缺少这些字段就是 INVALID 派发，
+安装，任务上下文通过 dispatch prompt 中的显式路径和内联上下文包传递；正式派发缺少必要字段就是 INVALID 派发，
 不允许靠扫描 `.workflow/tasks/` 猜测。
 
 升级 Pi 或本仓库后检查：
@@ -881,7 +902,7 @@ Slim 通过 OpenCode 原生 specialist 干活：
 
 `workflow` agents 是 Slim 可以调用的 specialist，不是第二套控制面。一次正式交付仍然只有
 一套审查预算（见 `quality-profiles.md`）。OpenCode 的模型归属用户自己的配置；
-六个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
+七个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
 
 正式实现通过 Slim `fixer` 角色路由，那一次独立复核通过 Slim `oracle` 角色路由，两个角色由当前激活的 OMO-Slim preset 决定模型。
 不要把某个 preset 的模型 ID 静态写进受管 agent 或本文档；`.opencode/agents/` 里的 `model` 字段保持空缺。
@@ -1019,7 +1040,7 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
 npm test
 ```
 
-六个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
+七个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
 相对路径提示记录在 [`manifests/upstreams.lock.json`](manifests/upstreams.lock.json) 中。
 升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射、
 Claude Code 与 Pi agent 契约。

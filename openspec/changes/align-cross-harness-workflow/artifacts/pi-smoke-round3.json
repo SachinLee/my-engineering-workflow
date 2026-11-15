@@ -1,0 +1,55 @@
+{
+  "command": "pi -p --mode json --no-session <bounded runtime smoke prompt>",
+  "exit_code": 0,
+  "note": "Only selected tool events; not a full engineering review.",
+  "events": [
+    {
+      "line": 39,
+      "tool": "read",
+      "args": {
+        "path": "C:/Users/shuan/.agents/skills/run-engineering-workflow/SKILL.md"
+      }
+    },
+    {
+      "line": 102,
+      "tool": "subagent",
+      "args": {
+        "agent": "scout",
+        "options": {
+          "agentScope": "both",
+          "context": "fresh",
+          "timeoutMs": 2147483647
+        },
+        "output": false,
+        "task": "Return PI_OUTPUT_TOP_LEVEL_OK; do not use tools, do not write files."
+      }
+    },
+    {
+      "line": 103,
+      "isError": false,
+      "text": [
+        {
+          "type": "text",
+          "text": "Run fan-out: 1/64 used, 63 remaining\nAsync: scout [56e0d9fa-42f8-4689-a81d-6455f22c5c11]\n\nDetached non-interactive run: Pi auto-drains current-session subagent work at agent_end. Do not run sleep timers or polling loops. Use bg_wait only for results this turn needs from work without native notification, and subagent({ action: \"status\", id: \"...\" }) for a one-shot check.\nMission: 8ce3e159-eee3-4755-8766-f53f65bce489 (active)"
+        }
+      ],
+      "runId": "56e0d9fa-42f8-4689-a81d-6455f22c5c11"
+    },
+    {
+      "line": 237,
+      "role": "custom",
+      "customType": "subagent-notify",
+      "texts": [
+        "Background task completed: **scout**\n\nscout:\nPI_OUTPUT_TOP_LEVEL_OK\n\nRetention-managed async directory: C:\\Users\\shuan\\AppData\\Local\\Temp\\pi-subagents-user-shuan\\async-subagent-runs\\56e0d9fa-42f8-4689-a81d-6455f22c5c11\n\nSession file: C:\\Users\\shuan\\AppData\\Local\\Temp\\pi-subagent-session-3gKzUn\\56e0d9fa-42f8-4689-a81d-6455f22c5c11\\run-0\\session.jsonl\n\nParent action: Read the saved results above and resume the already-authorized parent task, or report completion. If approval is required, explicitly ask the user. Do not silently yield, rerun completed work, or infer new authorization."
+      ]
+    },
+    {
+      "line": 254,
+      "role": "assistant",
+      "customType": null,
+      "texts": [
+        "PI_SMOKE_OK 鈥?observed result: PI_OUTPUT_TOP_LEVEL_OK"
+      ]
+    }
+  ]
+}

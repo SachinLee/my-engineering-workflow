@@ -38,3 +38,24 @@ doctor SHALL 比较受管理代理和命令内容，报告 Claude 模型别名�
 #### Scenario: Slim specialist role unavailable
 - **WHEN** 当前会话未由 OMO-Slim 调度或对应 specialist 角色不可调用
 - **THEN** 工作流不得声称角色模型路由已生效；须标注 `UNVERIFIED`，并说明直接 OpenCode agent 会继承当前会话模型
+
+### Requirement: 按任务形状选择专长
+主代理 SHALL 负责调度、整合和证据，按需选择 explore、research、implement、consult 和 review；SHALL NOT 强制每个任务经过全部角色。已掌握上下文的小改动和上下文密集文档 MAY 直接完成。正式实施及最终独立审查 SHALL 保留 OpenSpec 上下文包与共享质量门槛。
+
+#### Scenario: 先探索再决定实施
+- **WHEN** 用户仍在调查且尚未授权正式实施
+- **THEN** 可进行范围受限的只读探索，不强制创建 change，不把探索授权扩大为实施授权
+
+### Requirement: Pi 激活与独立审查边界
+Pi 适配 SHALL 区分工具激活、角色发现和实际委派，以当前 runtime schema 为准，使用 fresh context 和受限输出；异步任务 SHALL 通过完成事件续接而非模型轮询。独立 reviewer 不可用时 SHALL 记录 `UNVERIFIED`，不得用主代理自审冒充。
+
+#### Scenario: 仅存在 loader
+- **WHEN** 当前仅有 `subagents_enable` 可调用
+- **THEN** 激活后在下一轮检查工具，不把 loader 成功当作子代理完成
+
+### Requirement: 原生角色安装不等于运行证明
+安装器 SHALL 提供无固定模型的 Codex workflow TOML 角色和 Pi 原生共享 skill 入口，并保留用户自定义角色、模型及插件配置。doctor SHALL 区分已安装、静态发现条件和运行验证未知；SHALL NOT 以文件存在证明实际独立调用或跨模型。
+
+#### Scenario: 静态安装通过但未运行
+- **WHEN** 受管文件一致但尚无真实角色调用证据
+- **THEN** 报告静态状态及运行 `UNVERIFIED`，不宣称端到端验证成功

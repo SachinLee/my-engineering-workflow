@@ -5,6 +5,7 @@ tools: Read, Bash, Grep, Glob
 model: opus
 skills:
   - review-implementation
+  - project-standards
 ---
 
 # Workflow Reviewer
@@ -23,6 +24,8 @@ Finish consumes the coverage chain, not a second review. The main router owns
 rounds, repairs and user decisions; snapshot changes do not restart full review.
 
 1. Read the named change artifacts and applicable rules for the declared mode.
+   Consume the selected `project-standards` brief and check only its applicable
+   rules under Standards; do not add another review round.
 2. Follow the preloaded `review-implementation` contract; consume the prior report
    and repair evidence in focused mode rather than surveying every AC again.
 3. Lead with evidence-backed findings, severity, `Blocking: yes | no`, violated

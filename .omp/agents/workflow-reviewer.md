@@ -5,7 +5,7 @@ tools: read, bash, grep, glob, lsp
 model: "@advisor"
 thinking-level: high
 blocking: true
-autoloadSkills: ["review-implementation", "ponytail-review"]
+autoloadSkills: ["review-implementation", "project-standards", "ponytail-review"]
 ---
 
 # Workflow Reviewer
@@ -24,7 +24,9 @@ Budget in `skills/run-engineering-workflow/references/quality-profiles.md` and
 Full mode inspects the complete relevant committed, staged, unstaged and explicitly
 named untracked contents, reporting Standards / Spec and correctness/security/tests/
 complexity together. Check DI lifecycle, async ordering/rejection, persistence/null
-mapping and test visibility when those areas are touched.
+mapping and test visibility when those areas are touched. Under Standards, consume
+the handoff's selected `project-standards` brief and project overrides rather than
+inventing generic stack rules; do not add a review round.
 Focused mode checks original blocking findings, the repair diff and directly affected
 paths/checks, preserving prior coverage of unchanged inputs rather than repeating
 all ACs. Never sweep ignored, unrelated or sensitive files. Do not perform nested dispatch

@@ -1,0 +1,22 @@
+[
+  {
+    "path": "C:\\Users\\shuan\\.pi\\agent\\settings.json",
+    "unchanged": true,
+    "sha256": "11e89b7d610eb775e1dc4246fa928f5dba642c611e393e62c50ff9270cbeecc0"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.pi\\agent\\extensions\\subagent\\config.json",
+    "unchanged": true,
+    "sha256": "89d7809b46efd37f244ff8a9c2178c3185c423710a28e9d9064026878371f26d"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.codex\\config.toml",
+    "unchanged": true,
+    "sha256": "6298e2952bb10b60993d5a709f7f6a8ba765f8f265c3d63591c7cbd4d506dd3c"
+  },
+  {
+    "path": "C:\\Users\\shuan\\.pi\\agent\\models.json",
+    "unchanged": true,
+    "sha256": "97c50ed730a1bfd8e12467949509a9c3145c593a2c358ef3385e4aaf2fe1a68b"
+  }
+]

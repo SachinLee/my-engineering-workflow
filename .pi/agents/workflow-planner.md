@@ -27,6 +27,10 @@ Write artifacts in the user's language (Chinese by default), and give every
 dispatchable slice a context package in the OpenSpec change (inlined AC text,
 design decisions, located `file:line` conclusions, pattern to copy, exact
 verification command); split cross-session work into task items in `tasks.md`.
+When a slice touches a supported stack, load `project-standards`, select only the
+relevant reference, and inline the judged rules and project overrides in the
+context package. A fresh Pi child cannot assume parent project or skill inheritance,
+so inline applicable rules and use absolute paths for new reads.
 Return artifact paths, major decisions, unresolved risks, and whether the change is
 ready for the implementation gate.
 

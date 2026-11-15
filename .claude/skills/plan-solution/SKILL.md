@@ -125,6 +125,8 @@ Phase: implement
 - 相关设计决策：<design.md 对应小节的关键原文>
 - 已定位：<file:line> + 符号 + 结论（例：XxxServiceImpl.java:212 handleHeartbeat 用部分实体调用 dao.update(entity, wrapper)）
 - 现成模式：可直接照抄结构的实现或测试文件，附关键片段
+- 项目规范简报：从 `project-standards` 只选相关引用，内联本片适用的规则、
+  项目覆盖项与验证要求；需要新打开的文件给绝对路径
 - 不变量：本片必须保持的行为
 - 验证命令：确切命令，含 JDK、离线、模块参数，以及预期输出要点
 
@@ -146,7 +148,10 @@ Phase: implement
 Keep the package under roughly 1,500 tokens per slice. When the source material
 is longer, inline the decisive lines and cite the file rather than pasting it.
 A slice without a context package is planned for a direct host-native edit, not for
-dispatch.
+dispatch. When a slice needs stack rules, load `project-standards`, select only
+the relevant references, and inline the judged rules rather than a bare path list.
+A fresh child may not inherit the parent's project or skills, so give absolute
+paths for any file it must newly open.
 
 ## Decompose The Work
 

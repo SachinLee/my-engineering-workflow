@@ -1,0 +1,1820 @@
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 3710ce7..c911073 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -58,13 +58,19 @@ See `skills/run-engineering-workflow/references/workflow-governance.md` for the
+ canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings.
+ ## Shared Installation
+ 
+-`skills/` owns canonical source. The installer publishes six skills and the assembled
++`skills/` owns canonical source. The installer publishes seven skills and the assembled
+ OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
+ OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
+ (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
+ only harness adapters: agents, commands, OMP config, launcher, review gate, and
+ the OpenCode agent/command set.
+ Project scope shares skill versions across projects. Both remains Codex + OMP.
++`project-standards` is installed as the seventh shared skill; it selects only the
++references relevant to a slice and does not create another context source. Project
++`AGENTS.md`, accepted specs, and executable checks outrank its generic references.
++The first phase ships common, Java, and Spring MyBatis-Plus references; Go, Rust,
++Python, and Vue defer to the target project's conventions. Handoffs inline the
++selected rules and use absolute paths for files a fresh child must open.
+ 
+ Selected harness legacy copies, including target-project copies in Project scope,
+ are backed up outside skill discovery under `~/.agents/backups/my-engineering-workflow/`
+@@ -108,18 +114,38 @@ context separation but not model separation.
+ 
+ ```text
+ main configured model
+-  -> workflow-planner via blocking subagent (optional pi-subagents package)
+-  -> workflow-implementer via blocking subagent (critical or justified slices)
+-  -> workflow-reviewer via blocking subagent (optional, read-only)
++  -> scout / researcher (on-demand discovery)
++  -> oracle (material uncertainty, fresh context)
++  -> workflow-planner (critical or explicitly requested planning)
++  -> workflow-implementer (bounded implementation when delegation helps)
++  -> workflow-reviewer (single independent Standard/Critical delivery review)
+   -> main-session remediation and evidence
+ ```
+ 
+-The workflow installs only its six skills and three provider-independent Pi
++The workflow installs only its seven skills and three provider-independent Pi
+ agents. Pi agents omit a fixed `model` and inherit the active Pi model; user or
+ trusted-project overrides can differ per agent. They never use OMP `@role` aliases.
+-If `@narumitw/pi-subagents` is not installed, planning, bounded implementation,
+-and independent review fall back to the main session and must disclose the loss of
+-fresh-context review.
++The adapter targets `nicobailon/pi-subagents` (`npm:pi-subagents`). It activates a
++loader when needed, then checks the next tool catalog before dispatch. Fresh
++context, scoped output and native async completion apply to each delegated slice;
++blocking is reserved for results that the next action immediately needs. If tools
++are unavailable, permitted direct work may continue, but missing independent
++review remains `UNVERIFIED`, never a main-session substitute for a clean review.
++
++## Codex Roles
++
++The installer owns only three model-free `.codex/agents/workflow-*.toml` roles.
++Existing user specialists and `config.toml` remain user-owned. The coordinator
++uses native exploration/implementation capabilities only when the current
++version and session expose them; role files alone do not prove discoverability,
++successful dispatch, independent context, or a different model. Doctor separates
++static installation conditions from runtime `UNVERIFIED` status.
++
++Both Pi and Codex follow the shared
++[specialist-routing](skills/run-engineering-workflow/references/specialist-routing.md)
++contract: bounded investigation, implementation and consultation are on demand,
++not a mandatory stage pipeline. Formal handoffs and final review still follow
++OpenSpec and the shared quality profile; no second scheduler or state store is added.
+ 
+ ## OpenCode Roles
+ 
+@@ -146,7 +172,7 @@ If a role cannot be invoked or its effective model cannot be verified, report
+ 
+ ## Adapter Capabilities And Ownership
+ 
+-The six canonical skills are installer-managed and shared; adapters add managed
++The seven canonical skills are installer-managed and shared; adapters add managed
+ links or native discovery and never fork the bodies. Model selection stays
+ user-owned: Claude agent definitions carry `opus` and `sonnet` labels a user may
+ remap, Pi and OpenCode agents omit `model` so user overrides can differ, and OMP roles resolve
+diff --git a/README.md b/README.md
+index 690956d..113ae67 100644
+--- a/README.md
++++ b/README.md
+@@ -33,7 +33,7 @@ AI 会话之间的上下文连续性。
+ 审查预算。谁来调度、用哪个模型、客户端暴露哪些工具，归宿主（Codex、Claude Code、OpenCode、
+ OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用”，不重写质量标准。
+ 
+-本仓库目前提供六个 canonical skill（安装器统一管理的同一份源码）：
++本仓库目前提供七个 canonical skill（安装器统一管理的同一份源码）：
+ 
+ | Skill | 用途 |
+ | --- | --- |
+@@ -43,6 +43,7 @@ OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用
+ | `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
+ | `$finish-with-evidence` | 核对并复用已有证据，写入 `artifacts/verification.md`；不再派审核或直接重跑检查 |
+ | `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
++| `$project-standards` | 只选与本切片相关的项目/技术栈规范，内联到规划、实施和审核交接；首期含通用、Java、Spring MyBatis-Plus 引用 |
+ 
+ ## 核心产物
+ 
+@@ -299,8 +300,8 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
+ 
+ ## 安装本仓库的 Skill
+ 
+-六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
+-OpenCode 原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
++七个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP 和
++OpenCode 原生发现这个用户级目录，Claude Code 与 Pi 通过受管理的原生目录链接访问同一份内容。
+ 仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
+ 
+ 首次安装或更新全部平台，在本仓库根目录执行：
+@@ -326,6 +327,12 @@ PowerShell 7 `pwsh`）：
+ 
+ 安装完成后重启 Codex App 或重新启动 Codex CLI。
+ 
++安装器同时发布无固定模型的 `workflow-planner` / `workflow-implementer` /
++`workflow-reviewer` 原生 TOML 角色；保留你的 `explorer`、`fixer`、`oracle` 等自定义角色，
++不重写 `config.toml`。原生角色能否发现、是否需要启用 subagents，以及实际能否调用，
++取决于当前 Codex 版本和会话工具。`doctor` 的静态检查不等于运行时证明；缺少独立审查时
++仍报告 `UNVERIFIED`，不会用主代理自审冒充。安装后应在新会话做一次最小委派验证。
++
+ ### 全局安装到 Claude Code
+ 
+ ```powershell
+@@ -333,7 +340,7 @@ PowerShell 7 `pwsh`）：
+ .\scripts\doctor.ps1 -Scope User -Harness Claude
+ ```
+ 
+-这会发布共享 skills，并在 `~/.claude/skills/` 为六个 skill 建立目录链接，安装
++这会发布共享 skills，并在 `~/.claude/skills/` 为七个 skill 建立目录链接，安装
+ `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个 agent 和
+ `/engineering-workflow` / `/archive-task` 两个命令。Windows 使用 junction，macOS / Linux
+ 使用 symlink；链接目标始终是对应的共享 skill。重新启动 Claude Code 后生效。
+@@ -345,20 +352,25 @@ PowerShell 7 `pwsh`）：
+ .\scripts\doctor.ps1 -Scope User -Harness Pi
+ ```
+ 
+-这会把六个 skill 发布到 `~/.agents/skills/`，把 provider-independent 的
++这会把七个 skill 发布到 `~/.agents/skills/`，在 `~/.pi/agent/skills/` 建立指向共享正文的受管目录链接，把 provider-independent 的
+ `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
+ `model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
+ `.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
+ 该用户目录存放 Pi / OMP 的适配文件、定位旧副本，skill 共享目录仍是 `~/.agents/skills/`。
+-Pi 会在 `/reload` 或新会话后刷新 agent catalog。
++安装后重启 Pi 以加载共享 skill 入口和 agents；随后可用 `/reload` 刷新 agent catalog。
+ 
+-方案规划、有界实现和独立复核需要 Pi subagents 扩展；没有它时主路由会在主会话内执行并记录缺少
+-独立上下文：
++按需委派需要 Pi subagents 扩展；本适配对齐 `nicobailon/pi-subagents`。未安装或工具不可用时，
++主会话可继续允许直接执行的工作，但正式交付缺少独立 reviewer 必须记为 `UNVERIFIED`：
+ 
+ ```powershell
+-pi install npm:@narumitw/pi-subagents
++pi install npm:pi-subagents
+ ```
+ 
++新会话先检查当前可用工具：若已有 `subagent`，直接按工作流规则选择专长并派发；若只有
++`subagents_enable`，先调用它，再在下一次模型请求中使用出现的 `subagent`。启用工具本身不等于已派发任务。
++后台任务通过扩展的完成通知返回；等待通知并检查结果，不需要模型反复轮询。需独立审查的工作，
++如果 reviewer 无法启动或返回有效报告，应记录 `UNVERIFIED`，不能由主会话自审替代。
++
+ ### 全局安装到 OpenCode
+ 
+ ```powershell
+@@ -393,12 +405,13 @@ OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开
+ 
+ 安装器会同步：
+ 
+-- 六个 canonical skill 只发布到用户级 `~/.agents/skills/`。
++- 七个 canonical skill 只发布到用户级 `~/.agents/skills/`。
+ - Claude 用户级和项目级 `.claude/skills/` 建立逐 skill 链接，不复制正文。
+ - 三个 OMP agent 到 `.omp/agents/`。
+ - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
+ - 三个 Claude agent、`/engineering-workflow` 和 `/archive-task` 到项目 `.claude/`。
+ - 三个 Pi agent 到 `.pi/agents/`。
++- 三个 Codex 原生角色到 `.codex/agents/`，保持用户模型配置不变。
+ - 三个 OpenCode agent 和两个 command 到项目 `.opencode/`。
+ 
+ 安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
+@@ -416,7 +429,7 @@ Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi + OpenCode。先用 `-
+ 
+ ### 从旧副本迁移及恢复
+ 
+-安装器只处理六个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
++安装器只处理七个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
+ `~/.codex/skills/`、OMP / Pi 的用户 `skills/`，以及 Claude 的旧正文副本；Project 范围还会
+ 处理指定项目的 `.agents/skills/`、`.omp/skills/`、`.pi/skills/`、`.claude/skills/` 中对应的
+ 受管入口。Claude 入口随后建立共享链接。其他项目的旧副本不会被全盘扫描，需要在该项目
+@@ -674,17 +687,17 @@ tasks、上下文包与已有验证证据，再核对代码、测试及 `git sta
+ 
+ ### 其他客户端
+ 
+-本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
++本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装七个 canonical skill。
+ 在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
+ 
+ 本仓库安装器目前原生管理 Codex、Claude Code、OMP、Pi 和 OpenCode。其他支持 agentskills.io 的客户端
+-可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
++可使用 `skills` CLI 从本地仓库安装七个 canonical skill：
+ 
+ ```powershell
+ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
+   --global `
+   --agent <agent-id> `
+-  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence archive-task `
++  --skill run-engineering-workflow clarify-requirements plan-solution review-implementation finish-with-evidence archive-task project-standards `
+   --yes --copy --full-depth
+ ```
+ 
+@@ -697,8 +710,8 @@ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
+ 
+ ## Pi 工作流
+ 
+-Pi 原生扫描 `~/.pi/agent/skills/`、`~/.agents/skills/`、项目 `.pi/skills/` 和项目
+-`.agents/skills/`。使用 `-Harness Pi` 后无需 launcher；从已信任的项目根目录直接运行：
++安装器为 Pi 的原生 skills 目录建立到 `~/.agents/skills/` 的受管入口，避免依赖某个版本
++是否扫描共享目录的假设。使用 `-Harness Pi` 后无需 launcher；从已信任的项目根目录直接运行：
+ 
+ ```powershell
+ pi
+@@ -714,20 +727,28 @@ pi
+ /skill:run-engineering-workflow 处理这个需求：...
+ ```
+ 
+-Pi 中的阶段分工如下：
++### 按需协调，而非固定流水线
+ 
+-| 阶段 | Pi 执行者 | 上下文/模型规则 |
+-| --- | --- | --- |
+-| 主路由、需求追问、批准、修复、交付 | 主会话 | 当前 Pi 模型 |
+-| 方案规划 | `workflow-planner` | blocking `subagent`；默认继承当前模型 |
+-| TDD 实现 | `workflow-implementer` | blocking `subagent`；默认继承当前模型 |
+-| 质量检查 | 仓库自身检查 | 主会话执行；Matt 原生审查仅供用户显式调用 |
+-| 最终只读复核 | `workflow-reviewer` | blocking `subagent`；默认继承当前模型 |
++主代理负责判断、分派、整合和交付证据；并非每个需求都经过全部角色：
++
++- 不熟悉代码库或外部资料：按需调用 `scout` / `researcher`，已知路径读取不另派侦察。
++- 已明确的有界实现：调用 `workflow-implementer`；已持有上下文的小修改和文档可直接做。
++- 重大不确定性：按需咨询 `oracle`，不是每次交付的额外审查门。
++- 关键或明确要求的方案：使用 `workflow-planner`，不为每个普通任务预先规划一轮。
++- Standard / Critical 正式交付：保留一次 fresh-context `workflow-reviewer` 独立复核。
++
++完整触发/不触发条件见 [specialist-routing](skills/run-engineering-workflow/references/specialist-routing.md)。
++扩展自带的通用 `reviewer` 不替代工作流审查契约，`evidence-auditor` / `delegate` 不作为默认阶段。
++
++若当前工具只有 `subagents_enable`，先激活，下一轮检查是否出现委派工具；激活成功不等于
++已启动子代理。`toolActivation: auto` 的旧会话也可能两者都没有，应新开会话核实，不能立即
++认定未安装。安装器不会替你更改激活模式。按运行时 schema 使用 fresh context、明确写范围，
++异步任务等待完成事件，不反复轮询；只有下一步立即依赖结果时才阻塞等待。
+ 
+ Pi 不读取 OMP 的 `engineering-workflow.yml`，也不识别 `@plan`、`@task`、`@advisor`。
+ 本仓库的 Pi agents 因此不硬编码 `model`。若 planner/reviewer 没有配置不同模型，它们仍然
+ 提供 fresh context，但不能称为跨模型复核。planner / implementer / reviewer 全部由本仓库
+-安装，任务上下文只通过 dispatch prompt 里的显式路径传递；缺少这些字段就是 INVALID 派发，
++安装，任务上下文通过 dispatch prompt 中的显式路径和内联上下文包传递；正式派发缺少必要字段就是 INVALID 派发，
+ 不允许靠扫描 `.workflow/tasks/` 猜测。
+ 
+ 升级 Pi 或本仓库后检查：
+@@ -881,7 +902,7 @@ Slim 通过 OpenCode 原生 specialist 干活：
+ 
+ `workflow` agents 是 Slim 可以调用的 specialist，不是第二套控制面。一次正式交付仍然只有
+ 一套审查预算（见 `quality-profiles.md`）。OpenCode 的模型归属用户自己的配置；
+-六个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
++七个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
+ 
+ 正式实现通过 Slim `fixer` 角色路由，那一次独立复核通过 Slim `oracle` 角色路由，两个角色由当前激活的 OMO-Slim preset 决定模型。
+ 不要把某个 preset 的模型 ID 静态写进受管 agent 或本文档；`.opencode/agents/` 里的 `model` 字段保持空缺。
+@@ -1019,7 +1040,7 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
+ npm test
+ ```
+ 
+-六个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
++七个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
+ 相对路径提示记录在 [`manifests/upstreams.lock.json`](manifests/upstreams.lock.json) 中。
+ 升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射、
+ Claude Code 与 Pi agent 契约。
+diff --git a/evals/workflow-cases.json b/evals/workflow-cases.json
+index 5afd160..32433c5 100644
+--- a/evals/workflow-cases.json
++++ b/evals/workflow-cases.json
+@@ -94,7 +94,7 @@
+     },
+     {
+       "name": "codex-shared-skills-no-native-agents",
+-      "state": "codex_loaded_from_shared_skills_without_verified_subagents",
++      "state": "codex_loaded_from_shared_skills_with_no_verified_native_role_discovery_or_invocation",
+       "expected_stage": "report-review-unavailable",
+       "required_status": "UNVERIFIED",
+       "required_behavior": "use shared skills and claim only verified capabilities",
+@@ -472,6 +472,75 @@
+       "required_behavior": "keep-visible-errors-and-reject-unsupported-fallback-success",
+       "required": ["明确失败响应与页面错误状态", "旧结果不伪装为最新成功", "拒绝无依据重试或降级进入任务"],
+       "forbidden": ["返回空列表伪装成功", "返回旧缓存伪装成功", "无依据加入自动重试"]
++    },
++    {
++      "name": "task-shape-routing-no-forced-pipeline",
++      "state": "main_agent_already_holds_context_for_a_small_scoped_edit_or_documentation_change",
++      "expected_stage": "dispatch-by-task-shape",
++      "required_behavior": "main agent coordinates and selects explore/research/implement/consult/review on demand, doing known-context work directly",
++      "forbidden": [
++        "run every specialist stage as a mandatory pipeline",
++        "delegate a small scoped edit only to satisfy a stage template",
++        "weaken the formal handoff or the single independent review"
++      ]
++    },
++    {
++      "name": "pi-subagents-enable-next-turn",
++      "state": "fresh_pi_session_with_auto_or_dynamic_tool_activation_and_no_subagent_tool_yet",
++      "expected_stage": "activate-then-dispatch",
++      "required_behavior": "call subagents_enable({}) without starting work, then discover subagent on the next model request",
++      "forbidden": [
++        "assume subagent is callable before activation",
++        "claim a dispatch succeeded when only the loader ran",
++        "assume installation or reload adds the tool to an old session"
++      ]
++    },
++    {
++      "name": "pi-async-completion-or-failure",
++      "state": "pi_subagent_launched_asynchronously_with_runtime_schema_under_options",
++      "expected_stage": "handle-async-completion",
++      "required_behavior": "wait for the completion event or report once and record a failed run as terminal",
++      "forbidden": [
++        "silently switch execution mode after a failed run",
++        "silently retry a failed slice",
++        "downgrade or skip the independent review after a failure"
++      ]
++    },
++    {
++      "name": "pi-subagent-output-boundary",
++      "state": "pi_scout_researcher_or_oracle_reused_for_exploration_research_or_consultation",
++      "expected_stage": "return-output-to-main-session",
++      "required_behavior": "pass options.context fresh, constrain tools and writes, and direct output to the main session or an authorized artifact",
++      "forbidden": [
++        "treat scout as hard read-only",
++        "silently treat web-less researcher as local research",
++        "let a specialist write shadow context.md, plan.md, or research.md outside the active change",
++        "claim oracle advice is the formal independent review"
++      ]
++    },
++    {
++      "name": "pi-reviewer-unavailable-unverified",
++      "state": "pi_without_a_callable_subagent_or_independent_workflow_reviewer",
++      "expected_stage": "report-review-unavailable",
++      "required_status": "UNVERIFIED",
++      "required_behavior": "keep implementation and deterministic checks in the main session and report the review gap",
++      "forbidden": [
++        "claim CLEAN from a main-session self-check",
++        "let the main agent's self-review stand in for independent review",
++        "silently downgrade the review requirement"
++      ]
++    },
++    {
++      "name": "codex-native-capability-conditional",
++      "state": "codex_with_installed_agent_files_but_no_verified_runtime_discovery_or_invocation",
++      "expected_stage": "report-conditional-capability",
++      "required_status": "UNVERIFIED",
++      "required_behavior": "report native role support only after discovery and invocation are verified for that client version",
++      "forbidden": [
++        "claim installation equals runtime support",
++        "claim Codex native subagent review without verification",
++        "invent a codex exec --agent flag to force roles"
++      ]
+     }
+   ]
+ }
+diff --git a/openspec/changes/align-cross-harness-workflow/artifacts/context.md b/openspec/changes/align-cross-harness-workflow/artifacts/context.md
+index 109c83f..8f92e26 100644
+--- a/openspec/changes/align-cross-harness-workflow/artifacts/context.md
++++ b/openspec/changes/align-cross-harness-workflow/artifacts/context.md
+@@ -27,3 +27,34 @@ A 仅修改 scripts/install.ps1、scripts/doctor.py、新 OpenCode 适配目录
+ 
+ ## 验证命令
+ 按 tests 的既有运行方式执行聚焦 Node/Python 用例；主会话最终运行 npm test 及 Python unittest discovery。用临时 home 验证安装幂等、备份、未知链接保护及旧副本迁移，再运行真实安装和 doctor。
++
++## 复验轮次 3：共用结论
++- 用户要 omo-slim 风格按需专家协作，不是 planner→implementer→reviewer 全阶段强制流水线；授权实施且复用本 change。
++- Pi 已装 nicobailon/pi-subagents 0.88.0（非 README 旧 @narumitw scope）；auto 模式可能只暴露 subagents_enable，调用后下一轮出现工具；旧会话两者均可能缺失。安装不等于调用能力。
++- Pi options.context=fresh，options.agentScope=both，async 默认开启，以实际 schema 为准。oracle 默认 fork，必须覆盖；scout 含 bash/write，不能宣称硬只读；researcher 需 web provider。禁止默认写 context.md/plan.md/research.md 等影子状态，限定输出到主会话或 active change 授权产物。
++- Codex CLI 0.169.0；用户 ~/.codex/agents 有 explorer/fixer/designer/oracle.toml，不属于本仓库，必须保留。config multi_agent 已开启但命名角色运行未证实。没有 codex exec --agent。官方 role.rs 支持角色配置，当前目录发现与注册格式须查当前官方文档或源码验证，不能猜。
++- scripts/install.ps1 与 scripts/doctor.py 已有其他 change 的七个技能支持增量；tests/contracts.test.js、tests/test_shared_installation.py 亦已改。保留全部现状。根 agents/、.omp/、.pi/、.opencode/ 定义同步规则不变。
++
++### 上下文包 C（可派发）
++Active change: openspec/changes/align-cross-harness-workflow/
++Assigned slice: C / AC-007、AC-008
++Phase: implement
++- 验收：按需选择 explore/research/implement/consult/review；协调器持有上下文的小修改与文档直接做；咨询不是额外审核门。Pi loader 激活、fresh context、受限输出、事件完成，缺 reviewer 为 UNVERIFIED。
++- 设计：共享 reference 只写一份；宿主调度和质量规则分离；可探索后建 change，但正式实施/最终审查 handoff 不削弱；保留一次审查预算及 OpenCode Slim 路由。
++- 已定位：skills/run-engineering-workflow/SKILL.md Pi Roles 当前是 blocking 示例、缺激活且允许自审 fallback；references/quality-profiles.md 已要求缺独立 review UNVERIFIED；tests/contracts.test.js 有 Codex skills-only 旧假设，需条件化而非全局宣称支持。
++- 需要新打开：skills/run-engineering-workflow/SKILL.md、references/quality-profiles.md、tests/contracts.test.js、evals/workflow-cases.json；必要 Pi 文档位于 C:/Users/shuan/.pi/agent/npm/node_modules/pi-subagents/docs/。
++- 允许修改：skills/run-engineering-workflow/SKILL.md、skills/run-engineering-workflow/references/specialist-routing.md、tests/contracts.test.js、evals/workflow-cases.json。不修改 README/ARCHITECTURE、安装器、agent 模板或其他 change。
++- RED/GREEN：node --test tests/contracts.test.js；按任务契约先失败后通过；只跑本 lane 聚焦测试，不跑完整 suite。
++- 返回证据：确切命令、exit code、RED 失败点、GREEN 计数、文件范围和未验证运行限制。越界停报；不提交、不安装。
++
++### 上下文包 D（可派发）
++Active change: openspec/changes/align-cross-harness-workflow/
++Assigned slice: D / AC-009、AC-010
++Phase: implement
++- 验收：Codex 无 model 的原生三个 workflow TOML；Pi 原生 skill 入口指向共享源；安全安装、备份、未知链接保护和幂等；doctor 区分安装/发现/运行未知。不覆写用户角色、模型/provider 或插件配置，Both 兼容。
++- 设计：沿用安装器现有 helper 和 Python 测试临时 home；不再创建调度服务。不把 TOML 存在当 runtime verified。若角色原生目录格式依赖版本，必须核实官方当前格式，不猜 CLI --agent；无法安全注册时说明限制。
++- 已定位：scripts/install.ps1 Codex 当前只备份旧 md；scripts/doctor.py 仍总报告 skills-only；现有 tests/test_shared_installation.py 临时 home 安装回归及七技能增量必须保留。
++- 需要新打开：scripts/install.ps1、scripts/doctor.py、tests/test_shared_installation.py；agents/workflow-*.md 与 .pi/agents/workflow-*.md 用于迁移原有标准/权限/handoff 合同；Codex 当前官方文档或源码。
++- 允许修改：scripts/install.ps1、scripts/doctor.py、tests/test_shared_installation.py、.codex/agents/workflow-*.toml（新增），必要独立 tests/test_codex*.py。不可写 shared SKILL、tests/contracts.test.js、README/ARCHITECTURE 或用户 home。
++- RED/GREEN：python -m unittest tests.test_shared_installation（可选择新增用例先跑）；新回归覆盖无模型原生格式、幂等/保护与诊断分层，先 RED 后 GREEN。只跑聚焦测试，不跑所有 Python discovery。
++- 返回证据：官方依据、命令及 exit code/计数、改动文件、未验证限制。需要越界先报；不提交、不实际安装用户目录。实施者负责聚焦验证，主会话负责最终整合/真实安装/运行验证。
+diff --git a/openspec/changes/align-cross-harness-workflow/design.md b/openspec/changes/align-cross-harness-workflow/design.md
+index 876c3dd..f17f403 100644
+--- a/openspec/changes/align-cross-harness-workflow/design.md
++++ b/openspec/changes/align-cross-harness-workflow/design.md
+@@ -5,3 +5,10 @@
+ 执行规则：工作流管理范围、验收、审查及证据；宿主管理调度、模型与工具。OpenCode 中 Slim Orchestrator 调度 explorer/designer/fixer/oracle 和必要的 workflow agents，不增加总控。正式实现使用 Slim `fixer` 角色，独立审查使用 Slim `oracle` 角色，让当前激活 preset 负责选模；不把某个 preset 模型 ID 写死进 workflow agent 模板，也不把直接 agent 继承的主会话模型说成 Slim 角色模型。不可用或路由未验证时报告 `UNVERIFIED`。Ponytail 5 的完整修改与有效检查整合到方法说明。
+ 
+ 验证：先补相应合同/安装回归用例并证明失败，再实现；各实施 lane 只运行聚焦检查，主会话汇总后运行完整仓库测试一次。安装先备份已知受管理文件，保留未知文件、模型配置及插件补丁。独立 reviewer 仅审查本次范围一次。实际客户端对话与 UI 测试不能以静态检查替代。
++
++## 复验轮次 3 方案
++- AC-007/008：新增共享 specialist-routing reference，主路由按需读取；不复制上游技能。探索不强制正式记录，进入正式实施才要求 active change。Pi 以运行时 schema 为准，options.context=fresh；loader 激活后下一轮重新检查工具，不把 loader 当委派。保留 workflow-reviewer 独立质量合同。
++- AC-009/010：以 Codex 当前官方原生格式建立 .codex/agents/*.toml，不写 model/provider；安装仅管理三个 workflow 名称。优先原生目录发现，若当前版本需要注册且无法安全保留配置，则明确限制而非擅写 config。Pi 原生技能入口指向规范共享安装，沿用备份/未知链接保护。doctor 不以静态文件证明实际调用。
++- 不变量：现有未提交改动不得回退；不触碰用户模型/插件设置；无注入器、无新状态机；Both 不变；独立角色新上下文不代表跨模型。
++- 验证：两条不重叠 writer lane 各自拥有 RED/GREEN；主会话整合后一次 npm test、Python discovery 和 diff 检查。真实 Pi/Codex 最小调用只验证发现/委派/结果回传，不修改业务项目；不可用时如实保留运行限制。独立 reviewer 对本轮增量做一次完整审查。
++- 回滚：恢复本轮增量及安装器记录的备份，不删除/覆盖用户未知角色，不回退其他 change 的现有改动。
+diff --git a/openspec/changes/align-cross-harness-workflow/proposal.md b/openspec/changes/align-cross-harness-workflow/proposal.md
+index 0131984..be040f6 100644
+--- a/openspec/changes/align-cross-harness-workflow/proposal.md
++++ b/openspec/changes/align-cross-harness-workflow/proposal.md
+@@ -13,3 +13,11 @@
+ 
+ ## 范围外
+ 不升级供应商或模型，不提交/推送，不自动归档，不替换 Slim 的 Windows 修补版本，不给其他项目强制安装，不整套引入 ECC。
++
++## 复验轮次 3：Pi / Codex 按需专长协作（2026-11-14）
++用户授权实施前述方案并明确复用本 change。本轮为新批准的交付范围，独立于前两轮材料；保留旧审查记录，本轮预算为一次完整审查、最多一次修复后聚焦复核。质量级别 Standard。
++- AC-007：主代理负责协调、整合与证据，按任务形状选择 explore / research / implement / consult / review；已掌握上下文的小改动及上下文密集文档可直接完成，不强制全阶段流水线。只读探索可先于正式 change；正式实施及最终独立审查保留 OpenSpec 上下文包与质量门槛。
++- AC-008：Pi 显式处理 subagents_enable 激活、发现和异步完成；复用 scout / researcher / oracle 时限定 fresh context、写入边界和可用工具；正式角色仍由 workflow agents 提供。缺失独立 reviewer 必须 UNVERIFIED，不允许主代理自审冒充。
++- AC-009：Codex 安装原生、无固定模型的 workflow TOML 角色；保留已有自定义角色和用户配置。只有实际证明发现和调用才报告运行能力，不把安装成功或新上下文等同跨模型。
++- AC-010：安装器提供 Pi 原生共享 skill 入口；doctor 区分已安装、静态可发现、运行验证未知，保持 Both 兼容。契约与安装回归先 RED 后 GREEN；真实运行烟测如受限须明确 UNVERIFIED。
++- 本轮不安装新调度器、不更改 toolActivation 或模型配置、不引入默认 evidence-auditor / delegate，不更改其他任务状态。
+diff --git a/openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md b/openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
+index d4b2620..5dbffcb 100644
+--- a/openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
++++ b/openspec/changes/align-cross-harness-workflow/specs/cross-harness-workflow/spec.md
+@@ -38,3 +38,24 @@ doctor SHALL 比较受管理代理和命令内容，报告 Claude 模型别名
+ #### Scenario: Slim specialist role unavailable
+ - **WHEN** 当前会话未由 OMO-Slim 调度或对应 specialist 角色不可调用
+ - **THEN** 工作流不得声称角色模型路由已生效；须标注 `UNVERIFIED`，并说明直接 OpenCode agent 会继承当前会话模型
++
++### Requirement: 按任务形状选择专长
++主代理 SHALL 负责调度、整合和证据，按需选择 explore、research、implement、consult 和 review；SHALL NOT 强制每个任务经过全部角色。已掌握上下文的小改动和上下文密集文档 MAY 直接完成。正式实施及最终独立审查 SHALL 保留 OpenSpec 上下文包与共享质量门槛。
++
++#### Scenario: 先探索再决定实施
++- **WHEN** 用户仍在调查且尚未授权正式实施
++- **THEN** 可进行范围受限的只读探索，不强制创建 change，不把探索授权扩大为实施授权
++
++### Requirement: Pi 激活与独立审查边界
++Pi 适配 SHALL 区分工具激活、角色发现和实际委派，以当前 runtime schema 为准，使用 fresh context 和受限输出；异步任务 SHALL 通过完成事件续接而非模型轮询。独立 reviewer 不可用时 SHALL 记录 `UNVERIFIED`，不得用主代理自审冒充。
++
++#### Scenario: 仅存在 loader
++- **WHEN** 当前仅有 `subagents_enable` 可调用
++- **THEN** 激活后在下一轮检查工具，不把 loader 成功当作子代理完成
++
++### Requirement: 原生角色安装不等于运行证明
++安装器 SHALL 提供无固定模型的 Codex workflow TOML 角色和 Pi 原生共享 skill 入口，并保留用户自定义角色、模型及插件配置。doctor SHALL 区分已安装、静态发现条件和运行验证未知；SHALL NOT 以文件存在证明实际独立调用或跨模型。
++
++#### Scenario: 静态安装通过但未运行
++- **WHEN** 受管文件一致但尚无真实角色调用证据
++- **THEN** 报告静态状态及运行 `UNVERIFIED`，不宣称端到端验证成功
+diff --git a/openspec/changes/align-cross-harness-workflow/tasks.md b/openspec/changes/align-cross-harness-workflow/tasks.md
+index d3f32b2..4eb0b8c 100644
+--- a/openspec/changes/align-cross-harness-workflow/tasks.md
++++ b/openspec/changes/align-cross-harness-workflow/tasks.md
+@@ -9,3 +9,10 @@
+ - [x] 修复阻断问题，补充完整差异证据，执行唯一一次修复后聚焦复核；审查 CLEAN。
+ - [x] 第一轮证据已记录；当时状态 awaiting-acceptance（2026-10-27）。归档及 journal 由用户验收后决定。
+ - [x] 复验轮次 2：OpenCode 适配已明确正式实现走 Slim `fixer`、独立审查走 Slim `oracle`，并加入静态合同回归（tests/contracts.test.js、evals/workflow-cases.json）；静态回归、完整检查、差异证据及 focused review 已完成，状态回到 awaiting-acceptance。实际角色调度仍属运行时未验证项。
++
++## 复验轮次 3 执行前沿
++- [x] 切片 C / AC-007、AC-008：共享按需专长路由和 Pi/Codex 调用规则；契约测试 RED→GREEN；见本轮 focused test 证据。
++- [x] 切片 D / AC-009、AC-010：Codex 原生角色、Pi skill 入口、安装诊断；临时 home 隔离测试 RED→GREEN；实际安装及烟测证据见 artifacts/verification.md。
++- [x] 主会话：依赖 C/D，核对产物、更新 README/ARCHITECTURE、最终完整检查、安装及真实最小运行验证。Pi output 参数通路真实通过；Codex 正常结束与完整回传仍 UNVERIFIED。
++- [x] 本轮唯一独立完整审查及必要聚焦复核，记录证据并停在 awaiting-acceptance；focused CLEAN，未提交/推送/归档。
++- [x] full review F-004/F-005 修复与负向回归；最终 Node 64/64，Python 共 86 项、2 skipped；同一 reviewer 唯一 focused 确认两项 resolved，无剩余 blocking findings。
+diff --git a/scripts/doctor.py b/scripts/doctor.py
+index fef3885..00e8a9d 100644
+--- a/scripts/doctor.py
++++ b/scripts/doctor.py
+@@ -14,6 +14,11 @@ import subprocess
+ import sys
+ from pathlib import Path
+ 
++try:  # Python 3.11+; 3.9/3.10 use the flat-role scanner below instead of a dependency.
++    import tomllib
++except ImportError:  # pragma: no cover - exercised on Python 3.9/3.10 and by tests
++    tomllib = None  # type: ignore[assignment]
++
+ 
+ from openspec_compat import TITLE_RULE_ANCHOR, detect_project_mode
+ 
+@@ -24,9 +29,12 @@ SKILLS = (
+     "review-implementation",
+     "finish-with-evidence",
+     "archive-task",
++    "project-standards",
+ )
+ AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
+ AGENT_FILES = tuple(f"{agent}.md" for agent in AGENTS)
++CODEX_AGENT_FILES = tuple(f"{agent}.toml" for agent in AGENTS)
++CODEX_AGENT_FIELDS = ("name", "description", "developer_instructions")
+ UPSTREAM_SKILLS = (
+     "grill-with-docs",
+     "tdd",
+@@ -70,6 +78,31 @@ def is_directory_link(path: Path) -> bool:
+     )
+ 
+ 
++def pi_skill_link_roots(scope: str, project: Path | None, home: Path) -> list[Path]:
++    """Return the native Pi skill roots the installer manages as shared links."""
++    override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
++    roots = [(Path(override).expanduser() if override else home / ".pi" / "agent") / "skills"]
++    if scope == "Project" and project:
++        roots.append(project / ".pi" / "skills")
++    shared = home / ".agents" / "skills"
++    try:
++        shared_key = shared.resolve()
++    except (OSError, RuntimeError):
++        shared_key = shared
++    unique: list[Path] = []
++    seen: set[Path] = set()
++    for root in roots:
++        try:
++            key = root.resolve()
++        except (OSError, RuntimeError):
++            key = root
++        if key == shared_key or key in seen:
++            continue
++        seen.add(key)
++        unique.append(root)
++    return unique
++
++
+ def check_shared_installation(harness: str, scope: str, project: Path | None, home: Path, errors: list[str]) -> None:
+     shared = home / ".agents" / "skills"
+     check_skills(shared, "shared", errors)
+@@ -86,10 +119,19 @@ def check_shared_installation(harness: str, scope: str, project: Path | None, ho
+         if scope == "Project" and project:
+             legacy.append(project / ".omp" / "skills")
+     if selected(harness, "Pi"):
+-        override = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+-        legacy.append((Path(override).expanduser() if override else home / ".pi" / "agent") / "skills")
++        # Pi loads <agent-dir>/skills and .pi/skills natively; the installer keeps
++        # a managed link from each root to the shared tree instead of a copy.
++        for root in pi_skill_link_roots(scope, project, home):
++            for skill in SKILLS:
++                entry = root / skill
++                try:
++                    valid = is_directory_link(entry) and entry.is_dir() and entry.resolve() == (shared / skill).resolve()
++                except (OSError, RuntimeError):
++                    valid = False
++                if not valid:
++                    errors.append(f"Invalid or missing Pi skill link: {entry}; expected {shared / skill}")
+         if scope == "Project" and project:
+-            legacy.extend((project / ".agents" / "skills", project / ".pi" / "skills"))
++            legacy.append(project / ".agents" / "skills")
+     if selected(harness, "Claude"):
+         roots = [home / ".claude" / "skills"]
+         if scope == "Project" and project:
+@@ -412,6 +454,20 @@ def check_pi(scope: str, project: Path | None, home: Path, errors: list[str], wa
+     source = repo_source_root()
+     if source is not None:
+         check_managed_drift(source / ".pi" / "agents", root / "agents", AGENT_FILES, "Pi agent", warnings)
++    link_roots = pi_skill_link_roots(scope, project, home)
++    if link_roots:
++        shared = home / ".agents" / "skills"
++        installed = 0
++        for link_root in link_roots:
++            for skill in SKILLS:
++                entry = link_root / skill
++                try:
++                    if is_directory_link(entry) and entry.is_dir() and entry.resolve() == (shared / skill).resolve():
++                        installed += 1
++                except (OSError, RuntimeError):
++                    continue
++        warnings.append(f"Pi native shared skill entry installed: {installed}/{len(link_roots) * len(SKILLS)}")
++        warnings.append("Runtime skill loading and delegation: UNVERIFIED")
+     node_modules = pi_user_root / "npm" / "node_modules"
+     subagent_pkgs = (node_modules / "@narumitw" / "pi-subagents", node_modules / "pi-subagents")
+     if not any(pkg.is_dir() for pkg in subagent_pkgs):
+@@ -505,15 +561,87 @@ def check_opencode(scope: str, project: Path | None, home: Path, errors: list[st
+         )
+ 
+ 
+-def check_codex(home: Path, warnings: list[str]) -> None:
+-    """Report what the adapter actually installs, without claiming Codex runtime facts."""
+-    warnings.append(
+-        "Codex adapter installs the shared skills only: these Markdown definitions do not "
+-        "establish native Codex runtime support. Verify native subagent capability for the "
+-        "installed Codex client version; if it is unavailable, "
+-        "workflow-planner/workflow-implementer/workflow-reviewer cannot run in separate model "
+-        "contexts and independent review is UNVERIFIED."
+-    )
++def parse_codex_agent(text: str) -> tuple[dict[str, object] | None, str | None]:
++    """Parse one Codex role TOML and require its contract fields.
++
++    Returns ``(fields, None)`` when valid, ``(None, problem)`` when invalid, and
++    ``(None, None)`` when no parser is available. Python 3.9/3.10 have no
++    ``tomllib`` and no TOML dependency may be added, so no syntax, field, or
++    role-name verdict is possible there. The caller owns role-name matching.
++    """
++    if tomllib is None:
++        return None, None
++    if text.startswith("\ufeff"):
++        text = text[1:]
++    if not text.strip():
++        return None, "is empty"
++    try:
++        data = tomllib.loads(text)
++    except tomllib.TOMLDecodeError as exc:
++        return None, f"is not valid TOML ({exc})"
++    missing = [
++        key
++        for key in CODEX_AGENT_FIELDS
++        if not isinstance(data.get(key), str) or not str(data[key]).strip()
++    ]
++    if missing:
++        return None, "is missing a non-empty string field: " + ", ".join(missing)
++    return data, None
++
++
++def check_codex(scope: str, project: Path | None, home: Path, errors: list[str], warnings: list[str]) -> None:
++    """Report installed artifacts, static discoverability, and unknown runtime facts."""
++    root = project / ".codex" if scope == "Project" and project else home / ".codex"
++    agents = root / "agents"
++    installed = 0
++    valid = 0
++    for name in AGENTS:
++        path = agents / f"{name}.toml"
++        if not path.is_file():
++            errors.append(f"Missing Codex native workflow agent: {path}")
++            continue
++        installed += 1
++        try:
++            text = path.read_text(encoding="utf-8", errors="replace")
++        except OSError as exc:
++            errors.append(f"Codex workflow agent could not be read ({exc}): {path}")
++            continue
++        # Text-only concerns stay diagnosable even without a TOML parser.
++        if re.search(r"(?m)^\s*(?:model|model_provider|model_reasoning_effort)\s*=", text):
++            errors.append(f"Codex workflow agent declares a model key: {path}")
++        elif re.search(r"(?m)^\s*sandbox_mode\s*=", text):
++            errors.append(f"Codex workflow agent declares sandbox_mode: {path}")
++        data, problem = parse_codex_agent(text)
++        if data is None and problem is None:
++            continue
++        if problem is not None:
++            errors.append(f"Codex workflow agent {problem}: {path}")
++            continue
++        declared = str(data["name"]).strip()
++        if declared != name:
++            errors.append(
++                f"Codex workflow agent declares name {declared!r}, expected {name!r}: {path}"
++            )
++            continue
++        valid += 1
++    source = repo_source_root()
++    if source is not None:
++        check_managed_drift(source / ".codex" / "agents", agents, CODEX_AGENT_FILES, "Codex agent", warnings)
++    warnings.append(f"Codex native workflow agent TOMLs installed: {installed}/{len(AGENTS)}")
++    if tomllib is None:
++        warnings.append(
++            "Static TOML validation: UNVERIFIED (tomllib is unavailable on this Python; "
++            "re-run doctor with Python 3.11+ to validate TOML syntax, required fields, and role names)"
++        )
++        warnings.append("Statically discoverable: unknown")
++    else:
++        if valid != installed:
++            warnings.append(
++                f"Codex native workflow agent TOMLs with a valid role contract: {valid}/{len(AGENTS)}"
++            )
++        discoverable = installed == len(AGENTS) and valid == len(AGENTS)
++        warnings.append(f"Statically discoverable: {'yes' if discoverable else 'no'}")
++    warnings.append("Runtime discovery, delegation, and independent review: UNVERIFIED")
+     for name in AGENTS:
+         legacy = home / ".codex" / "agents" / f"{name}.md"
+         if not legacy.is_file():
+@@ -589,7 +717,7 @@ def main() -> int:
+     if selected(args.harness, "OpenCode"):
+         check_opencode(args.scope, project, home, errors, warnings)
+     if selected(args.harness, "Codex"):
+-        check_codex(home, warnings)
++        check_codex(args.scope, project, home, errors, warnings)
+     for warning in warnings:
+         print(f"WARNING: {warning}", file=sys.stderr)
+     for error in errors:
+diff --git a/scripts/install.ps1 b/scripts/install.ps1
+index a26676e..a0a87ff 100644
+--- a/scripts/install.ps1
++++ b/scripts/install.ps1
+@@ -30,13 +30,15 @@ $opencodeDirOverride = if ([string]::IsNullOrWhiteSpace($env:OPENCODE_CONFIG_DIR
+   )
+ }
+ $opencodeUserRoot = if ($opencodeDirOverride) { $opencodeDirOverride } else { Join-Path $HOME ".config\opencode" }
++# Seven canonical skills are published once to the shared user-level root.
+ $skillNames = @(
+   "run-engineering-workflow",
+   "clarify-requirements",
+   "plan-solution",
+   "review-implementation",
+   "finish-with-evidence",
+-  "archive-task"
++  "archive-task",
++  "project-standards"
+ )
+ $ompAgentNames = @(
+   "workflow-planner.md",
+@@ -71,6 +73,13 @@ $codexLegacyAgentNames = @(
+   "workflow-implementer.md",
+   "workflow-reviewer.md"
+ )
++# Native Codex custom agents are model-free TOML files; the user's own roles and
++# config.toml are never touched.
++$codexAgentNames = @(
++  "workflow-planner.toml",
++  "workflow-implementer.toml",
++  "workflow-reviewer.toml"
++)
+ 
+ if ($Scope -eq "Project") {
+   if (-not $ProjectPath) {
+@@ -342,6 +351,7 @@ $sharedSkills = Join-Path $HOME '.agents/skills'
+ $compatSource = Join-Path $repoRoot 'scripts\openspec_compat.py'
+ $legacyRoots = @()
+ $claudeLinkRoots = @()
++$piLinkRoots = @()
+ if ($Harness -in @('Codex', 'Both', 'All')) {
+   $legacyRoots += Join-Path $HOME '.codex/skills'
+   if ($project) { $legacyRoots += Join-Path $project '.agents/skills' }
+@@ -351,11 +361,15 @@ if ($Harness -in @('OMP', 'Both', 'All')) {
+   if ($project) { $legacyRoots += Join-Path $project '.omp/skills' }
+ }
+ if ($Harness -in @('Pi', 'All')) {
+-  $legacyRoots += Join-Path $piUserRoot 'skills'
++  # Pi natively loads <agent-dir>/skills and .pi/skills. Keep a managed link from
++  # each root to the shared tree instead of a copied shadow, and never touch the
++  # user's Pi settings.
++  $piLinkRoots += Join-Path $piUserRoot 'skills'
+   if ($project) {
+     $legacyRoots += Join-Path $project '.agents/skills'
+-    $legacyRoots += Join-Path $project '.pi/skills'
++    $piLinkRoots += Join-Path $project '.pi/skills'
+   }
++  $legacyRoots += $piLinkRoots
+ }
+ # OpenCode discovers ~/.agents/skills and .agents/skills natively, so its own
+ # skills directory becomes a legacy copy once the shared tree is published.
+@@ -374,6 +388,9 @@ if ($Harness -in @('Claude', 'All')) {
+ $legacyRoots = @($legacyRoots | Sort-Object -Unique | Where-Object {
+   [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($sharedSkills)
+ })
++$piLinkRoots = @($piLinkRoots | Sort-Object -Unique | Where-Object {
++  [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($sharedSkills)
++})
+ 
+ # Preflight every managed skill before any migration. Never follow unknown links.
+ Assert-SafeParents -Path $backupRoot
+@@ -439,6 +456,14 @@ if ($Harness -in @('OpenCode', 'All')) {
+     $managedFiles += @{ Source = Join-Path $repoRoot "commands/$fileName"; Target = Join-Path $root "commands/$fileName" }
+   }
+ }
++if ($Harness -in @('Codex', 'Both', 'All')) {
++  # Native Codex custom agents: model-free TOML roles under .codex/agents. The
++  # user's own agent files and config.toml are never read or written.
++  $codexRoot = if ($project) { Join-Path $project '.codex' } else { Join-Path $HOME '.codex' }
++  foreach ($fileName in $codexAgentNames) {
++    $managedFiles += @{ Source = Join-Path $repoRoot ".codex/agents/$fileName"; Target = Join-Path $codexRoot "agents/$fileName" }
++  }
++}
+ foreach ($file in $managedFiles) {
+   if (-not (Test-Path -LiteralPath $file.Source -PathType Leaf)) {
+     throw "Managed source file was not found: $($file.Source)"
+@@ -455,7 +480,7 @@ foreach ($root in $legacyRoots) {
+     $old = Join-Path $root $name
+     $target = Join-Path $sharedSkills $name
+     if (Test-SharedLink -Path $old -Target $target) {
+-      if ($claudeLinkRoots -notcontains $root -and $PSCmdlet.ShouldProcess($old, 'remove redundant shared skill link')) {
++      if ($claudeLinkRoots -notcontains $root -and $piLinkRoots -notcontains $root -and $PSCmdlet.ShouldProcess($old, 'remove redundant shared skill link')) {
+         # Directory.Delete removes only the link, never the shared target.
+         [IO.Directory]::Delete($old)
+       }
+@@ -469,6 +494,11 @@ foreach ($root in $claudeLinkRoots) {
+     Install-SharedLink -Path (Join-Path $root $name) -Target (Join-Path $sharedSkills $name)
+   }
+ }
++foreach ($root in $piLinkRoots) {
++  foreach ($name in $skillNames) {
++    Install-SharedLink -Path (Join-Path $root $name) -Target (Join-Path $sharedSkills $name)
++  }
++}
+ if ($Harness -in @("OMP", "Both", "All")) {
+   $ompRoot = if ($Scope -eq "Project") {
+     Join-Path $project ".omp"
+@@ -576,6 +606,17 @@ if ($Harness -in @("OpenCode", "All")) {
+ }
+ 
+ if ($Harness -in @("Codex", "Both", "All")) {
++  $codexRoot = if ($project) { Join-Path $project ".codex" } else { Join-Path $HOME ".codex" }
++  $codexTargetAgents = Join-Path $codexRoot "agents"
++  # Native Codex custom agents are model-free TOML files. Install them beside the
++  # user's own roles; config.toml and every other agent file stay untouched.
++  foreach ($fileName in $codexAgentNames) {
++    Copy-ManagedFile `
++      -Source (Join-Path $repoRoot ".codex\agents\$fileName") `
++      -Target (Join-Path $codexTargetAgents $fileName) `
++      -BackupOnOverwrite
++  }
++
+   # Codex has no markdown runtime agents. Older Trellis-era installs left agent
+   # files behind; back up only those whose content still carries the Trellis
+   # signature, and never touch any other file.
+@@ -607,6 +648,7 @@ if ($Scope -eq "Project" -and $Harness -in @("OpenCode", "All")) {
+   Write-Host "Start OpenCode from the trusted project root with: opencode"
+ }
+ if ($Harness -in @("Codex", "Both", "All")) {
+-  # Codex gets the shared skills only; this adapter does not establish native runtime agents.
+-  Write-Host "Codex adapter installs the shared skills only: no workflow agent files are installed for Codex, which does not establish native subagent support. Verify native subagent capability for the installed Codex client version."
++  # Codex discovers these TOML roles statically; runtime delegation is unverified.
++  Write-Host "Codex adapter installs 3 native workflow agent TOML files under $(Join-Path $codexRoot 'agents'). They declare no model or provider and inherit the parent session."
++  Write-Host "Runtime discovery, delegation, and independent review are UNVERIFIED; confirm them with the installed Codex client before relying on separate contexts."
+ }
+diff --git a/skills/run-engineering-workflow/SKILL.md b/skills/run-engineering-workflow/SKILL.md
+index 11c2818..48923c0 100644
+--- a/skills/run-engineering-workflow/SKILL.md
++++ b/skills/run-engineering-workflow/SKILL.md
+@@ -36,6 +36,25 @@ reviewer's independence materially changes — not per delegation, and not merel
+ because this client exposes another mechanism. One writer per bounded slice and
+ one review budget still hold.
+ 
++## Specialist Routing
++
++The main session owns coordination, integration, and the evidence trail. Route
++by task shape, not by a stage template: `explore` for a read-only survey,
++`research` for external sources, `implement` for a bounded write slice,
++`consult` for a second opinion, and `review` for the single independent review.
++Read [specialist-routing.md](references/specialist-routing.md) for the shared
++task-shape matrix, the per-host capability boundaries, and the quality rules it
++must not duplicate.
++
++When the main session already holds the context — a small scoped edit, a
++documentation change, a targeted fix it just investigated — do the work
++directly; do not manufacture a five-stage pipeline. Read-only exploration may
++precede a formal change creation. Formal implementation and the final
++independent review still use the bounded OpenSpec handoff above: the context
++package, one writer per slice, and one shared review budget. Consultation is
++advice, not an additional review gate, and the main session's self-check never
++stands in for the independent review.
++
+ ## Bounded Context And Dispatch Contract
+ 
+ OpenSpec remains the only durable source of new task state. Treat a change id as
+@@ -246,9 +265,9 @@ Phase routing:
+   - For `lightweight` or `standard`: run `plan-solution`; use the main session or
+     the host's planning specialist, whichever the host prefers.
+   - For `critical`: in OMP, dispatch `workflow-planner` on `@plan`. In Pi, use
+-    the blocking `subagent` tool with `agentScope: "both"` when available;
+-    otherwise keep planning in the main session and disclose the lack of fresh
+-    context.
++    the blocking `subagent` tool with `options.agentScope: "both"` when
++    available; otherwise keep planning in the main session and disclose the lack
++    of fresh context.
+   - Only dispatch a planner if the task is assessed as `critical` or when the
+     main session cannot resolve a material design uncertainty.
+ - `planning` with complete OpenSpec artifacts: start implementation only after the
+@@ -375,19 +394,64 @@ Pi does not use OMP `@role` aliases or the OMP overlay. Keep these
+ responsibilities while preserving Pi's native resource and project-trust model:
+ 
+ - Main session: active Pi model, interactive clarification, approvals,
+-  remediation, evidence, and final delivery claim.
+-- Solution planning: `workflow-planner` through the blocking `subagent` tool
+-  with `agentScope: "both"`; the installed definition inherits the active Pi
++  coordination, integration, remediation, evidence, and final delivery claim.
++- Solution planning: `workflow-planner` through the `subagent` tool with
++  `options.agentScope: "both"`; the installed definition inherits the active Pi
+   model unless a user or trusted project definition selects another model.
+-- TDD implementation: `workflow-implementer` through the blocking `subagent`
+-  tool with the active task path and approved RED/GREEN slices.
+-- Independent final review: the read-only `workflow-reviewer` through the
+-  blocking `subagent` tool with `agentScope: "both"`.
++- TDD implementation: `workflow-implementer` with the active change path and
++  approved RED/GREEN slices.
++- Independent final review: the read-only `workflow-reviewer` with
++  `options.agentScope: "both"`.
+ 
+ The project must be trusted before Pi loads `.pi` extensions, project agents, or
+-project `.agents/skills`. If `subagent` is unavailable, keep planning and review
+-in the main session, implement directly, run deterministic
+-checks, and report that only context/model independence was unavailable.
++project `.agents/skills`. Activation and discovery are separate from delegation.
++When the live tool list already has `subagent`, use it directly; do not call the
++loader. Only when `subagent` is absent and `subagents_enable` is present — a
++fresh, unrestricted session on a model that accepts a new tool mid-conversation
++— call `subagents_enable({})`: it launches no work and exposes `subagent` on the
++next model request, together with `bg_wait` and `subagent_supervisor`. An older
++session may expose neither `subagents_enable` nor `subagent`; installing and
++reloading alone does not add them. Inspect the tools actually present before
++claiming a dispatch: a loader-only session has no `subagent` until activation
++succeeds, while a direct `subagent` needs no loader.
++
++Use the installed runtime schema for each launch: `agent`, `task`, and `output`
++are top-level fields, while `agentScope`, `context`, and `timeoutMs` are passed
++under `options`. `output` is a top-level field, not an option: pi-subagents
++rejects `options.output` with `'output' is a top-level field, not an option.`
++A complete review dispatch:
++
++```json
++{
++  "agent": "workflow-reviewer",
++  "task": "<bounded handoff: Active change, Assigned slice, Phase, Read, Must preserve, Review mode, Review scope, Evidence>",
++  "output": false,
++  "options": {
++    "agentScope": "both",
++    "context": "fresh",
++    "timeoutMs": 2147483647
++  }
++}
++```
++
++Set `output` to a path only when the findings belong in an authorized artifact;
++`false` returns them to the main session. Pass `options.agentScope: "both"` for
++the workflow roles above and `options.context: "fresh"` for explore, research,
++implement, and review so the specialist sees only the bounded handoff; `oracle`
++defaults to forked context, so an explicit fresh context is required for an
++independent read. `async` is the default: wait for the completion event or
++report once, treat a failed run as a terminal status, and never silently switch
++execution mode, retry a slice, or downgrade the review.
++
++Bounds for reused native helpers are in
++[specialist-routing.md](references/specialist-routing.md): `scout` and
++`researcher` default to writing `context.md` and `research.md`, and `scout`
++holds `bash`/`write`. Direct their output to the main session or an authorized
++artifact; never create a shadow plan, context, or research file. If `subagent`
++or an independent `workflow-reviewer` is unavailable, keep implementation and
++deterministic checks in the main session and report `UNVERIFIED` for the review
++gap. The main agent's self-review cannot stand in for independent review; state
++plainly that context/model independence was unavailable.
+ 
+ ## Claude Code Roles
+ 
+@@ -440,14 +504,16 @@ direct native agent inherits the parent session model instead.
+ 
+ ## Adapter Capabilities And Ownership
+ 
+-The six canonical skills under `skills/` are the shared, installer-managed
++The seven canonical skills under `skills/` are the shared, installer-managed
+ source; adapters add managed links or native discovery on top and never fork the
+ bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
+ `sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
+ can differ, and OMP roles resolve through the user's `modelRoles`. Codex shares
+ the skills directory, and subagent capability there is claimed only after
+-independent verification for that client version — no adapter may promise
+-independent review when the client cannot provide it; report `UNVERIFIED` instead.
++independent verification for that client version. Installing agent definitions
++does not prove runtime discovery or invocation of native roles; report runtime
++support only after both are verified. No adapter may promise independent review
++when the client cannot provide it; report `UNVERIFIED` instead.
+ 
+ ## Precedence
+ 
+@@ -455,10 +521,16 @@ Resolve conflicts in this order:
+ 
+ 1. User and platform instructions.
+ 2. Repository `AGENTS.md` and OpenSpec governance conventions.
+-3. Active OpenSpec change artifacts and applicable project specs.
++3. Active OpenSpec change artifacts, applicable project specs, and the project
++   standards brief selected by `project-standards`.
+ 4. This routing skill.
+ 5. Upstream skill defaults.
+ 
++When an applicable stack reference is needed, load `project-standards`, select
++only the relevant reference, and put the judged rules into the slice handoff.
++Do not replace project conventions with generic stack advice, and do not add a
++review round or model route for standards.
++
+ OpenSpec owns new state and records. Matt-style skills provide clarification,
+ design, TDD, and two-axis review; Ponytail owns complexity reduction;
+ repository-native checks own verification.
+diff --git a/tests/contracts.test.js b/tests/contracts.test.js
+index f1fb470..f20298e 100644
+--- a/tests/contracts.test.js
++++ b/tests/contracts.test.js
+@@ -11,6 +11,7 @@ const skillNames = [
+   "review-implementation",
+   "finish-with-evidence",
+   "archive-task",
++  "project-standards",
+ ];
+ const agentNames = [
+   "workflow-planner.md",
+@@ -330,7 +331,7 @@ test("harness adapters declare only verified capabilities and keep models user-o
+     ["ARCHITECTURE.md", architecture],
+     ["README.md", readme],
+   ]) {
+-    assert.match(body, /six canonical skills|六个 canonical skill|六个规范技能/is, file);
++    assert.match(body, /seven canonical skills|七个 canonical skill|七个规范技能/is, file);
+     assert.match(body, /managed|受管|共享/is, file);
+     assert.match(body, /models?[^.;]{0,40}user-(?:owned|configured)|模型.*用户(?:所有|配置)/is, file);
+   }
+@@ -349,7 +350,8 @@ test("OpenCode appears in install and support enumerations", () => {
+ 
+   assert.match(readme, /-Harness OpenCode/);
+   assert.match(readme, /OPENCODE_CONFIG_DIR/);
+-  assert.match(readme, /Codex、OMP、Pi 和\s*OpenCode\s*原生发现/);
++  assert.match(readme, /Codex、OMP 和\s*OpenCode\s*原生发现/);
++  assert.match(readme, /Claude Code 与 Pi 通过受管理的原生目录链接/);
+   assert.match(readme, /`All`[^。]{0,120}OpenCode/s);
+   assert.match(readme, /OpenCode 只在启动时加载/);
+   assert.match(agents, /\.opencode\//);
+@@ -1280,3 +1282,148 @@ test("The proposal title rule is installed into new projects, not only this repo
+   assert.match(doctor, /def _check_proposal_title_rule\(/);
+   assert.match(doctor, /_check_proposal_title_rule\(project, warnings\)/);
+ });
++
++test("specialist routing is on demand and keeps the formal handoff and one review gate", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
++
++  // One shared reference owns how the main agent picks specialists.
++  assert.match(routing, /^# Specialist Routing$/m);
++  for (const mode of ["explore", "research", "implement", "consult", "review"]) {
++    assert.match(routing, new RegExp(`\\b${mode}\\b`, "i"), `missing mode ${mode}`);
++  }
++  assert.match(routing, /not (?:a )?(?:mandatory|forced).*(?:stage )?pipeline/i);
++  assert.match(routing, /task shape/i);
++  assert.match(routing, /main (?:agent|session).*(?:coordinat|integrat)/is);
++  // Small, already-understood work stays in the main session.
++  assert.match(routing, /already (?:hold|have)\w* the context/is);
++  assert.match(routing, /read-only explor\w*.*(?:before|precede).*(?:formal )?change/is);
++  assert.match(routing, /context package/i);
++  assert.match(routing, /(?:must not|never) (?:weaken|bypass|replace).*(?:independent|review)/is);
++  assert.match(routing, /consult\w*.*not.*(?:an? )?(?:extra|additional).*(?:review|gate)/is);
++
++  // The router points at the shared reference instead of duplicating the matrix.
++  assert.match(router, /## Specialist Routing/);
++  assert.match(router, /references\/specialist-routing\.md/);
++  assert.match(router, /main session already holds the context/is);
++
++  // OpenCode keeps one orchestrator and routes formal roles like the router does.
++  const opencode = routing.slice(routing.indexOf("## OpenCode")).split("\n## ")[0];
++  assert.match(opencode, /Slim `fixer`/);
++  assert.match(opencode, /Slim\s+`oracle`/);
++  assert.match(opencode, /repository procedure.{0,100}bounded OpenSpec handoff/is);
++  assert.match(opencode, /never copy a preset model ID/i);
++  assert.match(opencode, /UNVERIFIED/);
++});
++
++test("Pi dispatch covers activation, fresh context, async runs, and output boundaries", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
++  const pi = router.split("## Pi Roles")[1].split("\n## ")[0];
++
++  assert.match(pi, /subagents_enable/);
++  assert.match(pi, /use it directly; do not call the\s+loader/is);
++  assert.match(pi, /next (?:model )?request|following model request/i);
++  assert.match(pi, /(?:absent|unavailable).*until|until.*activation/i);
++  assert.match(pi, /options\.agentScope.*both|agentScope.*both/is);
++  assert.match(pi, /options\.context.*fresh|context: "fresh"/);
++  assert.match(pi, /options\.context.*fresh.{0,160}implement/is);
++  assert.match(pi, /runtime schema/i);
++  assert.match(pi, /async/i);
++  assert.match(pi, /completion (?:event|notice)/i);
++  assert.match(pi, /failed.*(?:status|run)|(?:status|run).*failed/is);
++  assert.match(pi, /UNVERIFIED/);
++  assert.match(pi, /self-(?:review|audit)/i);
++
++  // Native helpers keep explicit contexts and write boundaries.
++  assert.match(routing, /subagents_enable/);
++  assert.match(routing, /use it\s+directly and do not call a\s+loader/is);
++  assert.match(routing, /options\.agentScope: "both"/);
++  assert.match(routing, /context: "fresh".{0,120}implement/is);
++  assert.match(routing, /defaultContext: fork|oracle.{0,80}fork/is);
++  assert.match(routing, /scout.*(?:bash|write)/is);
++  assert.match(routing, /not (?:a )?(?:hard )?read-only|(?:bash|write).{0,80}not.{0,20}read-only/is);
++  assert.match(routing, /oracle.{0,80}read-only.{0,80}not a sandbox.{0,80}bash/is);
++  assert.match(routing, /researcher.*(?:web|pi-web-access)/is);
++  assert.match(routing, /(?:never|do not).{0,80}(?:context\.md|plan\.md|research\.md)/is);
++  assert.match(routing, /output.{0,60}(?:main session|authori[sz]ed)/is);
++});
++
++test("Pi launch params keep output top-level and only real options nested", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
++  const pi = router.split("## Pi Roles")[1].split("\n## ")[0];
++
++  // pi-subagents v0.88 rejects options.output with
++  // "'output' is a top-level field, not an option."
++  assert.match(pi, /rejects?\s+`options\.output`/i);
++  assert.match(routing, /rejects?\s+`options\.output`/i);
++  assert.match(pi, /`output`[^.\n]{0,40}top-level/is);
++  assert.match(routing, /`output`[^.\n]{0,40}top-level/is);
++  assert.match(pi, /top-level field, not an option/is);
++
++  // The documented invocation must parse as the runtime JSON shape itself,
++  // not merely describe it in prose.
++  const block = pi.match(/```json\n([\s\S]*?)\n```/);
++  assert.ok(block, "Pi Roles needs a complete JSON invocation example");
++  const launch = JSON.parse(block[1]);
++  assert.equal(launch.agent, "workflow-reviewer");
++  assert.equal(typeof launch.task, "string");
++  assert.ok(Object.hasOwn(launch, "output"), "output must be a top-level launch field");
++  assert.ok(
++    launch.output === false || typeof launch.output === "string",
++    "output must be a path string or false",
++  );
++  assert.ok(launch.options && typeof launch.options === "object");
++  assert.equal(Object.hasOwn(launch.options, "output"), false, "output must not be nested under options");
++  assert.equal(launch.options.agentScope, "both");
++  assert.equal(launch.options.context, "fresh");
++  assert.equal(launch.options.timeoutMs, 2147483647);
++  for (const key of ["agentScope", "context", "timeoutMs"]) {
++    assert.equal(Object.hasOwn(launch, key), false, `${key} belongs under options`);
++  }
++});
++
++test("Codex native capability is conditional and never claimed from installation", () => {
++  const router = read("skills/run-engineering-workflow/SKILL.md");
++  const routing = read("skills/run-engineering-workflow/references/specialist-routing.md");
++  const start = routing.indexOf("## Codex");
++  assert.ok(start >= 0, "missing Codex capability section");
++  const codex = routing.slice(start).split("\n## ")[0];
++
++  assert.match(codex, /install\w*.{0,60}(?:not|never).{0,40}(?:prove|evidence|support)/is);
++  assert.match(codex, /(?:only|just).{0,40}(?:after|when).{0,40}(?:proven|verified)|(?:claim|report).{0,40}only.{0,40}verified/is);
++  assert.match(codex, /UNVERIFIED/);
++  assert.match(codex, /may implement\s+directly/is);
++  assert.match(codex, /self-review never stands in for/is);
++  assert.match(codex, /no `?codex exec --agent`?/i);
++  assert.doesNotMatch(router, /Codex (?:supports|provides) native subagents/i);
++  // The router itself must not treat a shipped agent file as runtime support.
++  assert.match(router, /install\w*.{0,80}(?:not|never).{0,60}(?:prove|evidence)/is);
++});
++
++test("routing fixtures cover on-demand dispatch, Pi activation, and conditional Codex", () => {
++  const cases = JSON.parse(read("evals/workflow-cases.json")).cases;
++  const required = [
++    ["task-shape-routing-no-forced-pipeline", "dispatch-by-task-shape"],
++    ["pi-subagents-enable-next-turn", "activate-then-dispatch"],
++    ["pi-async-completion-or-failure", "handle-async-completion"],
++    ["pi-subagent-output-boundary", "return-output-to-main-session"],
++    ["pi-reviewer-unavailable-unverified", "report-review-unavailable"],
++    ["codex-native-capability-conditional", "report-conditional-capability"],
++  ];
++  for (const [name, stage] of required) {
++    const entry = cases.find((item) => item.name === name);
++    assert.ok(entry, `missing routing case: ${name}`);
++    assert.equal(entry.expected_stage, stage, name);
++    assert.ok(entry.forbidden && entry.forbidden.length, `${name}: missing negative boundary`);
++  }
++
++  assert.equal(cases.find((item) => item.name === "pi-reviewer-unavailable-unverified").required_status, "UNVERIFIED");
++  assert.equal(cases.find((item) => item.name === "codex-native-capability-conditional").required_status, "UNVERIFIED");
++
++  // The skills-only Codex case must keep the unverified framing instead of
++  // implying that loading a definition proves native support.
++  const legacy = cases.find((item) => item.name === "codex-shared-skills-no-native-agents");
++  assert.match(legacy.state, /(?:without|no).*verified/i);
++});
+diff --git a/tests/test_shared_installation.py b/tests/test_shared_installation.py
+index ecacd03..6acf428 100644
+--- a/tests/test_shared_installation.py
++++ b/tests/test_shared_installation.py
+@@ -1,6 +1,7 @@
+ """Exercise the public installer/doctor against disposable user and project roots."""
+ import json
+ import os
++import re
+ import shutil
+ import subprocess
+ import sys
+@@ -25,7 +26,12 @@ class SharedInstallationTests(unittest.TestCase):
+         cls.sources = tempfile.TemporaryDirectory(prefix="workflow source ")
+         base = Path(cls.sources.name)
+         cls.repo = base / "workflow"
+-        for name in ("skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"):
++        names = ["skills", "agents", ".omp/agents", ".pi/agents", ".opencode/agents", "commands", "config", "scripts"]
++        # .codex/agents ships with this change; copy it only once it exists so the
++        # RED run fails on assertions instead of dying in setUpClass.
++        if (REPO / ".codex/agents").is_dir():
++            names.append(".codex/agents")
++        for name in names:
+             shutil.copytree(REPO / name, cls.repo / name, ignore=shutil.ignore_patterns("__pycache__"))
+         # The external gate is owned by another repo. Its content is not this seam.
+         gate = base / "omp-extensions" / "workflow-review-gate"
+@@ -83,11 +89,16 @@ class SharedInstallationTests(unittest.TestCase):
+         foreign.write_text("unrelated", encoding="utf-8")
+         self.install("-Scope", "User", "-Harness", "All")
+         self.assert_shared()
+-        for root in (".codex/skills", ".omp/agent/skills", ".pi/agent/skills"):
++        for root in (".codex/skills", ".omp/agent/skills"):
+             for name in doctor.SKILLS:
+                 self.assertFalse((self.home / root / name).exists())
+-        for name in doctor.SKILLS:
+-            self.assertEqual((self.home / ".claude/skills" / name).resolve(), (self.shared / name).resolve())
++        for root in (".claude/skills", ".pi/agent/skills"):
++            for name in doctor.SKILLS:
++                entry = self.home / root / name
++                self.assertTrue(entry.is_dir(), entry)
++                self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
++        for name in doctor.AGENTS:
++            self.assertTrue((self.home / ".codex/agents" / f"{name}.toml").is_file())
+         for root in (".claude", ".omp/agent", ".pi/agent"):
+             for name in doctor.AGENTS:
+                 self.assertTrue((self.home / root / "agents" / f"{name}.md").is_file())
+@@ -249,7 +260,7 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertEqual(saved, sorted(map(str, originals)))
+         self.assertIn("Backup:", result.stdout)
+         for old in originals:
+-            if ".claude" in old.parts:
++            if ".claude" in old.parts or ".pi" in old.parts:
+                 self.assertEqual(old.resolve(), (self.shared / old.name).resolve())
+             else:
+                 self.assertFalse(old.exists())
+@@ -315,7 +326,7 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertFalse((self.home / ".claude").exists())
+         self.assertFalse((self.home / ".pi").exists())
+         self.assertFalse((self.home / ".config/opencode").exists())
+-        self.assertIn("Codex adapter installs the shared skills only", self.install().stdout)
++        self.assertIn("Codex adapter installs 3 native workflow agent TOML files", self.install().stdout)
+ 
+     def opencode_root(self):
+         return self.home / ".config/opencode"
+@@ -438,13 +449,19 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertEqual(len(backups), 1)
+         self.assertIn(".trellis/tasks/", backups[0].read_text(encoding="utf-8"))
+ 
+-    def test_doctor_reports_codex_skill_only_capability_and_stale_agents(self):
++    def test_doctor_reports_codex_capability_layers_and_stale_agents(self):
+         self.install("-Scope", "User", "-Harness", "Codex")
+         code, output = self.diagnose("Codex")
+         self.assertEqual(code, 0, output)
+-        self.assertIn("Codex adapter installs the shared skills only", output)
+-        self.assertIn("do not establish native Codex runtime support", output)
+-        self.assertIn("independent review is UNVERIFIED", output)
++        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
++        if doctor.tomllib is None:
++            self.assertIn("Static TOML validation: UNVERIFIED", output)
++            self.assertIn("Statically discoverable: unknown", output)
++            self.assertNotIn("Statically discoverable: yes", output)
++        else:
++            self.assertIn("Statically discoverable: yes", output)
++        self.assertIn("Runtime discovery, delegation, and independent review: UNVERIFIED", output)
++        self.assertNotIn("do not establish native Codex runtime support", output)
+         self.assertNotIn("run in the main Codex session", output)
+         stale = self.home / ".codex/agents/workflow-reviewer.md"
+         stale.parent.mkdir(parents=True, exist_ok=True)
+@@ -472,13 +489,33 @@ class SharedInstallationTests(unittest.TestCase):
+         self.legacy(override / "skills")
+         self.install("-Scope", "User", "-Harness", "All")
+         self.assert_shared()
+-        self.assertFalse((override / "skills/run-engineering-workflow").exists())
++        entry = override / "skills" / "run-engineering-workflow"
++        self.assertTrue(doctor.is_directory_link(entry), entry)
++        self.assertEqual(entry.resolve(), (self.shared / "run-engineering-workflow").resolve())
+         self.assertTrue((override / "agents/workflow-planner.md").is_file())
+         self.assertTrue((override / "start-engineering-workflow.py").is_file())
+         self.assertFalse((self.home / ".omp").exists())
+         self.assertFalse((self.home / ".pi").exists())
+ 
+ 
++    def test_project_standards_is_the_seventh_shared_skill(self):
++        self.install("-Harness", "All")
++        self.assertIn("project-standards", doctor.SKILLS)
++        self.assert_shared()
++        shared = self.shared / "project-standards"
++        for reference in (
++            "references/common.md",
++            "references/java.md",
++            "references/spring-mybatis-plus.md",
++            "references/project-agents-template.md",
++        ):
++            self.assertTrue((shared / reference).is_file(), reference)
++        self.assertEqual(
++            (self.home / ".claude/skills/project-standards").resolve(), shared.resolve()
++        )
++        code, output = self.diagnose("All")
++        self.assertEqual(code, 0, output)
++
+     def test_doctor_reports_omp_and_claude_adapter_drift(self):
+         self.install("-Harness", "All")
+         omp_agent = self.home / ".omp/agent/agents/workflow-planner.md"
+@@ -509,6 +546,277 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertNotEqual(code, 0, output)
+         self.assertIn(f"Legacy skill entry may shadow shared installation: {stale}", output)
+ 
++    # --- Codex native TOML roles (AC-009) ---
++
++    def codex_agents(self):
++        return self.home / ".codex/agents"
++
++    def test_codex_installs_model_free_native_toml_roles(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        for name in doctor.AGENTS:
++            path = self.codex_agents() / f"{name}.toml"
++            self.assertTrue(path.is_file(), path)
++            text = path.read_text(encoding="utf-8")
++            self.assertRegex(text, rf'(?m)^\s*name\s*=\s*"{name}"\s*$')
++            self.assertRegex(text, r'(?m)^\s*developer_instructions\s*=\s*"""')
++            for forbidden in ("model", "model_provider", "model_reasoning_effort", "sandbox_mode"):
++                self.assertIsNone(
++                    re.search(rf"(?m)^\s*{forbidden}\s*=", text), f"{path}: {forbidden}"
++                )
++
++    def test_codex_toml_sources_declare_required_contract_fields(self):
++        source = REPO / ".codex/agents"
++        self.assertTrue(source.is_dir())
++        for name in doctor.AGENTS:
++            text = (source / f"{name}.toml").read_text(encoding="utf-8")
++            for key in ("name", "description", "developer_instructions"):
++                self.assertRegex(text, rf"(?m)^\s*{key}\s*=")
++            for forbidden in ("model", "model_provider", "model_reasoning_effort", "sandbox_mode"):
++                self.assertIsNone(re.search(rf"(?m)^\s*{forbidden}\s*=", text), f"{name}: {forbidden}")
++
++    def test_codex_toml_install_is_idempotent_and_backs_up_local_edits(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        planner = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(planner.is_file(), planner)
++        before = planner.read_text(encoding="utf-8")
++        planner.write_text(before + "\n# local edit\n", encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "Codex")
++        self.assertEqual(planner.read_text(encoding="utf-8"), before)
++        backups = list(
++            (self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.toml")
++        )
++        self.assertEqual(len(backups), 1)
++        self.assertIn("# local edit", backups[0].read_text(encoding="utf-8"))
++        self.install("-Scope", "User", "-Harness", "Codex")
++        self.assertEqual(
++            list((self.home / ".agents/backups/my-engineering-workflow").rglob("*workflow-planner.toml")),
++            backups,
++        )
++
++    def test_codex_install_preserves_user_roles_and_config(self):
++        codex = self.home / ".codex"
++        codex.mkdir(parents=True)
++        (codex / "config.toml").write_text('model_provider = "magpie"\n', encoding="utf-8")
++        agents = codex / "agents"
++        agents.mkdir()
++        (agents / "fixer.toml").write_text('name = "fixer"\n', encoding="utf-8")
++        self.install("-Scope", "User", "-Harness", "Codex")
++        self.assertEqual((codex / "config.toml").read_text(encoding="utf-8"), 'model_provider = "magpie"\n')
++        self.assertEqual((agents / "fixer.toml").read_text(encoding="utf-8"), 'name = "fixer"\n')
++        self.assertEqual(
++            sorted(p.name for p in agents.glob("*.toml")),
++            ["fixer.toml", "workflow-implementer.toml", "workflow-planner.toml", "workflow-reviewer.toml"],
++        )
++
++    def test_codex_project_scope_installs_toml_into_project_root(self):
++        self.install("-Scope", "Project", "-Harness", "Codex", "-ProjectPath", str(self.project))
++        self.assert_shared()
++        for name in doctor.AGENTS:
++            self.assertTrue((self.project / ".codex/agents" / f"{name}.toml").is_file())
++            self.assertFalse((self.home / ".codex/agents" / f"{name}.toml").exists())
++
++    def test_codex_unknown_toml_link_is_rejected_before_publication(self):
++        outside = self.base / "outside toml"
++        outside.mkdir()
++        self.directory_link(self.home / ".codex/agents/workflow-planner.toml", outside)
++        self.install("-Scope", "User", "-Harness", "Codex", success=False)
++        self.assertFalse(self.shared.exists())
++        self.assertEqual(list(outside.iterdir()), [])
++
++    # --- Pi native shared skill links (AC-010) ---
++
++    def pi_skill_root(self):
++        return self.home / ".pi/agent/skills"
++
++    def test_pi_installs_native_shared_skill_links(self):
++        self.install("-Scope", "User", "-Harness", "Pi")
++        self.assert_shared()
++        root = self.pi_skill_root()
++        for name in doctor.SKILLS:
++            entry = root / name
++            self.assertTrue(doctor.is_directory_link(entry), entry)
++            self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
++
++    def test_pi_legacy_skill_copy_is_backed_up_before_link(self):
++        self.legacy(self.pi_skill_root())
++        result = self.install("-Scope", "User", "-Harness", "Pi")
++        self.assertIn("Backup:", result.stdout)
++        self.assertTrue(doctor.is_directory_link(self.pi_skill_root() / "run-engineering-workflow"))
++        backups = list((self.home / ".agents/backups/my-engineering-workflow").rglob("custom.txt"))
++        self.assertEqual(len(backups), 1)
++
++    def test_pi_unknown_skill_link_is_rejected(self):
++        outside = self.base / "outside skills"
++        outside.mkdir()
++        self.directory_link(self.pi_skill_root() / "plan-solution", outside)
++        self.install("-Scope", "User", "-Harness", "Pi", success=False)
++        self.assertFalse(self.shared.exists())
++        self.assertEqual(list(outside.iterdir()), [])
++
++    def test_pi_link_install_is_idempotent(self):
++        self.install("-Scope", "User", "-Harness", "Pi")
++        before = sorted((p.name, p.resolve()) for p in self.pi_skill_root().iterdir())
++        self.install("-Scope", "User", "-Harness", "Pi")
++        after = sorted((p.name, p.resolve()) for p in self.pi_skill_root().iterdir())
++        self.assertEqual(before, after)
++
++    def test_pi_project_scope_links_user_and_project_roots(self):
++        self.install("-Scope", "Project", "-Harness", "Pi", "-ProjectPath", str(self.project))
++        self.assert_shared()
++        for root in (self.pi_skill_root(), self.project / ".pi/skills"):
++            for name in doctor.SKILLS:
++                entry = root / name
++                self.assertTrue(doctor.is_directory_link(entry), entry)
++                self.assertEqual(entry.resolve(), (self.shared / name).resolve(), entry)
++
++    def test_both_preserves_codex_plus_omp_without_pi_links(self):
++        self.install()
++        self.assert_shared()
++        self.assertFalse((self.home / ".pi").exists())
++
++    # --- Doctor layering for Codex and Pi ---
++
++    def test_doctor_errors_on_missing_codex_toml(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        path = self.codex_agents() / "workflow-implementer.toml"
++        self.assertTrue(path.is_file(), path)
++        path.unlink()
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn("Missing Codex native workflow agent", output)
++
++    def test_doctor_errors_on_model_key_in_codex_toml(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        planner = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(planner.is_file(), planner)
++        planner.write_text(
++            planner.read_text(encoding="utf-8") + '\nmodel = "opus"\n', encoding="utf-8"
++        )
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn("declares a model key", output)
++
++    def test_doctor_warns_on_codex_toml_drift(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        planner = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(planner.is_file(), planner)
++        planner.write_text(planner.read_text(encoding="utf-8") + "\n# local edit\n", encoding="utf-8")
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Codex agent file differs from the shipped template", output)
++
++    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
++    def test_doctor_rejects_empty_codex_toml(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        path = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(path.is_file(), path)
++        path.write_text("", encoding="utf-8")
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn("Codex workflow agent is empty", output)
++        # Presence and validity stay separate reports.
++        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
++        self.assertIn("Statically discoverable: no", output)
++        self.assertNotIn("Statically discoverable: yes", output)
++
++    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
++    def test_doctor_rejects_invalid_codex_toml_syntax(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        path = self.codex_agents() / "workflow-implementer.toml"
++        self.assertTrue(path.is_file(), path)
++        path.write_text(
++            'name = "workflow-implementer"\ndescription = "unterminated\n', encoding="utf-8"
++        )
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn("is not valid TOML", output)
++        self.assertIn("Statically discoverable: no", output)
++        self.assertNotIn("Statically discoverable: yes", output)
++
++    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
++    def test_doctor_rejects_codex_toml_missing_required_field(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        path = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(path.is_file(), path)
++        text = "\n".join(
++            line for line in path.read_text(encoding="utf-8").splitlines()
++            if not line.startswith("description =")
++        )
++        path.write_text(text, encoding="utf-8")
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn("is missing a non-empty string field: description", output)
++        self.assertIn("Statically discoverable: no", output)
++        self.assertNotIn("Statically discoverable: yes", output)
++
++    @unittest.skipIf(doctor.tomllib is None, "TOML syntax/field validation requires Python 3.11+ tomllib")
++    def test_doctor_rejects_codex_toml_role_name_mismatch(self):
++        self.install("-Scope", "User", "-Harness", "Codex")
++        path = self.codex_agents() / "workflow-reviewer.toml"
++        self.assertTrue(path.is_file(), path)
++        path.write_text(
++            path.read_text(encoding="utf-8").replace(
++                'name = "workflow-reviewer"', 'name = "workflow-planner"'
++            ),
++            encoding="utf-8",
++        )
++        code, output = self.diagnose("Codex")
++        self.assertEqual(code, 1, output)
++        self.assertIn(
++            "declares name 'workflow-planner', expected 'workflow-reviewer'", output
++        )
++        self.assertIn("Statically discoverable: no", output)
++        self.assertNotIn("Statically discoverable: yes", output)
++
++    def test_doctor_never_claims_static_yes_without_tomllib(self):
++        # No parser means no syntax/field/name verdict, even for a file whose
++        # bare `description = 42` would pass a naive line scanner.
++        self.install("-Scope", "User", "-Harness", "Codex")
++        planner = self.codex_agents() / "workflow-planner.toml"
++        self.assertTrue(planner.is_file(), planner)
++        planner.write_text(
++            'name = "workflow-planner"\ndescription = 42\n'
++            'developer_instructions = "not a real role"\n',
++            encoding="utf-8",
++        )
++        with mock.patch.object(doctor, "tomllib", None):
++            self.assertEqual(
++                doctor.parse_codex_agent(planner.read_text(encoding="utf-8")), (None, None)
++            )
++            code, output = self.diagnose("Codex")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Codex native workflow agent TOMLs installed: 3/3", output)
++        self.assertIn("Static TOML validation: UNVERIFIED", output)
++        self.assertIn("Statically discoverable: unknown", output)
++        self.assertNotIn("Statically discoverable: yes", output)
++        self.assertIn("Codex agent file differs from the shipped template", output)
++
++    def test_doctor_reports_pi_native_entries_and_runtime_unknown(self):
++        self.install("-Scope", "User", "-Harness", "Pi")
++        code, output = self.diagnose("Pi")
++        self.assertEqual(code, 0, output)
++        self.assertIn("Pi native shared skill entry installed: 7/7", output)
++        self.assertIn("Runtime skill loading and delegation: UNVERIFIED", output)
++        self.assertNotIn("Legacy skill entry", output)
++
++    def test_doctor_errors_on_invalid_pi_skill_link(self):
++        self.install("-Scope", "User", "-Harness", "Pi")
++        entry = self.pi_skill_root() / "plan-solution"
++        if entry.exists():
++            entry.rmdir() if os.name == "nt" else entry.unlink()
++        entry.mkdir(parents=True)
++        shutil.copy2(self.shared / "plan-solution/SKILL.md", entry / "SKILL.md")
++        code, output = self.diagnose("Pi")
++        self.assertEqual(code, 1, output)
++        self.assertIn("Invalid or missing Pi skill link", output)
++
++    def test_doctor_pi_link_root_equal_to_shared_is_not_legacy(self):
++        self.env["PI_CODING_AGENT_DIR"] = str(self.home / ".agents")
++        self.install("-Scope", "User", "-Harness", "Pi")
++        code, output = self.diagnose("Pi")
++        self.assertEqual(code, 0, output)
++        self.assertNotIn("Legacy skill entry", output)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+
+--- NEW FILE: skills/run-engineering-workflow/references/specialist-routing.md ---
+# Specialist Routing
+
+This file is the single shared reference for how the main agent coordinates
+specialists. [quality-profiles.md](quality-profiles.md) owns acceptance criteria,
+evidence, risk profiles and the single review budget; the host owns scheduling,
+model choice and tool availability. This file adds scheduling guidance only.
+
+## Route By Task Shape
+
+The main agent coordinates, integrates, and owns the evidence trail. It selects
+one or more of these modes by task shape; this is not a mandatory stage pipeline,
+and no mode runs merely because a stage template lists it:
+
+- `explore`: read-only investigation of an unfamiliar seam. Read-only exploration
+  may precede a formal change; it creates no task or plan state.
+- `research`: external documentation, upstream sources, or API contracts that
+  the current session cannot settle locally.
+- `implement`: a bounded write slice on the host's preferred writer.
+- `consult`: a second opinion on a decision the main agent is unsure about.
+  Consultation is not an additional review gate and does not spend the review
+  budget.
+- `review`: the one independent final review required by the delivery budget.
+
+When the main agent already holds the context — a small scoped edit, a
+documentation change, a targeted fix it just investigated, or a context-heavy
+document update — it does the work directly. Delegation buys fresh context or
+parallelism; it is not a ceremony. Read-only exploration may come before a
+formal change exists, but formal implementation and the final independent
+review keep the OpenSpec handoff: the inlined context package, `May modify:` /
+`Verification:` for writers, `Review mode:` / `Review scope:` / `Evidence:` for
+review, and one review budget. On-demand routing must not weaken, bypass, or
+replace the independent review, and the main session's self-check never stands
+in for it. If no independent `workflow-reviewer` can be invoked, record
+`UNVERIFIED` and report the gap.
+
+## Pi
+
+Pi's specialists come from pi-subagents. Activation and discovery are separate
+from dispatch. When the live tool list already contains `subagent`, use it
+directly and do not call a loader. Only when `subagent` is absent and
+`subagents_enable` is present — a fresh, unrestricted session on a model that
+accepts a new tool mid-conversation — call `subagents_enable({})`: it starts no
+work and exposes `subagent`, `bg_wait`, and `subagent_supervisor` on the next
+model request. Other models start with `subagent` active and no loader. A
+session whose recorded history predates the extension may expose neither, and
+installing plus reloading alone does not add them; inspect the live tool list
+instead of assuming delegation.
+
+Per-launch parameters follow the installed pi-subagents runtime schema:
+`agent`, `task`, and `output` are top-level fields; `agentScope`, `context`,
+and `timeoutMs` are `options` keys (for example `options.agentScope: "both"`
+and `options.context: "fresh"`). `output` is a top-level field, not an option:
+the runtime rejects `options.output` with `'output' is a top-level field, not
+an option.` Give it a path to persist findings to an authorized artifact, or
+`false` to return them to the main session. Pass
+`options.context: "fresh"` for explore, research, implement, and review so the
+specialist sees only the bounded handoff rather than the parent conversation.
+`oracle` has `defaultContext: fork`; an explicit
+fresh context always wins and is required for an independent second opinion.
+`async` is the default: wait for the completion event or report once. A failed
+run is a terminal status to record; never silently switch execution mode,
+re-run the slice, or downgrade the review.
+
+Native helpers have their own boundaries:
+
+- `scout` includes `bash` and `write`, so it is not a hard read-only role. Its
+  default output is `context.md`; give it an explicit write boundary.
+- `researcher` needs the pi-web-access provider (`web_search`,
+  `fetch_content`, `get_search_content`, `source_check`) and defaults to
+  `research.md`; without that provider, research is unavailable rather than
+  silently local.
+- `oracle` declares a read-only acceptance role, but that is a prompt and
+  acceptance constraint, not a sandbox: its toolset still includes `bash` and
+  file reads. Give it a bounded read scope, and never treat its advice as the
+  formal independent review.
+
+Direct output to the main session or to the active change's authorized
+artifacts. Never let a specialist write `context.md`, `plan.md`, or
+`research.md` as shadow state outside that change. If `subagent`, a trusted
+project definition, or the independent reviewer is unavailable, keep
+implementation and deterministic checks in the main session and report
+`UNVERIFIED`; the main agent's self-review cannot claim an independent review.
+
+## Claude Code
+
+Project agents under `agents/` supply `workflow-planner`,
+`workflow-implementer`, and `workflow-reviewer` natively. Use them on demand
+for formal slices; the single review budget and the bounded handoff are
+unchanged.
+
+## OpenCode
+
+The Slim orchestrator is the only scheduler. It may dispatch `explorer`,
+`designer`, `fixer`, and `oracle` on demand. Formal implementation routes
+through Slim `fixer`, and the one independent review routes through Slim
+`oracle`; the active preset supplies their models. Each specialist prompt
+carries the repository procedure plus the bounded OpenSpec handoff (`Active
+change:`, slice, context package, and `May modify:` / `Verification:` or
+`Review mode:` / `Review scope:` / `Evidence:`). Native workflow agents remain
+available for explicit or manual use, but model-free parent inheritance is not
+evidence that Slim's role model ran; never copy a preset model ID into a
+managed agent. Record `UNVERIFIED` when the role or its effective model cannot
+be observed.
+
+## Codex
+
+Codex shares this repository's skills. An installed agent file or an enabled
+feature does not prove runtime discovery or invocation: native role support is
+conditional on the installed CLI version and that project's configuration.
+Only report native role capability after discovery and a real invocation are
+verified in that client version. Otherwise the main session may implement
+directly under its documented limits, but it must record `UNVERIFIED` for the
+missing independent review; the main agent's self-review never stands in for
+it. There is no `codex exec --agent` command; never invent a flag to force role
+routing. Skills-only loading is not a claim that native subagents run.
+
+
+--- NEW FILE: .codex/agents/workflow-planner.toml ---
+name = "workflow-planner"
+description = "Plan a critical task in a fresh context. Only dispatch for critical work or explicit planning requests."
+
+developer_instructions = """
+# Workflow Planner
+
+Plan the active OpenSpec change from an independent context.
+
+1. Read the active change's `proposal.md`, `specs/`, `design.md` when present,
+   `tasks.md`, `artifacts/context.md`, applicable project specs, relevant code and
+   tests, and existing ADRs.
+2. Codex does not preload skills. Read the `plan-solution` skill file at
+   `~/.agents/skills/plan-solution/SKILL.md` before planning, and
+   `~/.agents/skills/run-engineering-workflow/SKILL.md` when artifact ownership,
+   precedence, or the selected quality profile is unclear.
+3. Create or update only the canonical OpenSpec planning artifacts: `design.md`,
+   `tasks.md`, and `artifacts/context.md`. Keep requirements in `proposal.md` and
+   `specs/`. Write every artifact in the user's language (Chinese by default); keep
+   paths, identifiers, commands, and status tokens verbatim.
+4. Map every acceptance criterion to a vertical slice, test seam, RED/GREEN
+   sequence, verification command, and rollback point where applicable.
+5. Return artifact paths, major decisions, alternatives, unresolved risks, and
+   whether the change is ready to move to implementation.
+
+For each dispatchable slice, write its context package into the OpenSpec change
+artifacts: the AC text, the design decisions it rests on, located `file:line`
+conclusions with symbol names, the existing pattern to copy, and the exact
+verification command. When work spans sessions or writers, split it into task
+items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
+than duplicating the plan.
+
+When a slice touches a supported stack, read
+`~/.agents/skills/project-standards/SKILL.md`, open only the relevant reference,
+and put the judged rules and project overrides in the context package. Inline the
+applicable rules and give absolute paths only for files the worker must newly
+open; a fresh Codex child does not inherit this session's project or skills.
+
+Dispatch precondition: the first two lines of the handoff must identify exactly
+one change and one planning scope - `Active change: openspec/changes/<change-id>/`
+followed by `Assigned slice: planning / all accepted ACs`. The handoff must also
+carry `Phase:`, `Read:`, and `Must preserve:`. Read only that change's artifacts.
+If the change path is missing or unreadable, return `PLANNING_STATUS: INVALID`
+and write nothing.
+
+Do not write production code or tests, create a second plan system, commit, push,
+move a session pointer, archive the change, or guess unresolved product intent.
+Return requirement questions to the interactive main session.
+"""
+
+
+--- NEW FILE: .codex/agents/workflow-implementer.toml ---
+name = "workflow-implementer"
+description = "Implement one approved slice test-first in a fresh context. Only dispatch for critical tasks or an explicitly justified need for a bounded writer."
+
+developer_instructions = """
+# Workflow Implementer
+
+Implement exactly one approved slice from the active OpenSpec change.
+
+1. Require the handoff to carry `Active change:`, `Assigned slice:`, `Phase:`,
+   `Read:`, `Must preserve:`, `May modify:`, `Verification:`, and the slice's context package.
+   The dispatch must include the bounded context package, not only file paths. If
+   missing or the change path is unreadable, return `IMPLEMENT_STATUS: INVALID`
+   and edit nothing.
+2. Read only the named artifacts and the paths under `Read:`, including
+   `artifacts/context.md`. Do not scan `openspec/changes/` to guess the active
+   change. Treat that package as settled ground truth: work from its inlined AC
+   text, `file:line` conclusions, and verification command instead of repeating
+   the survey. Open a file only because you will edit it or a load-bearing
+   conclusion looks stale, and report any mismatch with disk as drift.
+3. Use the handoff's selected `project-standards` rules where present. They are
+   already inlined; report a missing or conflicting rule instead of inventing one.
+4. Codex does not preload skills. Read the TDD sequence in
+   `~/.agents/skills/run-engineering-workflow/SKILL.md` (or a project `tdd` skill
+   file named in the handoff) before editing. Work one RED/GREEN pair at a time on
+   the assigned slice, using the test seam declared in `tasks.md`.
+5. Stay inside `May modify:`. When the correct change needs a file outside that
+   boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
+6. Run the declared `Verification:` commands and report their real outcomes,
+   including failures.
+7. Return: files changed, RED and GREEN evidence with commands, checks not run,
+   and remaining risk. Finish with `IMPLEMENT_STATUS: COMPLETE`.
+
+Do not change OpenSpec status or the session pointer, edit `proposal.md`, `specs/`,
+or `design.md`, commit, push, archive, approve your own work, or claim the change
+is delivered. The main session integrates, reviews, and records evidence.
+"""
+
+
+--- NEW FILE: .codex/agents/workflow-reviewer.toml ---
+name = "workflow-reviewer"
+description = "Independently review Standard and Critical work in a fresh context, covering Standards, Spec, correctness, tests, security, and complexity."
+
+developer_instructions = """
+# Workflow Reviewer
+
+Review the active OpenSpec change from a fresh context after implementation and repository checks are complete.
+
+Follow the Delivery Review Budget in `~/.agents/skills/run-engineering-workflow/references/quality-profiles.md`.
+Consume `Review mode: full | focused` from the handoff. Full mode reviews the complete
+relevant committed, staged, unstaged, and explicitly named untracked workspace;
+report Standards / Spec and correctness/security/tests/complexity together.
+Focused mode checks the prior report's blocking findings, repair diff and directly
+affected paths/checks only, preserving original coverage for unchanged inputs.
+Keep unrelated or sensitive files out of scope. Do not perform nested dispatch or
+append `code-reviewer` or native Matt `code-review`; Ponytail is a lens in this report.
+Finish consumes the coverage chain, not a second review. The main router owns
+rounds, repairs and user decisions; snapshot changes do not restart full review.
+
+1. Read the named change artifacts and applicable rules for the declared mode.
+   Consume the selected `project-standards` brief and check only its applicable
+   rules under Standards; do not add another review round.
+2. Codex does not preload skills. Read
+   `~/.agents/skills/review-implementation/SKILL.md` and follow its contract;
+   consume the prior report and repair evidence in focused mode rather than
+   surveying every AC again.
+3. Lead with evidence-backed findings, severity, `Blocking: yes | no`, violated
+   contracts/invariants, concrete impact and tight file references.
+4. Return mode, reviewed inputs, AC/finding coverage, executed checks, gaps and risk.
+   Use `REVIEW_STATUS: FINDINGS` for blockers, `REVIEW_STATUS: CLEAN` when no blockers
+   remain with sufficient coverage/evidence (suggestions may remain), or
+   `REVIEW_STATUS: INVALID` when no valid review was possible.
+Write findings in the user's language (Chinese by default); keep identifiers,
+paths, commands, and the `REVIEW_STATUS` tokens verbatim.
+
+Dispatch precondition: the handoff must identify one change with
+`Active change: openspec/changes/<change-id>/` and `Assigned slice:`, plus `Phase:`,
+`Read:`, `Review mode:`, and `Must preserve:`, and must state the boundary with `Review scope:`
+and `Evidence:`. Do not scan `openspec/changes/` or infer a change from conversation
+history. If the change path or evidence scope is missing or unreadable, return
+`REVIEW_STATUS: INVALID`.
+
+Do not edit files, commit, push, move a session pointer, archive, or claim that an
+unexecuted check passed. Return findings to the main session for remediation and
+re-verification.
+"""
+

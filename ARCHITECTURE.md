@@ -58,13 +58,19 @@ See `skills/run-engineering-workflow/references/workflow-governance.md` for the
 canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings.
 ## Shared Installation
 
-`skills/` owns canonical source. The installer publishes six skills and the assembled
+`skills/` owns canonical source. The installer publishes seven skills and the assembled
 OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
 OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
 (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
 only harness adapters: agents, commands, OMP config, launcher, review gate, and
 the OpenCode agent/command set.
 Project scope shares skill versions across projects. Both remains Codex + OMP.
+`project-standards` is installed as the seventh shared skill; it selects only the
+references relevant to a slice and does not create another context source. Project
+`AGENTS.md`, accepted specs, and executable checks outrank its generic references.
+The first phase ships common, Java, and Spring MyBatis-Plus references; Go, Rust,
+Python, and Vue defer to the target project's conventions. Handoffs inline the
+selected rules and use absolute paths for files a fresh child must open.
 
 Selected harness legacy copies, including target-project copies in Project scope,
 are backed up outside skill discovery under `~/.agents/backups/my-engineering-workflow/`
@@ -108,18 +114,38 @@ context separation but not model separation.
 
 ```text
 main configured model
-  -> workflow-planner via blocking subagent (optional pi-subagents package)
-  -> workflow-implementer via blocking subagent (critical or justified slices)
-  -> workflow-reviewer via blocking subagent (optional, read-only)
+  -> scout / researcher (on-demand discovery)
+  -> oracle (material uncertainty, fresh context)
+  -> workflow-planner (critical or explicitly requested planning)
+  -> workflow-implementer (bounded implementation when delegation helps)
+  -> workflow-reviewer (single independent Standard/Critical delivery review)
   -> main-session remediation and evidence
 ```
 
-The workflow installs only its six skills and three provider-independent Pi
+The workflow installs only its seven skills and three provider-independent Pi
 agents. Pi agents omit a fixed `model` and inherit the active Pi model; user or
 trusted-project overrides can differ per agent. They never use OMP `@role` aliases.
-If `@narumitw/pi-subagents` is not installed, planning, bounded implementation,
-and independent review fall back to the main session and must disclose the loss of
-fresh-context review.
+The adapter targets `nicobailon/pi-subagents` (`npm:pi-subagents`). It activates a
+loader when needed, then checks the next tool catalog before dispatch. Fresh
+context, scoped output and native async completion apply to each delegated slice;
+blocking is reserved for results that the next action immediately needs. If tools
+are unavailable, permitted direct work may continue, but missing independent
+review remains `UNVERIFIED`, never a main-session substitute for a clean review.
+
+## Codex Roles
+
+The installer owns only three model-free `.codex/agents/workflow-*.toml` roles.
+Existing user specialists and `config.toml` remain user-owned. The coordinator
+uses native exploration/implementation capabilities only when the current
+version and session expose them; role files alone do not prove discoverability,
+successful dispatch, independent context, or a different model. Doctor separates
+static installation conditions from runtime `UNVERIFIED` status.
+
+Both Pi and Codex follow the shared
+[specialist-routing](skills/run-engineering-workflow/references/specialist-routing.md)
+contract: bounded investigation, implementation and consultation are on demand,
+not a mandatory stage pipeline. Formal handoffs and final review still follow
+OpenSpec and the shared quality profile; no second scheduler or state store is added.
 
 ## OpenCode Roles
 
@@ -146,7 +172,7 @@ If a role cannot be invoked or its effective model cannot be verified, report
 
 ## Adapter Capabilities And Ownership
 
-The six canonical skills are installer-managed and shared; adapters add managed
+The seven canonical skills are installer-managed and shared; adapters add managed
 links or native discovery and never fork the bodies. Model selection stays
 user-owned: Claude agent definitions carry `opus` and `sonnet` labels a user may
 remap, Pi and OpenCode agents omit `model` so user overrides can differ, and OMP roles resolve

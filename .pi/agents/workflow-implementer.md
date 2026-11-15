@@ -29,11 +29,14 @@ Implement exactly one approved slice from the active OpenSpec change, test-first
    `artifacts/context.md`. Work from the package's inlined conclusions rather than
    repeating the planning survey; open a file only to edit it or when a load-bearing
    conclusion looks stale, and report any drift against disk.
-3. Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
+3. Apply the handoff's inlined `project-standards` rules; the fresh child must not
+   assume parent project or skill inheritance. Report a missing or conflicting
+   rule instead of inventing one.
+4. Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
    seam.
-4. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
+5. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
    change lies outside it.
-5. Run the declared `Verification:` commands and report real outcomes, including
+6. Run the declared `Verification:` commands and report real outcomes, including
    failures. Return files changed, RED and GREEN evidence, checks not run, and
    remaining risk, then close with `IMPLEMENT_STATUS: COMPLETE`.
 

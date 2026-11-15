@@ -1,0 +1,1224 @@
+BASE: HEAD 620e1b1
+TRACKED FILE LIST:
+.claude/skills/plan-solution/SKILL.md
+.claude/skills/review-implementation/SKILL.md
+.claude/skills/run-engineering-workflow/SKILL.md
+.omp/agents/workflow-implementer.md
+.omp/agents/workflow-planner.md
+.omp/agents/workflow-reviewer.md
+.opencode/agents/workflow-implementer.md
+.opencode/agents/workflow-planner.md
+.opencode/agents/workflow-reviewer.md
+.pi/agents/workflow-implementer.md
+.pi/agents/workflow-planner.md
+.pi/agents/workflow-reviewer.md
+ARCHITECTURE.md
+README.md
+agents/workflow-implementer.md
+agents/workflow-planner.md
+agents/workflow-reviewer.md
+config/omp-workflow.yml
+scripts/doctor.py
+scripts/install.ps1
+skills/plan-solution/SKILL.md
+skills/review-implementation/SKILL.md
+skills/run-engineering-workflow/SKILL.md
+tests/contracts.test.js
+tests/test_shared_installation.py
+
+TRACKED DIFF:
+diff --git a/.claude/skills/plan-solution/SKILL.md b/.claude/skills/plan-solution/SKILL.md
+index 2a9f51f..db377da 100644
+--- a/.claude/skills/plan-solution/SKILL.md
++++ b/.claude/skills/plan-solution/SKILL.md
+@@ -125,6 +125,8 @@ Phase: implement
+ - 相关设计决策：<design.md 对应小节的关键原文>
+ - 已定位：<file:line> + 符号 + 结论（例：XxxServiceImpl.java:212 handleHeartbeat 用部分实体调用 dao.update(entity, wrapper)）
+ - 现成模式：可直接照抄结构的实现或测试文件，附关键片段
++- 项目规范简报：从 `project-standards` 只选相关引用，内联本片适用的规则、
++  项目覆盖项与验证要求；需要新打开的文件给绝对路径
+ - 不变量：本片必须保持的行为
+ - 验证命令：确切命令，含 JDK、离线、模块参数，以及预期输出要点
+ 
+@@ -146,7 +148,10 @@ Phase: implement
+ Keep the package under roughly 1,500 tokens per slice. When the source material
+ is longer, inline the decisive lines and cite the file rather than pasting it.
+ A slice without a context package is planned for a direct host-native edit, not for
+-dispatch.
++dispatch. When a slice needs stack rules, load `project-standards`, select only
++the relevant references, and inline the judged rules rather than a bare path list.
++A fresh child may not inherit the parent's project or skills, so give absolute
++paths for any file it must newly open.
+ 
+ ## Decompose The Work
+ 
+diff --git a/.claude/skills/review-implementation/SKILL.md b/.claude/skills/review-implementation/SKILL.md
+index 74d2afa..ac97608 100644
+--- a/.claude/skills/review-implementation/SKILL.md
++++ b/.claude/skills/review-implementation/SKILL.md
+@@ -40,7 +40,8 @@ unrelated user changes identifiable and untouched.
+ 
+ The handoff carries `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
+ `Must preserve:`, `Review mode:`, `Review scope:`, and `Evidence:`. Inline the known ACs, design
+-and verification conclusions; identify the base, file list, diff/current contents,
++and verification conclusions plus the selected `project-standards` brief and its
++absolute source paths; identify the base, file list, diff/current contents,
+ requirements and actual check results. The selected proposal/specs own Spec;
+ do not seek another issue or `.scratch/` requirement to override them. A Pi
+ read-only reviewer consumes recorded check evidence, not shell privileges.
+@@ -70,8 +71,9 @@ stays `UNVERIFIED`, not `CLEAN` or normal completion.
+ 3. Security and data integrity: inspect input boundaries, authorization,
+    secrets, injection, destructive behavior, persistence, migrations, and
+    rollback when applicable.
+-4. Project compliance: compare the change with `AGENTS.md`, project specs,
+-   established local patterns, and public contracts.
++4. Project compliance: compare the change with `AGENTS.md`, project specs, the
++   selected `project-standards` rules, established local patterns, and public
++   contracts. Check only the selected references; do not add a review round.
+ 5. Maintainability and complexity: identify unnecessary abstraction,
+    duplication, dependencies, configuration, compatibility paths, and dead code
+    without weakening required safeguards.
+diff --git a/.claude/skills/run-engineering-workflow/SKILL.md b/.claude/skills/run-engineering-workflow/SKILL.md
+index 11c2818..0b546cb 100644
+--- a/.claude/skills/run-engineering-workflow/SKILL.md
++++ b/.claude/skills/run-engineering-workflow/SKILL.md
+@@ -440,7 +440,7 @@ direct native agent inherits the parent session model instead.
+ 
+ ## Adapter Capabilities And Ownership
+ 
+-The six canonical skills under `skills/` are the shared, installer-managed
++The seven canonical skills under `skills/` are the shared, installer-managed
+ source; adapters add managed links or native discovery on top and never fork the
+ bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
+ `sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
+@@ -455,10 +455,16 @@ Resolve conflicts in this order:
+ 
+ 1. User and platform instructions.
+ 2. Repository `AGENTS.md` and OpenSpec governance conventions.
+-3. Active OpenSpec change artifacts and applicable project specs.
++3. Active OpenSpec change artifacts, applicable project specs, and the project
++   standards brief selected by `project-standards`.
+ 4. This routing skill.
+ 5. Upstream skill defaults.
+ 
++When an applicable stack reference is needed, load `project-standards`, select
++only the relevant reference, and put the judged rules into the slice handoff.
++Do not replace project conventions with generic stack advice, and do not add a
++review round or model route for standards.
++
+ OpenSpec owns new state and records. Matt-style skills provide clarification,
+ design, TDD, and two-axis review; Ponytail owns complexity reduction;
+ repository-native checks own verification.
+diff --git a/.omp/agents/workflow-implementer.md b/.omp/agents/workflow-implementer.md
+index ec7107d..1798fd4 100644
+--- a/.omp/agents/workflow-implementer.md
++++ b/.omp/agents/workflow-implementer.md
+@@ -23,14 +23,16 @@ edit nothing.
+    Work from the package's inlined AC text, `file:line` conclusions, and verification
+    command instead of repeating the planning survey; open a file only to edit it or
+    when a load-bearing conclusion looks stale, and report drift.
+-2. Follow the preloaded `tdd` skill. Work one RED/GREEN pair at a time on the
++2. Apply the handoff's inlined `project-standards` rules; report a missing or
++   conflicting rule instead of inventing one.
++3. Follow the preloaded `tdd` skill. Work one RED/GREEN pair at a time on the
+    assigned slice using the test seam declared in `tasks.md`.
+-3. Stay inside `May modify:`. When the correct change needs a file outside that
++4. Stay inside `May modify:`. When the correct change needs a file outside that
+    boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
+-4. Run the declared `Verification:` commands and report their real outcomes,
++5. Run the declared `Verification:` commands and report their real outcomes,
+    including failures. Apply `ponytail-review` to your own diff before returning
+    and re-run affected checks after any simplification.
+-5. Return files changed, RED and GREEN evidence with commands, checks not run,
++6. Return files changed, RED and GREEN evidence with commands, checks not run,
+    and remaining risk. Finish with exactly one status line:
+    `IMPLEMENT_STATUS: COMPLETE`, `BLOCKED`, or `INVALID`.
+ 
+diff --git a/.omp/agents/workflow-planner.md b/.omp/agents/workflow-planner.md
+index 26c0b44..2200078 100644
+--- a/.omp/agents/workflow-planner.md
++++ b/.omp/agents/workflow-planner.md
+@@ -5,7 +5,7 @@ tools: read, write, edit, bash, grep, glob, lsp
+ model: "@plan"
+ thinking-level: high
+ blocking: true
+-autoloadSkills: ["run-engineering-workflow", "plan-solution", "codebase-design", "domain-modeling"]
++autoloadSkills: ["run-engineering-workflow", "plan-solution", "project-standards", "codebase-design", "domain-modeling"]
+ ---
+ 
+ # Workflow Planner
+@@ -16,7 +16,10 @@ dispatchable slice's context package inline in the change artifacts: inlined AC
+ the design decisions it rests on, the located `file:line` conclusions, the pattern
+ to copy, and the exact verification command — a worker must not repeat the planning
+ survey. Split cross-session or parallel work into task items in `tasks.md`. Write all
+-artifacts in the user's language (Chinese by default).
++artifacts in the user's language (Chinese by default). When a slice touches a
++supported stack, load `project-standards`, select only the relevant reference, and
++inline the judged rules and project overrides in the context package, with absolute
++paths for files the worker must newly open.
+ Do not write production code, commit, push, or create a second plan system.
+ Return artifact paths, major decisions, unresolved risks, and whether the task
+ is ready to move to `in_progress`.
+diff --git a/.omp/agents/workflow-reviewer.md b/.omp/agents/workflow-reviewer.md
+index 19aa586..7a63d2f 100644
+--- a/.omp/agents/workflow-reviewer.md
++++ b/.omp/agents/workflow-reviewer.md
+@@ -5,7 +5,7 @@ tools: read, bash, grep, glob, lsp
+ model: "@advisor"
+ thinking-level: high
+ blocking: true
+-autoloadSkills: ["review-implementation", "ponytail-review"]
++autoloadSkills: ["review-implementation", "project-standards", "ponytail-review"]
+ ---
+ 
+ # Workflow Reviewer
+@@ -24,7 +24,9 @@ Budget in `skills/run-engineering-workflow/references/quality-profiles.md` and
+ Full mode inspects the complete relevant committed, staged, unstaged and explicitly
+ named untracked contents, reporting Standards / Spec and correctness/security/tests/
+ complexity together. Check DI lifecycle, async ordering/rejection, persistence/null
+-mapping and test visibility when those areas are touched.
++mapping and test visibility when those areas are touched. Under Standards, consume
++the handoff's selected `project-standards` brief and project overrides rather than
++inventing generic stack rules; do not add a review round.
+ Focused mode checks original blocking findings, the repair diff and directly affected
+ paths/checks, preserving prior coverage of unchanged inputs rather than repeating
+ all ACs. Never sweep ignored, unrelated or sensitive files. Do not perform nested dispatch
+diff --git a/.opencode/agents/workflow-implementer.md b/.opencode/agents/workflow-implementer.md
+index 1d7bc8d..2a35780 100644
+--- a/.opencode/agents/workflow-implementer.md
++++ b/.opencode/agents/workflow-implementer.md
+@@ -36,14 +36,16 @@ Implement exactly one approved slice from the active OpenSpec change.
+    text, `file:line` conclusions, and verification command instead of repeating
+    the survey. Open a file only because you will edit it or a load-bearing
+    conclusion looks stale, and report any mismatch with disk as drift.
+-3. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
++3. Use the handoff's inlined `project-standards` rules where present; report a
++   missing or conflicting rule instead of inventing one.
++4. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
+    RED/GREEN pair at a time on the assigned slice, using the test seam declared in
+    `tasks.md`.
+-4. Stay inside `May modify:`. When the correct change needs a file outside that
++5. Stay inside `May modify:`. When the correct change needs a file outside that
+    boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
+-5. Run the declared `Verification:` commands and report their real outcomes,
++6. Run the declared `Verification:` commands and report their real outcomes,
+    including failures.
+-6. Return: files changed, RED and GREEN evidence with commands, checks not run,
++7. Return: files changed, RED and GREEN evidence with commands, checks not run,
+    and remaining risk. Finish with `IMPLEMENT_STATUS: COMPLETE`.
+ 
+ Do not change OpenSpec status or the session pointer, edit `proposal.md`, `specs/`,
+diff --git a/.opencode/agents/workflow-planner.md b/.opencode/agents/workflow-planner.md
+index b073902..74895f3 100644
+--- a/.opencode/agents/workflow-planner.md
++++ b/.opencode/agents/workflow-planner.md
+@@ -46,6 +46,10 @@ verification command. When work spans sessions or writers, split it into task
+ items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
+ than duplicating the plan.
+ 
++When a slice touches a supported stack, load `project-standards`, select only the
++relevant reference, and inline the judged rules and project overrides in the slice
++context package. Give absolute paths for files the worker must newly open.
++
+ Dispatch precondition: the first two lines of the handoff must identify exactly
+ one change and one planning scope — `Active change: openspec/changes/<change-id>/`
+ followed by `Assigned slice: planning / all accepted ACs`. The handoff must also
+diff --git a/.opencode/agents/workflow-reviewer.md b/.opencode/agents/workflow-reviewer.md
+index 65b2e8e..3fb2a08 100644
+--- a/.opencode/agents/workflow-reviewer.md
++++ b/.opencode/agents/workflow-reviewer.md
+@@ -40,8 +40,9 @@ only material input changes require fresh review, not appending the report or
+ delivery evidence.
+ 
+ 1. Read the named change's `proposal.md`, `specs/`, `artifacts/context.md`,
+-   optional `design.md` and `tasks.md`, applicable project specs, the complete diff,
+-   surrounding code, and relevant tests.
++   optional `design.md` and `tasks.md`, applicable project specs, the selected
++   `project-standards` brief, the complete diff, surrounding code, and relevant
++   tests. Check only the selected standards under the existing Standards axis.
+ 2. Follow the loaded `review-implementation` skill as the review contract. Use
+    verification and security checks when they are installed and relevant.
+ 3. Lead with evidence-backed findings ordered by severity. Cite a file and tight
+diff --git a/.pi/agents/workflow-implementer.md b/.pi/agents/workflow-implementer.md
+index ea34d13..603dc55 100644
+--- a/.pi/agents/workflow-implementer.md
++++ b/.pi/agents/workflow-implementer.md
+@@ -29,11 +29,14 @@ Implement exactly one approved slice from the active OpenSpec change, test-first
+    `artifacts/context.md`. Work from the package's inlined conclusions rather than
+    repeating the planning survey; open a file only to edit it or when a load-bearing
+    conclusion looks stale, and report any drift against disk.
+-3. Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
++3. Apply the handoff's inlined `project-standards` rules; the fresh child must not
++   assume parent project or skill inheritance. Report a missing or conflicting
++   rule instead of inventing one.
++4. Follow the project's TDD skill (`tdd` or `tdd-workflow`) and the declared test
+    seam.
+-4. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
++5. Stay inside `May modify:`; return `IMPLEMENT_STATUS: BLOCKED` when the right
+    change lies outside it.
+-5. Run the declared `Verification:` commands and report real outcomes, including
++6. Run the declared `Verification:` commands and report real outcomes, including
+    failures. Return files changed, RED and GREEN evidence, checks not run, and
+    remaining risk, then close with `IMPLEMENT_STATUS: COMPLETE`.
+ 
+diff --git a/.pi/agents/workflow-planner.md b/.pi/agents/workflow-planner.md
+index e0b36d8..fcd942c 100644
+--- a/.pi/agents/workflow-planner.md
++++ b/.pi/agents/workflow-planner.md
+@@ -27,6 +27,10 @@ Write artifacts in the user's language (Chinese by default), and give every
+ dispatchable slice a context package in the OpenSpec change (inlined AC text,
+ design decisions, located `file:line` conclusions, pattern to copy, exact
+ verification command); split cross-session work into task items in `tasks.md`.
++When a slice touches a supported stack, load `project-standards`, select only the
++relevant reference, and inline the judged rules and project overrides in the
++context package. A fresh Pi child cannot assume parent project or skill inheritance,
++so inline applicable rules and use absolute paths for new reads.
+ Return artifact paths, major decisions, unresolved risks, and whether the change is
+ ready for the implementation gate.
+ 
+diff --git a/.pi/agents/workflow-reviewer.md b/.pi/agents/workflow-reviewer.md
+index b6c95f4..eb21fac 100644
+--- a/.pi/agents/workflow-reviewer.md
++++ b/.pi/agents/workflow-reviewer.md
+@@ -32,6 +32,8 @@ Spec and correctness/security/tests/complexity for the complete relevant committ
+ staged, unstaged and explicitly named untracked workspace. Focused mode checks the
+ prior blocking findings, repair diff and directly affected paths using recorded
+ repair checks; preserve prior coverage of unchanged inputs, not a new full survey.
++Under Standards, consume the handoff's selected `project-standards` brief and
++project overrides; do not invent generic stack rules or add a review round.
+ Keep unrelated or sensitive files out of scope. Do not perform nested dispatch or
+ append `code-reviewer` or native Matt `code-review`; Ponytail is a lens in this report.
+ Use the main session's recorded verification; do not expand shell rights. Return
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 3710ce7..c594d55 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -58,13 +58,19 @@ See `skills/run-engineering-workflow/references/workflow-governance.md` for the
+ canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings.
+ ## Shared Installation
+ 
+-`skills/` owns canonical source. The installer publishes six skills and the assembled
++`skills/` owns canonical source. The installer publishes seven skills and the assembled
+ OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
+ OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
+ (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
+ only harness adapters: agents, commands, OMP config, launcher, review gate, and
+ the OpenCode agent/command set.
+ Project scope shares skill versions across projects. Both remains Codex + OMP.
++`project-standards` is installed as the seventh shared skill; it selects only the
++references relevant to a slice and does not create another context source. Project
++`AGENTS.md`, accepted specs, and executable checks outrank its generic references.
++The first phase ships common, Java, and Spring MyBatis-Plus references; Go, Rust,
++Python, and Vue defer to the target project's conventions. Handoffs inline the
++selected rules and use absolute paths for files a fresh child must open.
+ 
+ Selected harness legacy copies, including target-project copies in Project scope,
+ are backed up outside skill discovery under `~/.agents/backups/my-engineering-workflow/`
+@@ -114,7 +120,7 @@ main configured model
+   -> main-session remediation and evidence
+ ```
+ 
+-The workflow installs only its six skills and three provider-independent Pi
++The workflow installs only its seven skills and three provider-independent Pi
+ agents. Pi agents omit a fixed `model` and inherit the active Pi model; user or
+ trusted-project overrides can differ per agent. They never use OMP `@role` aliases.
+ If `@narumitw/pi-subagents` is not installed, planning, bounded implementation,
+@@ -146,7 +152,7 @@ If a role cannot be invoked or its effective model cannot be verified, report
+ 
+ ## Adapter Capabilities And Ownership
+ 
+-The six canonical skills are installer-managed and shared; adapters add managed
++The seven canonical skills are installer-managed and shared; adapters add managed
+ links or native discovery and never fork the bodies. Model selection stays
+ user-owned: Claude agent definitions carry `opus` and `sonnet` labels a user may
+ remap, Pi and OpenCode agents omit `model` so user overrides can differ, and OMP roles resolve
+diff --git a/README.md b/README.md
+index 690956d..1b5e75e 100644
+--- a/README.md
++++ b/README.md
+@@ -33,7 +33,7 @@ AI 会话之间的上下文连续性。
+ 审查预算。谁来调度、用哪个模型、客户端暴露哪些工具，归宿主（Codex、Claude Code、OpenCode、
+ OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用”，不重写质量标准。
+ 
+-本仓库目前提供六个 canonical skill（安装器统一管理的同一份源码）：
++本仓库目前提供七个 canonical skill（安装器统一管理的同一份源码）：
+ 
+ | Skill | 用途 |
+ | --- | --- |
+@@ -43,6 +43,7 @@ OMP、Pi）自己管。因此各端适配只写“有哪些角色、怎么调用
+ | `$review-implementation` | 一次完整独立审核；必要时最多一次定向复核修复影响 |
+ | `$finish-with-evidence` | 核对并复用已有证据，写入 `artifacts/verification.md`；不再派审核或直接重跑检查 |
+ | `$archive-task` | 你验收通过后，调用 OpenSpec archive；不会自动归档 |
++| `$project-standards` | 只选与本切片相关的项目/技术栈规范，内联到规划、实施和审核交接；首期含通用、Java、Spring MyBatis-Plus 引用 |
+ 
+ ## 核心产物
+ 
+@@ -299,7 +300,7 @@ Windows 可以在 `%APPDATA%\ponytail\config.json` 中设置：
+ 
+ ## 安装本仓库的 Skill
+ 
+-六个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
++七个 skill 统一安装到 `~/.agents/skills/`（注意是复数 `.agents`）。Codex、OMP、Pi 和
+ OpenCode 原生发现这个用户级目录，Claude Code 通过逐 skill 的目录链接访问同一份内容。
+ 仓库 `skills/` 保留为源码；安装器把正文、references 和 OpenSpec helper 发布到共享目录。
+ 
+@@ -333,7 +334,7 @@ PowerShell 7 `pwsh`）：
+ .\scripts\doctor.ps1 -Scope User -Harness Claude
+ ```
+ 
+-这会发布共享 skills，并在 `~/.claude/skills/` 为六个 skill 建立目录链接，安装
++这会发布共享 skills，并在 `~/.claude/skills/` 为七个 skill 建立目录链接，安装
+ `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 三个 agent 和
+ `/engineering-workflow` / `/archive-task` 两个命令。Windows 使用 junction，macOS / Linux
+ 使用 symlink；链接目标始终是对应的共享 skill。重新启动 Claude Code 后生效。
+@@ -345,7 +346,7 @@ PowerShell 7 `pwsh`）：
+ .\scripts\doctor.ps1 -Scope User -Harness Pi
+ ```
+ 
+-这会把六个 skill 发布到 `~/.agents/skills/`，把 provider-independent 的
++这会把七个 skill 发布到 `~/.agents/skills/`，把 provider-independent 的
+ `workflow-planner` / `workflow-implementer` / `workflow-reviewer` 安装到 `~/.pi/agent/agents/`。Pi agent 默认省略
+ `model`，因此继承当前 Pi 模型；需要真正跨模型时，可以在安装副本或可信项目的同名
+ `.pi/agents/*.md` 中配置具体模型。设置了 `PI_CODING_AGENT_DIR` 时，安装器和 doctor 会改用
+@@ -393,7 +394,7 @@ OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开
+ 
+ 安装器会同步：
+ 
+-- 六个 canonical skill 只发布到用户级 `~/.agents/skills/`。
++- 七个 canonical skill 只发布到用户级 `~/.agents/skills/`。
+ - Claude 用户级和项目级 `.claude/skills/` 建立逐 skill 链接，不复制正文。
+ - 三个 OMP agent 到 `.omp/agents/`。
+ - OMP skill 白名单 overlay 和启动脚本到项目 `.omp/`。
+@@ -416,7 +417,7 @@ Codex + OMP；`All` 表示 Codex + OMP + Claude Code + Pi + OpenCode。先用 `-
+ 
+ ### 从旧副本迁移及恢复
+ 
+-安装器只处理六个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
++安装器只处理七个受管 skill，不改动其他 skill。它会清理所选 harness 的已知用户级旧入口：
+ `~/.codex/skills/`、OMP / Pi 的用户 `skills/`，以及 Claude 的旧正文副本；Project 范围还会
+ 处理指定项目的 `.agents/skills/`、`.omp/skills/`、`.pi/skills/`、`.claude/skills/` 中对应的
+ 受管入口。Claude 入口随后建立共享链接。其他项目的旧副本不会被全盘扫描，需要在该项目
+@@ -674,11 +675,11 @@ tasks、上下文包与已有验证证据，再核对代码、测试及 `git sta
+ 
+ ### 其他客户端
+ 
+-本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装六个 canonical skill。
++本工作流不依赖平台专属 hook，支持 agentskills.io 的客户端可安装七个 canonical skill。
+ 在项目 `AGENTS.md` 中声明先判快速通道、正式记录由 OpenSpec 持有，不引入 legacy 任务存储。
+ 
+ 本仓库安装器目前原生管理 Codex、Claude Code、OMP、Pi 和 OpenCode。其他支持 agentskills.io 的客户端
+-可使用 `skills` CLI 从本地仓库安装六个 canonical skill：
++可使用 `skills` CLI 从本地仓库安装七个 canonical skill：
+ 
+ ```powershell
+ npx skills@latest add "D:\my-works\claude-skills\my-engineering-workflow" `
+@@ -881,7 +882,7 @@ Slim 通过 OpenCode 原生 specialist 干活：
+ 
+ `workflow` agents 是 Slim 可以调用的 specialist，不是第二套控制面。一次正式交付仍然只有
+ 一套审查预算（见 `quality-profiles.md`）。OpenCode 的模型归属用户自己的配置；
+-六个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
++七个 canonical skill 由安装器以受管链接/原生发现的方式共享，不复制正文。
+ 
+ 正式实现通过 Slim `fixer` 角色路由，那一次独立复核通过 Slim `oracle` 角色路由，两个角色由当前激活的 OMO-Slim preset 决定模型。
+ 不要把某个 preset 的模型 ID 静态写进受管 agent 或本文档；`.opencode/agents/` 里的 `model` 字段保持空缺。
+@@ -1019,7 +1020,7 @@ OMP 使用 `workflow-reviewer` 和 `@advisor`，先返回按严重度排序的 f
+ npm test
+ ```
+ 
+-六个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
++七个 skill 还应通过 Codex `skill-creator` 提供的 `quick_validate.py`。上游版本和本机
+ 相对路径提示记录在 [`manifests/upstreams.lock.json`](manifests/upstreams.lock.json) 中。
+ 升级后重新运行 `install.ps1`，再用 `doctor.ps1` 检查安装完整性、OMP 角色映射、
+ Claude Code 与 Pi agent 契约。
+diff --git a/agents/workflow-implementer.md b/agents/workflow-implementer.md
+index 42c5beb..78e16c5 100644
+--- a/agents/workflow-implementer.md
++++ b/agents/workflow-implementer.md
+@@ -22,14 +22,16 @@ Implement exactly one approved slice from the active OpenSpec change.
+    text, `file:line` conclusions, and verification command instead of repeating
+    the survey. Open a file only because you will edit it or a load-bearing
+    conclusion looks stale, and report any mismatch with disk as drift.
+-3. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
++3. Use the handoff's selected `project-standards` rules where present. They are
++   already inlined; report a missing or conflicting rule instead of inventing one.
++4. Load the project's TDD skill (`tdd` or `tdd-workflow`) before editing. Work one
+    RED/GREEN pair at a time on the assigned slice, using the test seam declared in
+    `tasks.md`.
+-4. Stay inside `May modify:`. When the correct change needs a file outside that
++5. Stay inside `May modify:`. When the correct change needs a file outside that
+    boundary, stop and return `IMPLEMENT_STATUS: BLOCKED` with the reason.
+-5. Run the declared `Verification:` commands and report their real outcomes,
++6. Run the declared `Verification:` commands and report their real outcomes,
+    including failures.
+-6. Return: files changed, RED and GREEN evidence with commands, checks not run,
++7. Return: files changed, RED and GREEN evidence with commands, checks not run,
+    and remaining risk. Finish with `IMPLEMENT_STATUS: COMPLETE`.
+ 
+ Do not change OpenSpec status or the session pointer, edit `proposal.md`, `specs/`,
+diff --git a/agents/workflow-planner.md b/agents/workflow-planner.md
+index c7e51c8..31a9c27 100644
+--- a/agents/workflow-planner.md
++++ b/agents/workflow-planner.md
+@@ -6,6 +6,7 @@ model: opus
+ skills:
+   - run-engineering-workflow
+   - plan-solution
++  - project-standards
+ ---
+ 
+ # Workflow Planner
+@@ -33,6 +34,12 @@ verification command. When work spans sessions or writers, split it into task
+ items in `tasks.md` carrying `covers`, `blocked_by`, `state`, and `writer` rather
+ than duplicating the plan.
+ 
++When a slice touches a supported stack, load `project-standards`, select only the
++relevant reference, and put the judged rules and project overrides in the context
++package. Inline the applicable rules and give absolute paths only for files the
++worker must newly open; a fresh child does not inherit this session's project or
++skills.
++
+ Dispatch precondition: the first two lines of the handoff must identify exactly
+ one change and one planning scope — `Active change: openspec/changes/<change-id>/`
+ followed by `Assigned slice: planning / all accepted ACs`. The handoff must also
+diff --git a/agents/workflow-reviewer.md b/agents/workflow-reviewer.md
+index 9f1f19b..7c34ad1 100644
+--- a/agents/workflow-reviewer.md
++++ b/agents/workflow-reviewer.md
+@@ -5,6 +5,7 @@ tools: Read, Bash, Grep, Glob
+ model: opus
+ skills:
+   - review-implementation
++  - project-standards
+ ---
+ 
+ # Workflow Reviewer
+@@ -23,6 +24,8 @@ Finish consumes the coverage chain, not a second review. The main router owns
+ rounds, repairs and user decisions; snapshot changes do not restart full review.
+ 
+ 1. Read the named change artifacts and applicable rules for the declared mode.
++   Consume the selected `project-standards` brief and check only its applicable
++   rules under Standards; do not add another review round.
+ 2. Follow the preloaded `review-implementation` contract; consume the prior report
+    and repair evidence in focused mode rather than surveying every AC again.
+ 3. Lead with evidence-backed findings, severity, `Blocking: yes | no`, violated
+diff --git a/config/omp-workflow.yml b/config/omp-workflow.yml
+index d968743..3d1550e 100644
+--- a/config/omp-workflow.yml
++++ b/config/omp-workflow.yml
+@@ -10,6 +10,7 @@ skills:
+     - review-implementation
+     - finish-with-evidence
+     - archive-task
++    - project-standards
+     - grill-with-docs
+     - grilling
+     - domain-modeling
+diff --git a/scripts/doctor.py b/scripts/doctor.py
+index fef3885..74bec03 100644
+--- a/scripts/doctor.py
++++ b/scripts/doctor.py
+@@ -24,6 +24,7 @@ SKILLS = (
+     "review-implementation",
+     "finish-with-evidence",
+     "archive-task",
++    "project-standards",
+ )
+ AGENTS = ("workflow-planner", "workflow-implementer", "workflow-reviewer")
+ AGENT_FILES = tuple(f"{agent}.md" for agent in AGENTS)
+diff --git a/scripts/install.ps1 b/scripts/install.ps1
+index a26676e..2caad13 100644
+--- a/scripts/install.ps1
++++ b/scripts/install.ps1
+@@ -30,13 +30,15 @@ $opencodeDirOverride = if ([string]::IsNullOrWhiteSpace($env:OPENCODE_CONFIG_DIR
+   )
+ }
+ $opencodeUserRoot = if ($opencodeDirOverride) { $opencodeDirOverride } else { Join-Path $HOME ".config\opencode" }
++# Seven canonical skills are published once to the shared user-level root.
+ $skillNames = @(
+   "run-engineering-workflow",
+   "clarify-requirements",
+   "plan-solution",
+   "review-implementation",
+   "finish-with-evidence",
+-  "archive-task"
++  "archive-task",
++  "project-standards"
+ )
+ $ompAgentNames = @(
+   "workflow-planner.md",
+diff --git a/skills/plan-solution/SKILL.md b/skills/plan-solution/SKILL.md
+index 2a9f51f..db377da 100644
+--- a/skills/plan-solution/SKILL.md
++++ b/skills/plan-solution/SKILL.md
+@@ -125,6 +125,8 @@ Phase: implement
+ - 相关设计决策：<design.md 对应小节的关键原文>
+ - 已定位：<file:line> + 符号 + 结论（例：XxxServiceImpl.java:212 handleHeartbeat 用部分实体调用 dao.update(entity, wrapper)）
+ - 现成模式：可直接照抄结构的实现或测试文件，附关键片段
++- 项目规范简报：从 `project-standards` 只选相关引用，内联本片适用的规则、
++  项目覆盖项与验证要求；需要新打开的文件给绝对路径
+ - 不变量：本片必须保持的行为
+ - 验证命令：确切命令，含 JDK、离线、模块参数，以及预期输出要点
+ 
+@@ -146,7 +148,10 @@ Phase: implement
+ Keep the package under roughly 1,500 tokens per slice. When the source material
+ is longer, inline the decisive lines and cite the file rather than pasting it.
+ A slice without a context package is planned for a direct host-native edit, not for
+-dispatch.
++dispatch. When a slice needs stack rules, load `project-standards`, select only
++the relevant references, and inline the judged rules rather than a bare path list.
++A fresh child may not inherit the parent's project or skills, so give absolute
++paths for any file it must newly open.
+ 
+ ## Decompose The Work
+ 
+diff --git a/skills/review-implementation/SKILL.md b/skills/review-implementation/SKILL.md
+index 74d2afa..ac97608 100644
+--- a/skills/review-implementation/SKILL.md
++++ b/skills/review-implementation/SKILL.md
+@@ -40,7 +40,8 @@ unrelated user changes identifiable and untouched.
+ 
+ The handoff carries `Active change:`, `Assigned slice:`, `Phase:`, `Read:`,
+ `Must preserve:`, `Review mode:`, `Review scope:`, and `Evidence:`. Inline the known ACs, design
+-and verification conclusions; identify the base, file list, diff/current contents,
++and verification conclusions plus the selected `project-standards` brief and its
++absolute source paths; identify the base, file list, diff/current contents,
+ requirements and actual check results. The selected proposal/specs own Spec;
+ do not seek another issue or `.scratch/` requirement to override them. A Pi
+ read-only reviewer consumes recorded check evidence, not shell privileges.
+@@ -70,8 +71,9 @@ stays `UNVERIFIED`, not `CLEAN` or normal completion.
+ 3. Security and data integrity: inspect input boundaries, authorization,
+    secrets, injection, destructive behavior, persistence, migrations, and
+    rollback when applicable.
+-4. Project compliance: compare the change with `AGENTS.md`, project specs,
+-   established local patterns, and public contracts.
++4. Project compliance: compare the change with `AGENTS.md`, project specs, the
++   selected `project-standards` rules, established local patterns, and public
++   contracts. Check only the selected references; do not add a review round.
+ 5. Maintainability and complexity: identify unnecessary abstraction,
+    duplication, dependencies, configuration, compatibility paths, and dead code
+    without weakening required safeguards.
+diff --git a/skills/run-engineering-workflow/SKILL.md b/skills/run-engineering-workflow/SKILL.md
+index 11c2818..0b546cb 100644
+--- a/skills/run-engineering-workflow/SKILL.md
++++ b/skills/run-engineering-workflow/SKILL.md
+@@ -440,7 +440,7 @@ direct native agent inherits the parent session model instead.
+ 
+ ## Adapter Capabilities And Ownership
+ 
+-The six canonical skills under `skills/` are the shared, installer-managed
++The seven canonical skills under `skills/` are the shared, installer-managed
+ source; adapters add managed links or native discovery on top and never fork the
+ bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
+ `sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
+@@ -455,10 +455,16 @@ Resolve conflicts in this order:
+ 
+ 1. User and platform instructions.
+ 2. Repository `AGENTS.md` and OpenSpec governance conventions.
+-3. Active OpenSpec change artifacts and applicable project specs.
++3. Active OpenSpec change artifacts, applicable project specs, and the project
++   standards brief selected by `project-standards`.
+ 4. This routing skill.
+ 5. Upstream skill defaults.
+ 
++When an applicable stack reference is needed, load `project-standards`, select
++only the relevant reference, and put the judged rules into the slice handoff.
++Do not replace project conventions with generic stack advice, and do not add a
++review round or model route for standards.
++
+ OpenSpec owns new state and records. Matt-style skills provide clarification,
+ design, TDD, and two-axis review; Ponytail owns complexity reduction;
+ repository-native checks own verification.
+diff --git a/tests/contracts.test.js b/tests/contracts.test.js
+index f1fb470..41213d9 100644
+--- a/tests/contracts.test.js
++++ b/tests/contracts.test.js
+@@ -11,6 +11,7 @@ const skillNames = [
+   "review-implementation",
+   "finish-with-evidence",
+   "archive-task",
++  "project-standards",
+ ];
+ const agentNames = [
+   "workflow-planner.md",
+@@ -330,7 +331,7 @@ test("harness adapters declare only verified capabilities and keep models user-o
+     ["ARCHITECTURE.md", architecture],
+     ["README.md", readme],
+   ]) {
+-    assert.match(body, /six canonical skills|六个 canonical skill|六个规范技能/is, file);
++    assert.match(body, /seven canonical skills|七个 canonical skill|七个规范技能/is, file);
+     assert.match(body, /managed|受管|共享/is, file);
+     assert.match(body, /models?[^.;]{0,40}user-(?:owned|configured)|模型.*用户(?:所有|配置)/is, file);
+   }
+diff --git a/tests/test_shared_installation.py b/tests/test_shared_installation.py
+index ecacd03..0558b7f 100644
+--- a/tests/test_shared_installation.py
++++ b/tests/test_shared_installation.py
+@@ -479,6 +479,24 @@ class SharedInstallationTests(unittest.TestCase):
+         self.assertFalse((self.home / ".pi").exists())
+ 
+ 
++    def test_project_standards_is_the_seventh_shared_skill(self):
++        self.install("-Harness", "All")
++        self.assertIn("project-standards", doctor.SKILLS)
++        self.assert_shared()
++        shared = self.shared / "project-standards"
++        for reference in (
++            "references/common.md",
++            "references/java.md",
++            "references/spring-mybatis-plus.md",
++            "references/project-agents-template.md",
++        ):
++            self.assertTrue((shared / reference).is_file(), reference)
++        self.assertEqual(
++            (self.home / ".claude/skills/project-standards").resolve(), shared.resolve()
++        )
++        code, output = self.diagnose("All")
++        self.assertEqual(code, 0, output)
++
+     def test_doctor_reports_omp_and_claude_adapter_drift(self):
+         self.install("-Harness", "All")
+         omp_agent = self.home / ".omp/agent/agents/workflow-planner.md"
+
+
+UNTRACKED FILE: skills/project-standards/NOTICE.md
+# Source And License Notices
+
+## Everything Claude Code
+
+Parts of the general Java guidance in this skill were adapted from ideas in
+Everything Claude Code (ECC), revision
+`25278e7d7b6cf6e6a4e7a6c8e10f14ff22f0eb5b`. No source files were copied into
+this repository; the text here is rewritten for this workflow.
+
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## MyBatis-Plus
+
+The MyBatis-Plus guidance is independently written from the official
+documentation at <https://baomidou.com/en/guides/wrapper/> and
+<https://baomidou.com/plugins/block-attack/>. MyBatis-Plus is licensed under
+the Apache License 2.0; no MyBatis-Plus source code is included here.
+
+
+UNTRACKED FILE: skills/project-standards/SKILL.md
+---
+name: project-standards
+description: Select and carry the target project's own standards and stack-specific references into planning, implementation, and review without inventing policy or adding gates.
+---
+
+# Project Standards
+
+Use this skill when a workflow slice needs project or technology rules for
+implementation or review. It supplies a selection method and portable
+references; it does not replace the target project's documentation, tooling, or
+executable checks.
+
+## Precedence And Sources
+
+Apply rules in this order:
+
+1. The user's explicit instruction and the target platform's requirements.
+2. The target repository's `AGENTS.md`, contribution guide, architecture notes,
+   specs, and accepted decisions.
+3. A relevant reference from this skill.
+4. Generic workflow defaults.
+
+Read the project's manifests and configuration before choosing a reference:
+language and runtime version, framework, data-access library, compiler and
+formatter settings, test commands, and migration tooling. The repository's
+written rules and checks win over a reference example. When a source is missing,
+conflicting, or unreadable, report the gap; do not invent a rule or claim the
+standards were loaded. Never copy private project code or identifiers into a
+shared skill.
+
+## Select only what applies
+
+1. Derive the actual change surfaces from the acceptance criteria: language,
+   framework, persistence layer, UI, infrastructure, and test environment.
+2. Always read `references/common.md`.
+3. Read `references/java.md` only for JVM work.
+4. Read `references/spring-mybatis-plus.md` only when the project already uses
+   Spring and MyBatis-Plus. Do not introduce JPA, an extra repository layer, or a
+   new persistence framework to satisfy a reference.
+5. Go, Rust, Python, and Vue have no detailed reference in this first phase.
+   Use the target project's conventions and tooling for them, and state that this
+   skill adds no stack-specific rules.
+6. Do not load every reference by default. Record which sources and revisions
+   were selected, or mark the selection as incomplete.
+
+## Produce A Bounded Standards Brief
+
+Before dispatching implementation or review, turn the selection into a short
+brief for the handoff:
+
+- Inline the rules that apply to this slice; do not make a fresh child read a
+  whole reference to recover them.
+- Give absolute paths to any file the child must open for new information.
+- Name project overrides and the evidence that proves them (config keys,
+  dependency versions, scripts).
+- Name the verification commands and the database evidence the slice requires.
+- Separate required rules from suggestions, and mark unknown facts as
+  `UNVERIFIED`.
+
+A fresh child may not inherit the parent's project or skill context, so the brief
+must stand alone. Keep it proportional to the slice; a path list alone is not a
+brief.
+
+## Apply In The Workflow
+
+- **Plan:** add the selected brief to the slice context package, test seam, and
+  verification plan.
+- **Implement:** follow the selected rules and report deliberate deviations with
+  their reason and evidence.
+- **Review:** check the same selected rules under the existing Standards axis;
+  do not create a separate review, model route, or additional review round.
+
+## Limits
+
+This skill adds no scheduler, agent role, model choice, coverage quota, or
+independent review gate. It does not authorize blanket database locks, global
+plugins, or project-wide migrations. If project rules conflict with a reference,
+follow the project and surface the conflict; never weaken correctness, security,
+accessibility, or required verification to match a generic rule.
+
+
+UNTRACKED FILE: skills/project-standards/agents/openai.yaml
+interface:
+  display_name: "Project Standards"
+  short_description: "Select relevant project and stack rules"
+  default_prompt: "Use $project-standards to select the rules this slice needs and inline them in the handoff."
+
+
+UNTRACKED FILE: skills/project-standards/references/common.md
+# Common Project Standards
+
+This reference covers rules that apply regardless of stack. It is deliberately
+small; project documentation replaces it wherever they differ.
+
+## Discover Before Deciding
+
+- Read `AGENTS.md`, contribution guidance, and the nearest project instructions.
+- Read build and dependency manifests before assuming a language version, a
+  framework, a data-access library, or a test runner.
+- Find the real verification commands in build files, CI, or contributor docs.
+  Do not substitute a generic command that the project does not run.
+- Identify generated and vendored paths, then leave them untouched.
+- Record the selected rule sources and revisions in the standards brief.
+
+## Change Shape
+
+- Make the smallest coherent change that satisfies the accepted criteria.
+- Preserve public behavior, interfaces, data formats, and error contracts unless
+  the slice explicitly changes them.
+- Match the local naming, package layout, error type, and logging style.
+- Prefer deletion and reuse over new abstraction. Do not add a layer for a single
+  call site.
+- Do not upgrade dependencies, reformat unrelated files, or migrate tooling as a
+  side effect.
+
+## Correctness And Boundaries
+
+- Validate untrusted input at the boundary where the project expects it.
+- Keep authorization and tenant/data-scope checks on the backend; never trust a
+  client-provided scope or ordering decision.
+- Preserve transaction boundaries and failure behavior. Surface partial-failure
+  risk rather than hiding it with a broad retry.
+- Keep secrets, credentials, private identifiers, and production data out of
+  code, fixtures, logs, and shared references.
+- Treat concurrency claims as hypotheses until a test, constraint, or database
+  behavior supports them.
+
+## Verification And Evidence
+
+- Add or update a test at the project's existing seam before relying on the
+  change.
+- Run the narrowest relevant checks first, then the project's prescribed broader
+  check when the slice or handoff asks for it.
+- Record the exact command and result. Distinguish `PASS`, `FAIL`, and
+  `UNVERIFIED`; never present an unexecuted check as evidence.
+- Prefer observable evidence over prose: test name, assertion, query plan,
+  constraint, log, or reproducible command.
+- Report gaps, skipped checks, and residual risk in the handoff.
+
+## Standards Brief Template
+
+```text
+Selected sources: <absolute paths and revision/commit>
+Project facts: <runtime, framework, data access, build and test commands>
+Required rules: <short, slice-specific list>
+Project overrides: <where the repository differs from a reference>
+Verification: <commands and evidence required>
+Unknowns: <UNVERIFIED items>
+```
+
+
+UNTRACKED FILE: skills/project-standards/references/java.md
+# Java Project Standards
+
+Read the project's build files and `AGENTS.md` first. Use the JDK, framework,
+formatter, linter, and dependency versions the project already declares; this
+reference does not prescribe an upgrade or a default stack.
+
+## Baseline
+
+- Confirm the compiler release and any toolchain configuration before using newer
+  language features.
+- Follow the project's formatter/linter configuration. Do not reformat unrelated
+  code.
+- Keep package layout, visibility, and naming consistent with nearby code.
+- Do not add a dependency when the JDK or an existing library covers the need.
+- Leave generated sources and generated SQL/mapper artifacts untouched unless the
+  slice owns their source of truth.
+
+## Persistence Boundaries
+
+- Use the persistence technology already present. Do not default to JPA, and do
+  not add an extra Repository layer when the project queries its mapper or
+  existing boundary directly.
+- When MyBatis-Plus is present, read `spring-mybatis-plus.md`; it is the authority
+  for wrappers, partial updates, pagination, logical delete, and SQL fragments.
+- Keep database constraints and migrations consistent with the code. A service
+  check does not replace a unique or foreign-key constraint when one is possible.
+
+## Types, Nulls, And Errors
+
+- Prefer explicit types at API boundaries; avoid raw collections and `null`
+  returns that callers cannot distinguish from absence.
+- Treat nullable columns and wrapper types deliberately. Do not silently convert
+  missing data to `0`, `""`, or a default timestamp.
+- Throw the project's domain or framework exception with context. Do not catch an
+  exception and continue as if the operation succeeded.
+- Do not log secrets, full request bodies, credentials, or personal data.
+- Preserve exception contracts that callers and transactions rely on.
+
+## Concurrency And Transactions
+
+- Do not add a lock or a synchronized block without a stated contention scenario,
+  ownership rule, timeout, and failure path.
+- Prefer database constraints, optimistic versions, and short transactions over
+  process-wide locks.
+- Keep remote calls, file I/O, and user interaction out of a transaction when the
+  project allows it.
+- Test the claimed behavior with a real or project-approved database when the
+  slice changes transactional, locking, or constraint behavior.
+
+## Tests
+
+- Use the project's existing test framework, naming, fixtures, and database
+  strategy.
+- Assert observable behavior rather than implementation wiring.
+- For persistence changes, include evidence of the generated SQL or database
+  result when the slice changes query or update semantics; otherwise state why
+  that evidence is unavailable.
+- Run the project's formatter, compiler, and focused tests; report the exact
+  commands and outcomes.
+
+
+UNTRACKED FILE: skills/project-standards/references/project-agents-template.md
+# Project AGENTS Entry Template
+
+Copy the relevant sections into the target repository's `AGENTS.md`, replacing
+placeholders with verifiable facts. Keep only rules that are true for that
+project; delete the rest. Do not include credentials, private identifiers,
+customer data, or business source.
+
+```markdown
+# Project Engineering Rules
+
+## Scope
+This file governs <repository or module>. Read the nearest nested `AGENTS.md`
+before changing that area.
+
+## Stack Baseline
+- Language/runtime and version: <from manifest>
+- Framework and data access: <from manifest>
+- Build, format, lint, and test commands: <exact commands>
+- Generated or vendored paths that must not be edited: <paths>
+
+## Workflow
+- Canonical workflow skills: <install command or shared location>
+- Project standards selection: read the project standards brief for this slice;
+  load only relevant references.
+- Verification: <focused command> then <broader command required by the project>
+- Database or environment evidence: <how to run it safely>
+
+## Project-Specific Rules
+- <rule with a source and an observable check>
+- <override where this repository intentionally differs from a generic standard>
+
+## Boundaries
+- Do not add dependencies, lock mechanisms, or framework migrations unless the
+  accepted slice requires them.
+- Do not log secrets or personal data; do not copy private project code into
+  shared artifacts.
+- Report missing or conflicting rules instead of inventing them.
+```
+
+Keep the entry short enough to stay accurate. Link to detailed project documents
+by relative path rather than duplicating them.
+
+
+UNTRACKED FILE: skills/project-standards/references/spring-mybatis-plus.md
+# Spring + MyBatis-Plus Standards
+
+Use this reference only when the project already uses Spring and MyBatis-Plus.
+Read the project's MyBatis-Plus version, Spring Boot version, JDK, migrations,
+and existing mapper style first. The project's version and configuration win.
+Official references:
+
+- Wrapper and condition construction: <https://baomidou.com/en/guides/wrapper/>
+- Block-attack plugin: <https://baomidou.com/plugins/block-attack/>
+
+Do not introduce JPA, an extra Repository layer, a new plugin, or a dependency
+upgrade to satisfy this reference.
+
+## Trusted Query Scope
+
+- Build wrappers from backend-controlled fields. Never concatenate a request
+  parameter into SQL text, a column name, an `orderBy`, an `apply` fragment, or
+  `last`.
+- `${}` substitutes text directly and is an injection risk; `#{}` binds a
+  parameter. Use parameter binding for every value.
+- `{0}` inside wrapper fragments such as `apply` is still a bound parameter
+  placeholder, not string interpolation. Keep the fragment itself constant and
+  backend-controlled; `apply("date_format(created_at,'%Y-%m-%d') = {0}", day)` is
+  acceptable only when the expression is fixed and `day` is bound.
+- `last` appends a raw final SQL segment. Use it only for a constant,
+  backend-controlled clause that cannot be expressed otherwise. Never pass user
+  input, and never use it to append `;` or a second statement.
+- Use lambda wrappers or explicit column constants so a renamed field fails at
+  compile time. Whitelist sortable/filterable columns instead of accepting client
+  names.
+- Keep tenant, organization, and data-scope predicates in the backend. Do not
+  offer a client toggle that removes them.
+- Select only needed columns for wide tables or read paths; avoid `SELECT *` when
+  the project already uses explicit projections.
+
+## Partial Updates And Null Semantics
+
+- `updateById` and entity-based updates skip `null` fields under the default
+  field strategy. That is useful for partial updates but cannot clear a column.
+- To set a column to SQL `NULL`, use an explicit update wrapper such as
+  `update(null, Wrappers.<Entity>lambdaUpdate().eq(Entity::getId, id).set(Entity::getNote, null))`
+  (or the project's equivalent), and verify the generated SQL. Do not rely on an
+  entity with a null field.
+- Empty strings, zero, and `null` are different states. Decide and test which one
+  the API means; do not normalize them silently.
+- Field-level `@TableField(updateStrategy = FieldStrategy.ALWAYS)` is acceptable
+  only for a specific justified field with tests proving the intended writes.
+  Never set a global `field-strategy`/update strategy of `ALWAYS`, and do not
+  apply it blanket-wide: it makes accidental null overwrites easy and weakens
+  partial-update safety.
+- Include the intended optimistic version or update predicate in the `WHERE`
+  clause. Do not update by a broad predicate when one row is intended.
+- Audit fields need an explicit policy: who fills them, on insert or update, and
+  whether a logical delete or restore updates them. Do not assume a fill handler
+  runs for every custom SQL path.
+
+## SQL Fragments And Reuse
+
+- Keep reusable fragments small and parameterized. A fragment that accepts raw
+  column names or ordering is not reusable safely.
+- Do not move business authorization into a shared fragment that callers can
+  bypass.
+- Prefer wrapper composition over string concatenation. If XML is the project's
+  convention, follow its namespace, result-map, and parameter conventions.
+- Check generated SQL in a test or project logging when a wrapper becomes
+  non-trivial.
+
+## Pagination
+
+- Use MyBatis-Plus pagination (`Page`/`IPage`) with the project's configured
+  `PaginationInnerInterceptor`; do not hand-build `LIMIT` from request values.
+- Set and verify a maximum page size, overflow behavior, and a deterministic
+  order. Unordered pagination is not stable evidence.
+- Treat total-count queries as potentially expensive; use the project's count
+  optimization or a separate count only when the existing configuration supports
+  it.
+- Test the first page, a middle page, the last/empty page, and an oversized page
+  request when the slice changes list behavior.
+
+## Audit And Logical Delete
+
+- Follow the project's existing `@TableLogic`/logic-delete field. Reads, updates,
+  and uniqueness rules must account for the deleted marker.
+- Understand whether unique indexes include the delete marker; a logical delete
+  can otherwise block re-creation. Prefer a database constraint that matches the
+  intended behavior.
+- Use the framework's delete methods or an explicit wrapper. Do not bypass logical
+  delete with raw SQL unless the slice explicitly owns a restore/purge operation.
+- Record audit timestamps/operators through the project's fill mechanism, and
+  verify custom updates that bypass entity fill.
+- A purge or restore path needs its own authorization, audit, and transaction
+  evidence; it is not a normal delete.
+
+## Transactions And Concurrency
+
+- Put `@Transactional` on the public service boundary that owns the unit of work.
+  Remember that self-invocation bypasses the proxy; move the call to another bean
+  or use the project's established pattern.
+- Declare rollback behavior for checked exceptions when the project relies on it.
+  Do not swallow an exception and commit a partial write.
+- Keep transactions short; avoid remote calls, file I/O, and waits inside them
+  when the project permits.
+- Prefer a unique constraint and a narrow update predicate for races. Use
+  `@Version` with `OptimisticLockerInnerInterceptor` only when the table already
+  has a version column and the project uses that pattern; handle the zero-row
+  update as a conflict.
+- Do not add process-wide, distributed, or table locks by default. A lock needs a
+  named contention scenario, timeout, ownership rule, and failure behavior.
+- Do not add the block-attack plugin or another interceptor as a blanket policy.
+  If the project already uses it, keep it configured; if the slice needs
+  full-table update/delete protection, treat that as a scoped project decision
+  with tests.
+
+## Verification And Database Evidence
+
+- Prefer actual database evidence: a real database, the project's database, or its
+  approved container/test database, rather than mocks, for SQL semantics. If that
+  is unavailable, mark the claim
+  `UNVERIFIED` instead of inferring it from a mock.
+- Cover the changed behavior directly: trusted predicates, partial update and
+  explicit null clearing, logical delete, pagination boundaries, audit fill,
+  optimistic conflict, and rollback.
+- Capture actual SQL or database state only with project-approved logging. Do not
+  enable verbose SQL logging in production configuration for a test.
+- Check migrations, indexes, and constraints that the behavior depends on. A
+  passing unit test does not prove a missing unique index.
+- Report the exact test/command and its result; distinguish unit, integration,
+  and manual database evidence.
+
+
+UNTRACKED FILE: tests/project-standards.test.js
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "..");
+const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
+const exists = (relative) => fs.existsSync(path.join(root, relative));
+
+const skill = "project-standards";
+const references = [
+  "references/common.md",
+  "references/java.md",
+  "references/spring-mybatis-plus.md",
+  "references/project-agents-template.md",
+];
+
+assert.ok(exists(`skills/${skill}/SKILL.md`), "project-standards SKILL.md is missing");
+for (const reference of references) {
+  assert.ok(exists(`skills/${skill}/${reference}`), `${reference} is missing`);
+}
+
+const body = read(`skills/${skill}/SKILL.md`);
+assert.match(body, /^---\nname: project-standards\ndescription:/m);
+assert.match(body, /project/i, "skill must state that project rules take precedence");
+assert.match(body, /Select only|select only|选择/, "skill must select only relevant references");
+assert.match(body, /Go|Rust|Python|Vue/, "deferred language scope must be explicit");
+assert.match(body, /absolute path/i, "fresh-child handoff must use absolute paths for new reads");
+assert.match(body, /inline|内联/i, "handoff must inline applicable rules");
+
+const common = read(`skills/${skill}/references/common.md`);
+assert.match(common, /AGENTS\.md/);
+assert.match(common, /manifest/i);
+assert.match(common, /UNVERIFIED/);
+
+const java = read(`skills/${skill}/references/java.md`);
+assert.match(java, /JDK/);
+assert.match(java, /JPA/, "JPA guidance must defer to project dependencies");
+assert.match(java, /Repository/, "extra repository layer must not be mandated");
+assert.match(java, /MyBatis-Plus/);
+
+const mybatis = read(`skills/${skill}/references/spring-mybatis-plus.md`);
+for (const required of [
+  /#\{/,
+  /\$\{/,
+  /\{0\}/,
+  /last/,
+  /ALWAYS/,
+  /PaginationInnerInterceptor/,
+  /TableLogic|logical delete/i,
+  /@Transactional/,
+  /@Version|optimistic/i,
+  /actual database|real database|真实数据库/i,
+  /https:\/\/baomidou\.com\/en\/guides\/wrapper\//,
+  /block-attack/,
+]) {
+  assert.match(mybatis, required, `MyBatis-Plus reference missing ${required}`);
+}
+assert.match(mybatis, /(never|do not|不要|禁止)[^.]{0,80}(global|全局)[^.]{0,80}ALWAYS/i, "must forbid a global ALWAYS strategy");
+assert.match(mybatis, /do not|never|must not|不要|禁止/i);
+
+const template = read(`skills/${skill}/references/project-agents-template.md`);
+assert.match(template, /<project|\[project|占位|placeholder/i);
+assert.doesNotMatch(template, /csgops/i);
+
+const notice = read(`skills/${skill}/NOTICE.md`);
+assert.match(notice, /25278e7d7b6cf6e6a4e7a6c8e10f14ff22f0eb5b/);
+assert.match(notice, /MIT/);
+assert.match(notice, /Copyright \(c\) 2026 Affaan Mustafa/);
+
+for (const relative of [
+  "scripts/install.ps1",
+  "scripts/doctor.py",
+  "config/omp-workflow.yml",
+]) {
+  assert.match(read(relative), /project-standards/, `${relative} must manage the seventh skill`);
+}
+
+const router = read("skills/run-engineering-workflow/SKILL.md");
+assert.match(router, /project-standards/);
+assert.match(router, /七|seven/);
+
+const planner = read("skills/plan-solution/SKILL.md");
+assert.match(planner, /project-standards|project standards/i);
+assert.match(planner, /absolute\s+paths?/i);
+
+const reviewer = read("skills/review-implementation/SKILL.md");
+assert.match(reviewer, /project-standards|project standards/i);
+assert.match(reviewer, /Standards/i);
+
+for (const relative of [
+  "agents/workflow-planner.md",
+  "agents/workflow-reviewer.md",
+  ".omp/agents/workflow-planner.md",
+  ".omp/agents/workflow-reviewer.md",
+  ".pi/agents/workflow-planner.md",
+  ".pi/agents/workflow-reviewer.md",
+]) {
+  assert.match(read(relative), /project standards|project-standards/i, `${relative} must carry standards guidance`);
+}
+
+const installer = read("scripts/install.ps1");
+assert.match(installer, /seven|七/i, "installer prose must agree on seven canonical skills");
+
+for (const relative of ["README.md", "ARCHITECTURE.md"]) {
+  assert.doesNotMatch(read(relative), /六个 canonical skill|六个 skill|six canonical skills|six skills/i, `${relative} still claims six skills`);
+  assert.match(read(relative), /七个|seven/, `${relative} must document seven skills`);
+}
+
+console.log("project standards contracts passed");

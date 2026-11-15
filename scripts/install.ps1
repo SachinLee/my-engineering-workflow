@@ -30,13 +30,15 @@ $opencodeDirOverride = if ([string]::IsNullOrWhiteSpace($env:OPENCODE_CONFIG_DIR
   )
 }
 $opencodeUserRoot = if ($opencodeDirOverride) { $opencodeDirOverride } else { Join-Path $HOME ".config\opencode" }
+# Seven canonical skills are published once to the shared user-level root.
 $skillNames = @(
   "run-engineering-workflow",
   "clarify-requirements",
   "plan-solution",
   "review-implementation",
   "finish-with-evidence",
-  "archive-task"
+  "archive-task",
+  "project-standards"
 )
 $ompAgentNames = @(
   "workflow-planner.md",
@@ -70,6 +72,13 @@ $codexLegacyAgentNames = @(
   "workflow-planner.md",
   "workflow-implementer.md",
   "workflow-reviewer.md"
+)
+# Native Codex custom agents are model-free TOML files; the user's own roles and
+# config.toml are never touched.
+$codexAgentNames = @(
+  "workflow-planner.toml",
+  "workflow-implementer.toml",
+  "workflow-reviewer.toml"
 )
 
 if ($Scope -eq "Project") {
@@ -342,6 +351,7 @@ $sharedSkills = Join-Path $HOME '.agents/skills'
 $compatSource = Join-Path $repoRoot 'scripts\openspec_compat.py'
 $legacyRoots = @()
 $claudeLinkRoots = @()
+$piLinkRoots = @()
 if ($Harness -in @('Codex', 'Both', 'All')) {
   $legacyRoots += Join-Path $HOME '.codex/skills'
   if ($project) { $legacyRoots += Join-Path $project '.agents/skills' }
@@ -351,11 +361,15 @@ if ($Harness -in @('OMP', 'Both', 'All')) {
   if ($project) { $legacyRoots += Join-Path $project '.omp/skills' }
 }
 if ($Harness -in @('Pi', 'All')) {
-  $legacyRoots += Join-Path $piUserRoot 'skills'
+  # Pi natively loads <agent-dir>/skills and .pi/skills. Keep a managed link from
+  # each root to the shared tree instead of a copied shadow, and never touch the
+  # user's Pi settings.
+  $piLinkRoots += Join-Path $piUserRoot 'skills'
   if ($project) {
     $legacyRoots += Join-Path $project '.agents/skills'
-    $legacyRoots += Join-Path $project '.pi/skills'
+    $piLinkRoots += Join-Path $project '.pi/skills'
   }
+  $legacyRoots += $piLinkRoots
 }
 # OpenCode discovers ~/.agents/skills and .agents/skills natively, so its own
 # skills directory becomes a legacy copy once the shared tree is published.
@@ -372,6 +386,9 @@ if ($Harness -in @('Claude', 'All')) {
   $legacyRoots += $claudeLinkRoots
 }
 $legacyRoots = @($legacyRoots | Sort-Object -Unique | Where-Object {
+  [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($sharedSkills)
+})
+$piLinkRoots = @($piLinkRoots | Sort-Object -Unique | Where-Object {
   [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($sharedSkills)
 })
 
@@ -439,6 +456,14 @@ if ($Harness -in @('OpenCode', 'All')) {
     $managedFiles += @{ Source = Join-Path $repoRoot "commands/$fileName"; Target = Join-Path $root "commands/$fileName" }
   }
 }
+if ($Harness -in @('Codex', 'Both', 'All')) {
+  # Native Codex custom agents: model-free TOML roles under .codex/agents. The
+  # user's own agent files and config.toml are never read or written.
+  $codexRoot = if ($project) { Join-Path $project '.codex' } else { Join-Path $HOME '.codex' }
+  foreach ($fileName in $codexAgentNames) {
+    $managedFiles += @{ Source = Join-Path $repoRoot ".codex/agents/$fileName"; Target = Join-Path $codexRoot "agents/$fileName" }
+  }
+}
 foreach ($file in $managedFiles) {
   if (-not (Test-Path -LiteralPath $file.Source -PathType Leaf)) {
     throw "Managed source file was not found: $($file.Source)"
@@ -455,7 +480,7 @@ foreach ($root in $legacyRoots) {
     $old = Join-Path $root $name
     $target = Join-Path $sharedSkills $name
     if (Test-SharedLink -Path $old -Target $target) {
-      if ($claudeLinkRoots -notcontains $root -and $PSCmdlet.ShouldProcess($old, 'remove redundant shared skill link')) {
+      if ($claudeLinkRoots -notcontains $root -and $piLinkRoots -notcontains $root -and $PSCmdlet.ShouldProcess($old, 'remove redundant shared skill link')) {
         # Directory.Delete removes only the link, never the shared target.
         [IO.Directory]::Delete($old)
       }
@@ -465,6 +490,11 @@ foreach ($root in $legacyRoots) {
   }
 }
 foreach ($root in $claudeLinkRoots) {
+  foreach ($name in $skillNames) {
+    Install-SharedLink -Path (Join-Path $root $name) -Target (Join-Path $sharedSkills $name)
+  }
+}
+foreach ($root in $piLinkRoots) {
   foreach ($name in $skillNames) {
     Install-SharedLink -Path (Join-Path $root $name) -Target (Join-Path $sharedSkills $name)
   }
@@ -576,6 +606,17 @@ if ($Harness -in @("OpenCode", "All")) {
 }
 
 if ($Harness -in @("Codex", "Both", "All")) {
+  $codexRoot = if ($project) { Join-Path $project ".codex" } else { Join-Path $HOME ".codex" }
+  $codexTargetAgents = Join-Path $codexRoot "agents"
+  # Native Codex custom agents are model-free TOML files. Install them beside the
+  # user's own roles; config.toml and every other agent file stay untouched.
+  foreach ($fileName in $codexAgentNames) {
+    Copy-ManagedFile `
+      -Source (Join-Path $repoRoot ".codex\agents\$fileName") `
+      -Target (Join-Path $codexTargetAgents $fileName) `
+      -BackupOnOverwrite
+  }
+
   # Codex has no markdown runtime agents. Older Trellis-era installs left agent
   # files behind; back up only those whose content still carries the Trellis
   # signature, and never touch any other file.
@@ -607,6 +648,7 @@ if ($Scope -eq "Project" -and $Harness -in @("OpenCode", "All")) {
   Write-Host "Start OpenCode from the trusted project root with: opencode"
 }
 if ($Harness -in @("Codex", "Both", "All")) {
-  # Codex gets the shared skills only; this adapter does not establish native runtime agents.
-  Write-Host "Codex adapter installs the shared skills only: no workflow agent files are installed for Codex, which does not establish native subagent support. Verify native subagent capability for the installed Codex client version."
+  # Codex discovers these TOML roles statically; runtime delegation is unverified.
+  Write-Host "Codex adapter installs 3 native workflow agent TOML files under $(Join-Path $codexRoot 'agents'). They declare no model or provider and inherit the parent session."
+  Write-Host "Runtime discovery, delegation, and independent review are UNVERIFIED; confirm them with the installed Codex client before relying on separate contexts."
 }

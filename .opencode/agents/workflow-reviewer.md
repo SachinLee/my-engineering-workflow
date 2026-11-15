@@ -40,8 +40,9 @@ only material input changes require fresh review, not appending the report or
 delivery evidence.
 
 1. Read the named change's `proposal.md`, `specs/`, `artifacts/context.md`,
-   optional `design.md` and `tasks.md`, applicable project specs, the complete diff,
-   surrounding code, and relevant tests.
+   optional `design.md` and `tasks.md`, applicable project specs, the selected
+   `project-standards` brief, the complete diff, surrounding code, and relevant
+   tests. Check only the selected standards under the existing Standards axis.
 2. Follow the loaded `review-implementation` skill as the review contract. Use
    verification and security checks when they are installed and relevant.
 3. Lead with evidence-backed findings ordered by severity. Cite a file and tight
