@@ -283,9 +283,9 @@ Phase routing:
     scope you may hand one bounded slice to a single worker when fresh context or
     parallelism helps; no extra authorization step. Independent slices run as
     parallel lanes only when they share no write files.
-  - For `critical`: dispatch `workflow-implementer` on `@task` and require it
-    to read `tdd` (or the configured alternative) before editing. Keep the
-    handoff inside the declared file boundary.
+  - For `critical`: dispatch the host's bounded TDD role (see its adapter below)
+    and require it to read `tdd` or the configured alternative before editing.
+    Keep the handoff inside the declared file boundary.
 - `in_progress` with a `tickets/` directory: recompute the frontier (every
   `blocked_by` ticket is `done`), advance exactly one ticket per writer, and set
   that ticket's `state: done` only after its verification command has executed
@@ -362,31 +362,27 @@ behavior change.
 
 ## OMP Roles
 
-Keep role selection separate from provider-specific model names. These roles are
-escalation targets for `critical` tasks, not an automatic pipeline for all work:
+Use OMP's native `scout` for bounded read-only discovery. Keep orchestration in
+`@default` and use the installed workflow roles where the change needs their
+handoff contracts:
 
-- Main session and interactive clarification: `@default`.
-- Optional solution planning: `workflow-planner` on `@plan` **only for
-  `critical` tasks** or explicitly requested planning.
-- Optional TDD implementation worker: `workflow-implementer` on `@task` **only
-  for `critical` tasks** when a bounded worker is justified.
-- Independent review: `workflow-reviewer` on `@advisor` **for `standard` and
-  `critical` tasks**, according to `references/quality-profiles.md`.
+- Read-only discovery: `scout` on `@smol`.
+- Specialist planning: `workflow-planner` on `@plan` for material design
+  uncertainty or explicitly requested planning.
+- Bounded TDD implementation: use native `task` on `@task` when the profile and
+  scope justify delegation, `prewalk` is disabled for the worker, and the host's
+  dispatch can preserve the file boundary and return executed checks. Use `workflow-implementer` when
+  these conditions are unverified. In either handoff include `Active change:`,
+  the acceptance criteria, `May modify:`, and `Verification:`. Require `tdd`
+  before editing and prohibit nested writers.
+- Independent review: `workflow-reviewer` on `@advisor` for `standard` and
+  `critical` tasks. Record `REVIEW_STATUS` and review rounds in the active change
+  under the Delivery Review Budget in `references/quality-profiles.md`.
 - Critical uncertainty or repeated implementation failure: escalate to
   `@default` or `@slow` before continuing.
 
-The role changes cost and perspective, not acceptance criteria or quality gates.
-Do not let OMP `prewalk` silently move implementation to `@smol`.
-
-### OMP Review Idempotency
-
-The Delivery Review Budget in `references/quality-profiles.md` governs approved
-scope and full/focused rounds, not one new full review per snapshot. The installed
-`workflow-review-gate` still keys its runtime decision from `Active task:` and
-profile data; it does not enforce the `Active change:` handoff or this round budget.
-Treat it as a limited legacy guard, not proof of runtime deduplication. Record
-rounds in OpenSpec artifacts and enforce the shared budget in the main router;
-repairing the external extension is a separate change.
+The main session enforces the delivery review budget across snapshots. Existing
+`workflow-review-gate` installs are optional legacy extensions.
 
 ## Pi Roles
 

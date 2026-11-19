@@ -415,7 +415,7 @@ OpenCode 只在启动时加载 agent 和 command，安装或更新后需要开�
 - 三个 OpenCode agent 和两个 command 到项目 `.opencode/`。
 
 安装器不会创建任务记录、安装上下文注入 hook，或写入 `.pi/settings.json`。
-OMP 的 `workflow-review-gate` 扩展继续随适配安装。
+OMP 的旧 `workflow-review-gate` 由其原安装方管理，工作流安装无需该扩展。
 先按共享快速通道判断：简单任务无需建档；正式工作在确认后使用项目内的 OpenSpec change。
 `.workflow/` 仅保留为 legacy 恢复输入，不为新工作创建或更新。
 
@@ -485,7 +485,7 @@ OMP adapter。也可以一次安装全部五个平台：
 | --- | --- | --- | --- |
 | Codex App / CLI | 从项目根目录打开 Codex | `使用 $run-engineering-workflow 处理这个需求：...` | `使用 $run-engineering-workflow 继续当前任务。` |
 | Claude Code | 从项目根目录运行 `claude --model sonnet` | `/engineering-workflow 处理这个需求：...` | `/engineering-workflow 继续当前任务` |
-| OMP | 使用下面的全局 launcher | `使用 run-engineering-workflow 处理这个需求：...` | `使用 run-engineering-workflow 继续当前任务。` |
+| OMP | 从项目根目录运行 `omp` | `使用 run-engineering-workflow 处理这个需求：...` | `使用 run-engineering-workflow 继续当前任务。` |
 | Pi | 从受信任的项目根目录运行 `pi` | `/skill:run-engineering-workflow 处理这个需求：...` | `/skill:run-engineering-workflow 继续当前任务。` |
 | 其他 skills-compatible 客户端 | 从项目根目录启动客户端 | 显式加载 `run-engineering-workflow` 并附带需求 | 显式加载同一 skill 并要求继续当前任务 |
 
@@ -493,29 +493,14 @@ OMP adapter。也可以一次安装全部五个平台：
 归档当前任务”也行），Claude Code 用 `/archive-task`，Pi 用
 `/skill:archive-task`。
 
-OMP 全局安装后的启动方式：
+需要显式加载 overlay 时，可以使用兼容 launcher：
 
 ```powershell
-python "$HOME\.omp\agent\start-engineering-workflow.py" `
-  --project-path "D:\path\to\project"
+py "$HOME\.omp\agent\start-engineering-workflow.py" --project-path "$PWD"
 ```
 
-如果 Windows 没有启用 `python` 命令，使用 Python Launcher：
-
-```powershell
-py "$HOME\.omp\agent\start-engineering-workflow.py" `
-  --project-path "D:\path\to\project"
-```
-
-macOS / Linux 使用：
-
-```bash
-python3 "$HOME/.omp/agent/start-engineering-workflow.py" \
-  --project-path "/path/to/project"
-```
-
-launcher 会直接执行并启动 OMP，或在 `--web` 模式下启动/复用共享的 ompweb；它不是启动 OMP 之前的额外准备命令。
-每次需要带本工作流启动一个新的 OMP 会话时使用 launcher，不要在它之后再运行一次 `omp`。
+macOS / Linux 将 `py` 换成 `python3`，并使用 `~/.omp/agent/start-engineering-workflow.py`。
+launcher 会直接启动 OMP，也支持共享 Web UI。
 
 启动共享的 Web UI 使用 `--web`：
 
@@ -563,22 +548,11 @@ ompw() {
 重新加载 shell 配置后，从任意项目根目录只需运行 `ompw`。额外的 OMP 参数会原样转发，
 例如 `ompw --continue` 或 `ompw --model opus`；`ompw --web` 则启动或复用共享的 Web UI。
 
-完成用户级安装后，普通 `omp` 会读取 `~/.omp/agent/config.yml` 中的本工作流默认设置，加载 skill 白名单、`prewalk` 设置和 `@plan` / `@task` / `@advisor` 角色映射。重新启动 OMP 会话后直接运行：
+`ompw` 适用于需要显式指定项目 overlay 或启动共享 Web UI 的会话。
 
-```powershell
-omp
-```
+### OMP 会话中怎么用
 
-`ompw` 仍然保留，适合在未安装用户级默认配置的机器上，或需要显式指定项目 overlay 时使用：
-
-```powershell
-ompw --continue
-```
-
-如果没有用户级默认配置，必须使用 Python launcher 或显式 `--config` 启动 OMP，普通 `omp` 不会自动加载本仓库的 workflow overlay。
-### `ompw` 启动后怎么用
-
-`ompw` 只负责打开已经配置好的 OMP。进入 OMP 后，直接把需求交给主路由：
+进入 OMP 后，直接把需求交给主路由：
 
 ```text
 使用 run-engineering-workflow 处理这个需求：
@@ -609,12 +583,10 @@ ompw --continue
 | 完成前单独复核 | `使用 review-implementation 从独立上下文复核当前实现。` |
 | 最终交付 | `使用 finish-with-evidence 记录验证证据并关闭当前任务。` |
 
-通常只使用第一条主路由即可；表中的单阶段调用只用于补做或强化某一阶段。实现模型、
-复核模型和角色由 OMP overlay 自动分配：方案规划使用 `@plan`，TDD 实现使用 `@task`，
-质量检查在主会话执行，独立复核使用 `@advisor`。用户不需要手动切换这些角色。
+通常只使用第一条主路由即可。OMP 根据角色选择模型，具体模型由用户的 `modelRoles` 配置决定。
 
-如果关闭 OMP 后重新打开，可使用 `ompw --continue` 恢复 OMP 会话；正式任务跨客户端时，
-带上已确认的 OpenSpec change id，让新会话重读该 change 的产物，不从无关 change 猜测。
+用 `omp --continue` 恢复 OMP 会话。正式任务跨客户端时，带上已确认的 OpenSpec change id，
+让新会话重读该 change 的产物。
 快速任务不创建跨会话状态；新会话按当前请求重新分流。磁盘记录是正式工作的事实来源。
 
 Windows 上如果 `python` 无输出并以 `Exit: 49` 结束，通常是它解析到了 Microsoft Store 的
@@ -761,84 +733,40 @@ pi --version
 
 ## OMP 多模型工作流
 
-OMP 默认会扫描 Codex、Claude、Agents 和 Pi/OMP 的用户级及项目级 skill。被发现的
-主要是 skill 的 `name` 和 `description`；正文通常在触发后才加载。不过候选过多仍会
-增加误触发和选择冲突，因此本仓库不依赖“让模型从全部 skill 中自行挑选”。
-
-项目安装后从目标项目运行：
-
-```bash
-python ./.omp/start-engineering-workflow.py --project-path .
-```
-
-该脚本显式加载 `.omp/engineering-workflow.yml`，其中
-`skills.includeSkills` 只保留本工作流、Matt 和 Ponytail 能力。
-OMP 17.3.3 的项目 `.omp/config.yml` 只自动接管 `modelRoles`；把白名单仅写进该文件并
-不能保证生效，所以不要绕过启动脚本。临时启动也可以使用：
+在本仓库安装 OMP 适配后，从项目根目录运行 `omp`。
 
 ```powershell
-omp --cwd "D:\path\to\project" --config "D:\path\to\project\.omp\engineering-workflow.yml"
+.\scripts\install.ps1 -Harness OMP
 ```
 
-项目安装同时会从同级的
-`D:\my-works\claude-skills\omp-extensions\workflow-review-gate` 同步 OMP extension 到
-`.omp/extensions/workflow-review-gate`。当前扩展只识别旧的 `Active task + review profile +
-worktree snapshot`，未覆盖新的 `Active change:` 或交付级审核轮数；不能据此宣称运行时已阻止重复审核。
-新规则由主路由读取 OpenSpec 中的轮数与证据执行，修复快照不自动重置预算；外部 gate 修复需另立 change。
-扩展短期状态 `.omp/.runtime/` 不替代 OpenSpec 记录。
+需要显式启用工作流 overlay 的 `skills.includeSkills` 白名单和 `prewalk` 设置时，可在目标项目运行
+`ompw`、`python ./.omp/start-engineering-workflow.py --project-path .`（项目级安装），
+或直接执行 `omp --config ./.omp/engineering-workflow.yml`。
 
 ### OMP 升级后的检查
-
-只更新 OMP 程序通常不会改动本仓库的 skill、launcher 或 overlay。升级后从本仓库根目录
-执行一次：
 
 ```powershell
 omp --version
 .\scripts\doctor.ps1 -Scope User -Harness OMP
-ompw --help
 ```
 
-`doctor` 的主实现为 `scripts/doctor.py`，PowerShell 文件只负责转发参数。它会检查已安装
-文件、overlay 的 skill 白名单、角色映射和 review gate；检查通过就不需要修改其他文件。
-
-skill 可发现性受两层白名单控制：launcher 用的 overlay，以及普通 `omp` 读取的
-`~/.omp/agent/config.yml`。后者是手工维护的，新增 skill 时容易漏，症状是会话里
-`Unknown skill: <name>` 或提示词中看不到它，而文件其实已经装好。
-
-`install.ps1 -Harness OMP` 会把缺失条目追加进该 `includeSkills` 列表：只追加，不重排、
-不改行尾；配置里没有该键时视为不过滤，保持原样。doctor 同时校验两层，遗漏时报
-`ERROR: OMP user config skill whitelist is missing: <name>`。
-
-不要用 `omp --config <overlay> config list` 验证 overlay：OMP 17.3.8 的 `config`
-子命令不会转发该参数，会错误地显示默认配置。Python doctor 因此不调用该接口；正常启动仍
-由启动器传入 `--config`。
-
-如果 OMP 发布说明明确修改了配置键或 agent/skill API，再按以下顺序处理：
-
-1. 用 `omp config list --json` 确认新版本实际支持的配置键。
-2. 更新本仓库的 `config/omp-workflow.yml` 和相关测试。
-3. 重新运行 `install.ps1 -Scope User -Harness OMP` 同步全局 overlay。
-4. 再运行 `doctor.ps1 -Scope User -Harness OMP`，并用 `ompw --help` 做启动冒烟测试。
-
-OMP 更新和记录系统无关：如果使用的是项目级安装，还要对每个项目重新运行一次项目级安装
-器；全局安装不需要这一步。OMP 升级只影响 overlay 与 agent 定义。
+`doctor` 检查共享技能、角色定义和已有的技能白名单，将实际派发标记为 `UNVERIFIED`。
+普通 `omp` 的技能发现受 `~/.omp/agent/config.yml` 影响。
+`install.ps1 -Harness OMP` 会向受支持的现有 `includeSkills` 列表追加缺项。配置未设置
+白名单时，OMP 按自己的发现规则运行。白名单漏项会报告 `skill whitelist is missing`。
 
 ### 模型角色分工
 
 | 阶段 | OMP 执行者 | 模型角色 |
 | --- | --- | --- |
 | 主路由、需求追问、最终决策 | 主会话 | `@default` |
-| 方案规划 | `workflow-planner` | `@plan` |
-| TDD 实现（critical 或已批准的有界切片） | `workflow-implementer` | `@task` |
-| 质量检查 | 仓库自身检查 | 主会话；不默认追加 Matt 原生审查 |
-| 最终只读复核 | `workflow-reviewer` | `@advisor` |
-| 高风险或失败升级 | 主会话/专项 agent | `@default` 或 `@slow` |
+| 有界只读探查 | 原生 `scout` | `@smol` |
+| 专项方案规划 | `workflow-planner` | `@plan` |
+| 委派 TDD 实现 | 原生 `task`，兼容角色 `workflow-implementer` | `@task` |
+| 正式交付复核 | `workflow-reviewer` | `@advisor` |
 
-三个自定义 agent 都用 `autoloadSkills` 强制加载方法 skill 正文。实现由 `workflow-implementer`
-承担，任务上下文通过 dispatch prompt 显式传递（含 `context.md` 的读取清单）；主路由会要求
-它遵循 `tasks.md` 中的 TDD 切片。实现使用 `@task` 不代表降低标准；遇到认证、资金、
-迁移、公共接口等 `critical` 风险，或目标测试反复失败时，必须停止猜测并升级到
-`@default` / `@slow`。overlay 同时关闭 `prewalk`，避免实现过程中意外切换到 `@smol`。
+主会话依据 OpenSpec 证据安排正式审查轮次，保存 `REVIEW_STATUS`。委派实现时通过
+`artifacts/context.md` 传递验收标准、写入范围和验证命令。显式 overlay 会关闭 `prewalk`。
 
 这些角色只引用 `@plan`、`@task`、`@advisor` 等别名，实际供应商和模型仍由你的 OMP
 `modelRoles` 配置控制。为了获得真正的独立复核，`@advisor` 最好与 `@task` 使用不同
@@ -964,10 +892,9 @@ test seam、RED/GREEN 和验证命令。该阶段不写生产代码。
 RED 测试 -> 最小实现 -> GREEN -> 重构 -> 仓库验证 -> 单次独立复核（Standard / Critical）
 ```
 
-在 OMP 中，只有 `critical` 任务才会把已批准的切片交给 `workflow-implementer`，默认使用
-`@task`，并要求它遵循 `tasks.md` 中的 TDD 切片；普通任务由宿主首选 writer 实现，没有专门
-策略时用主会话。在 Claude Code 中调用本仓库的 `workflow-implementer`，同样按已批准的
-`tasks.md` 执行 RED/GREEN slice。主会话继续负责范围、升级和最终决策。
+在 OMP 中，有界切片需要委派时，确认写入范围、测试证据和 `prewalk` 设置后优先使用原生
+`task`。这些条件尚未验证时使用 `workflow-implementer`。Claude Code 使用本仓库的
+`workflow-implementer`。各角色遵循已批准的 `tasks.md`，由主会话负责范围、升级和最终决策。
 
 ### 5. 独立复核
 `lightweight` 默认不派独立 reviewer。`standard` / `critical` 统一按

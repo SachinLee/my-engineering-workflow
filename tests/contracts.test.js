@@ -797,6 +797,32 @@ test("OMP adapter limits skills and separates model roles", () => {
   const implementer = read(".omp/agents/workflow-implementer.md");
   const reviewer = read(".omp/agents/workflow-reviewer.md");
 
+  const projectOverlay = read(".omp/engineering-workflow.yml");
+  const router = read("skills/run-engineering-workflow/SKILL.md");
+  const ompRoles = router.split("## OMP Roles")[1].split("## Pi Roles")[0];
+
+  for (const overlay of [config, projectOverlay]) {
+    assert.match(overlay, /^    - project-standards$/m);
+  }
+  assert.match(ompRoles, /Read-only discovery:.*`scout`/);
+  assert.match(ompRoles, /Independent review:.*`workflow-reviewer`/);
+  assert.match(ompRoles, /Bounded TDD implementation:.*native `task`/);
+  assert.match(ompRoles, /`prewalk` is disabled/);
+  assert.match(ompRoles, /Use `workflow-implementer` when/);
+  assert.match(ompRoles, /`May modify:`.*`Verification:`/);
+  for (const file of [
+    "SKILL.md",
+    "references/quality-profiles.md",
+    "references/specialist-routing.md",
+    "references/workflow-governance.md",
+  ]) {
+    const skillPath = `skills/run-engineering-workflow/${file}`;
+    const canonical = read(skillPath).replaceAll("\r\n", "\n");
+    for (const directory of [".agents", ".omp"]) {
+      const localPath = `${directory}/${skillPath}`;
+      assert.equal(read(localPath).replaceAll("\r\n", "\n"), canonical, localPath);
+    }
+  }
   assert.match(config, /includeSkills:/);
   assert.match(config, /workflow-planner: "@plan"/);
   assert.match(config, /workflow-implementer: "@task"/);
@@ -1078,17 +1104,16 @@ test("tooling supports synchronized install, diagnosis, and Python OMP launch", 
   assert.match(doctor, /Claude skill link/);
   assert.match(doctor, /Legacy skill entry/);
   assert.match(doctor, /"@narumitw" \/ "pi-subagents"/);
-  assert.match(doctor, /Missing OMP Python launcher/);
   assert.match(doctor, /check_skill_whitelist\(path, "overlay", errors\)/);
-  assert.match(doctor, /workflow-review-gate/);
+  assert.match(doctor, /UNVERIFIED/);
+  assert.doesNotMatch(doctor, /workflow-review-gate/);
   assert.match(doctor, /def skill_whitelist_entries/);
   assert.match(doctor, /"user config"/);
   assert.match(installer, /Add-OmpSkillWhitelist/);
   assert.doesNotMatch(doctor, /omp config list/);
   assert.match(installer, /start-engineering-workflow\.py/);
   assert.match(installer, /start-engineering-workflow\.ps1/);
-  assert.match(installer, /omp-extensions/);
-  assert.match(installer, /workflow-review-gate/);
+  assert.doesNotMatch(installer, /omp-extensions|workflow-review-gate/);
   assert.match(launcher, /which\("ompweb" if web else "omp"\)/);
   assert.match(launcher, /def find_executable/);
   assert.match(launcher, /"--web"/);
@@ -1163,10 +1188,9 @@ test("Chinese README explains purpose, usage, and extension tiers", () => {
   assert.match(readme, /claude --model sonnet/);
   assert.match(readme, /skills\.includeSkills/);
   assert.match(readme, /skill whitelist is missing/);
-  assert.match(readme, /普通 `omp`.*默认设置/s);
+  assert.match(readme, /从项目根目录运行 `omp`/);
   assert.match(readme, /ompw.*显式指定项目 overlay/s);
-  assert.match(readme, /workflow-review-gate/);
-  assert.match(readme, /Active task \+ review profile \+\s*worktree snapshot/);
+  assert.match(readme, /实际派发.*`UNVERIFIED`/);
   assert.match(readme, /doctor\.ps1/);
 });
 

@@ -10,7 +10,6 @@ import os
 import re
 import shutil
 import stat
-import subprocess
 import sys
 from pathlib import Path
 
@@ -240,12 +239,15 @@ def check_skill_whitelist(path: Path, label: str, errors: list[str]) -> None:
         return
     for skill in SKILLS:
         if not whitelist_covers(included, skill):
-            errors.append(f"OMP {label} skill whitelist is missing: {skill}")
+            errors.append(f"OMP {label} skill whitelist is missing: {skill} ({path})")
 
 
-def check_omp_overlay(path: Path, errors: list[str]) -> None:
+def check_omp_overlay(path: Path, errors: list[str], warnings: list[str]) -> None:
     if not path.is_file():
-        errors.append(f"Missing OMP workflow overlay: {path}")
+        warnings.append(
+            f"Optional OMP workflow overlay is missing: {path}. "
+            "The default `omp` command uses the regular OMP configuration."
+        )
         return
     body = path.read_text(encoding="utf-8")
     check_skill_whitelist(path, "overlay", errors)
@@ -260,32 +262,6 @@ def check_omp_overlay(path: Path, errors: list[str]) -> None:
             errors.append(f"OMP overlay is missing required setting: {label}")
     if "trellis" in body.lower():
         errors.append("OMP overlay still references Trellis; the record system is .workflow/.")
-
-
-def check_review_gate(root: Path, errors: list[str]) -> None:
-    gate = root / "extensions" / "workflow-review-gate"
-    entry = gate / "index.ts"
-    core = gate / "lib" / "review-gate-core.js"
-    tests = gate / "tests" / "review-gate.test.js"
-    for path in (entry, core, tests):
-        if not path.is_file():
-            errors.append(f"Missing OMP workflow review gate file: {path}")
-    if entry.is_file() and 'pi.on("tool_call"' not in entry.read_text(encoding="utf-8"):
-        errors.append("OMP workflow review gate does not register a tool_call handler.")
-    node = shutil.which("node")
-    if node is None:
-        errors.append("node was not found on PATH; cannot verify the OMP workflow review gate.")
-    elif tests.is_file():
-        result = subprocess.run(
-            [node, "--test", str(tests)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
-        if result.returncode != 0:
-            errors.append("OMP workflow review gate contract tests failed.")
 
 
 def _check_proposal_title_rule(project: Path, warnings: list[str]) -> None:
@@ -400,18 +376,24 @@ def check_omp(scope: str, project: Path | None, home: Path, errors: list[str], w
     root = project / ".omp" if scope == "Project" else omp_user_root(home)
 
     check_agents(root / "agents", "OMP", errors)
-    if not (root / "start-engineering-workflow.py").is_file():
-        errors.append(f"Missing OMP Python launcher: {root / 'start-engineering-workflow.py'}")
-    check_omp_overlay(root / "engineering-workflow.yml", errors)
+    launcher = root / "start-engineering-workflow.py"
+    if not launcher.is_file():
+        warnings.append(
+            f"Optional OMP Python launcher is missing: {launcher}. "
+            "Plain `omp` runs without it; only the launcher wrapper needs it."
+        )
+    check_omp_overlay(root / "engineering-workflow.yml", errors, warnings)
     source = repo_source_root()
     if source is not None:
         check_managed_drift(source / ".omp" / "agents", root / "agents", AGENT_FILES, "OMP agent", warnings)
-    # Plain `omp` discovers skills through the user config.yml allowlist; the overlay
-    # only reaches sessions started by the launcher.
     check_skill_whitelist(omp_user_root(home) / "config.yml", "user config", errors)
     if scope == "Project" and project is not None:
         check_skill_whitelist(project / ".omp" / "config.yml", "project config", errors)
-    check_review_gate(root, errors)
+    # Static checks cannot observe a real session, so dispatch is always unproven here.
+    warnings.append(
+        "OMP runtime dispatch and skill loading: UNVERIFIED "
+        "(static checks only; confirm with a live `omp` session.)"
+    )
     if scope == "Project" and project is not None:
         candidates = (
             project / ".omp" / "skills",

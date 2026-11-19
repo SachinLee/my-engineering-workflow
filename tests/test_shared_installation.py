@@ -33,14 +33,8 @@ class SharedInstallationTests(unittest.TestCase):
             names.append(".codex/agents")
         for name in names:
             shutil.copytree(REPO / name, cls.repo / name, ignore=shutil.ignore_patterns("__pycache__"))
-        # The external gate is owned by another repo. Its content is not this seam.
-        gate = base / "omp-extensions" / "workflow-review-gate"
-        actual_gate = REPO.parent / "omp-extensions/workflow-review-gate"
-        if actual_gate.is_dir():
-            shutil.copytree(actual_gate, gate, ignore=shutil.ignore_patterns("node_modules", ".git"))
-        else:
-            gate.mkdir(parents=True)
-            (gate / "index.ts").write_text('// installation fixture\n', encoding="utf-8")
+        # Deliberately no sibling `omp-extensions` checkout: every installation test
+        # runs in the isolated, no-external-gate condition required by AC-002.
 
     @classmethod
     def tearDownClass(cls):
@@ -53,18 +47,25 @@ class SharedInstallationTests(unittest.TestCase):
         self.project = self.base / "project with spaces"
         self.home.mkdir()
         self.project.mkdir()
-        self.env = dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home))
-        self.env.pop("PI_CODING_AGENT_DIR", None)
-        self.env.pop("OPENCODE_CONFIG_DIR", None)
+        self.env = self.env_for(self.home)
         self.shared = self.home / ".agents" / "skills"
+
+    def env_for(self, home):
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
+        env.pop("PI_CODING_AGENT_DIR", None)
+        env.pop("OPENCODE_CONFIG_DIR", None)
+        return env
 
     def tearDown(self):
         self.temp.cleanup()
 
     def install(self, *args, success=True):
+        return self.run_install(self.env, *args, success=success)
+
+    def run_install(self, env, *args, success=True):
         result = subprocess.run(
             [PWSH, "-NoLogo", "-NoProfile", "-File", str(self.repo / "scripts/install.ps1"), *args],
-            env=self.env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
+            env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
         if success:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -102,7 +103,8 @@ class SharedInstallationTests(unittest.TestCase):
         for root in (".claude", ".omp/agent", ".pi/agent"):
             for name in doctor.AGENTS:
                 self.assertTrue((self.home / root / "agents" / f"{name}.md").is_file())
-        self.assertTrue((self.home / ".omp/agent/extensions/workflow-review-gate/index.ts").is_file())
+        # The external review gate is no longer installed or required.
+        self.assertFalse((self.home / ".omp/agent/extensions").exists())
         self.assertTrue((self.home / ".omp/agent/start-engineering-workflow.py").is_file())
         self.assertTrue((self.home / ".claude/commands/archive-task.md").is_file())
         self.assertEqual(foreign.read_text(encoding="utf-8"), "unrelated")
@@ -116,15 +118,14 @@ class SharedInstallationTests(unittest.TestCase):
         output = StringIO()
         with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.object(Path, "home", return_value=self.home), \
              mock.patch.object(doctor, "parse_args", return_value=args), \
-             mock.patch.object(doctor, "executable_exists"), mock.patch.object(doctor, "check_review_gate"), \
+             mock.patch.object(doctor, "executable_exists"), \
              mock.patch.object(doctor, "repo_source_root", return_value=self.repo), \
              redirect_stdout(output), redirect_stderr(output):
             code = doctor.main()
         return code, output.getvalue()
 
-    @unittest.skipUnless((REPO.parent / "omp-extensions/workflow-review-gate").is_dir() and shutil.which("node"),
-                         "real OMP gate and node are required for the doctor CLI integration")
-    def test_doctor_cli_with_real_gate_and_isolated_home(self):
+    def test_doctor_cli_is_healthy_without_sibling_review_gate(self):
+        self.assertFalse((self.repo.parent / "omp-extensions").exists())
         self.install("-Scope", "Project", "-Harness", "All", "-ProjectPath", str(self.project))
         # Stub discovery only; doctor does not launch these harnesses.
         bins = self.base / "bin"
@@ -139,6 +140,9 @@ class SharedInstallationTests(unittest.TestCase):
                                 env=env, capture_output=True, text=True, timeout=120)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Workflow installation is healthy.", result.stdout)
+        # A static pass must still say that real OMP dispatch is unproven.
+        self.assertIn("OMP runtime dispatch", result.stderr)
+        self.assertIn("UNVERIFIED", result.stderr)
 
     def test_override_to_shared_parent_does_not_report_shared_skills_as_legacy(self):
         self.env["PI_CODING_AGENT_DIR"] = str(self.home / ".agents")
@@ -816,6 +820,149 @@ class SharedInstallationTests(unittest.TestCase):
         code, output = self.diagnose("Pi")
         self.assertEqual(code, 0, output)
         self.assertNotIn("Legacy skill entry", output)
+
+
+    # --- OMP installation and diagnosis without an external review gate (AC-002/AC-003) ---
+
+    def snapshot(self, *roots):
+        # PowerShell writes its own AppData caches into the isolated HOME, so compare
+        # only the trees this installer owns.
+        state = {}
+        for root in roots:
+            if root.exists():
+                for path in root.rglob("*"):
+                    if path.is_file():
+                        state[str(path)] = path.read_bytes()
+        return state
+
+    def assert_no_backup(self, home):
+        self.assertFalse((home / ".agents/backups/my-engineering-workflow").exists())
+
+    def test_omp_modes_install_without_sibling_review_gate(self):
+        self.assertFalse((self.repo.parent / "omp-extensions").exists())
+        for harness in ("OMP", "Both", "All"):
+            with self.subTest(harness=harness):
+                home = self.base / f"home {harness}"
+                project = self.base / f"project {harness}"
+                home.mkdir()
+                project.mkdir()
+                env = self.env_for(home)
+                self.run_install(env, "-Scope", "Project", "-Harness", harness,
+                                 "-ProjectPath", str(project), "-WhatIf")
+                self.assertFalse((home / ".agents").exists())
+                self.assertFalse((home / ".omp").exists())
+                self.assertEqual(list(project.iterdir()), [])
+
+                result = self.run_install(env, "-Scope", "Project", "-Harness", harness,
+                                          "-ProjectPath", str(project))
+                self.assertNotIn("omp-extensions", result.stdout + result.stderr)
+                self.assertIn("Start OMP from the trusted project root with: omp", result.stdout)
+                self.assertIn("optional launcher", result.stdout)
+                self.assertIn("start-engineering-workflow.py", result.stdout)
+                for name in doctor.AGENTS:
+                    self.assertTrue((project / ".omp/agents" / f"{name}.md").is_file(), name)
+                self.assertTrue((project / ".omp/start-engineering-workflow.py").is_file())
+                self.assertEqual(
+                    (project / ".omp/engineering-workflow.yml").read_bytes(),
+                    (self.repo / "config/omp-workflow.yml").read_bytes(),
+                )
+                self.assertFalse((project / ".omp/extensions").exists())
+                self.assertFalse((home / ".omp/agent/extensions").exists())
+
+                # Repeating the install keeps every byte and writes no backup.
+                before = self.snapshot(home / ".agents", home / ".omp", project)
+                self.run_install(env, "-Scope", "Project", "-Harness", harness,
+                                 "-ProjectPath", str(project))
+                self.assertEqual(before, self.snapshot(home / ".agents", home / ".omp", project))
+                self.assert_no_backup(home)
+
+    def test_omp_upgrade_preserves_existing_extension(self):
+        gate = self.home / ".omp/agent/extensions/workflow-review-gate"
+        gate.mkdir(parents=True)
+        (gate / "index.ts").write_text("// user-owned gate\n", encoding="utf-8")
+        (gate / "local-notes.md").write_text("keep me\n", encoding="utf-8")
+        self.install("-Scope", "User", "-Harness", "OMP")
+        self.assertEqual((gate / "index.ts").read_text(encoding="utf-8"), "// user-owned gate\n")
+        self.assertEqual((gate / "local-notes.md").read_text(encoding="utf-8"), "keep me\n")
+        self.assertEqual(sorted(p.name for p in gate.iterdir()), ["index.ts", "local-notes.md"])
+        self.assert_no_backup(self.home)
+        code, output = self.diagnose("OMP")
+        self.assertEqual(code, 0, output)
+        # A user-owned extension is never probed or executed by static diagnosis.
+        self.assertNotIn("review gate", output)
+
+    def test_doctor_tolerates_missing_optional_omp_launcher_overlay_and_gate(self):
+        self.install("-Scope", "User", "-Harness", "OMP")
+        root = self.home / ".omp/agent"
+        (root / "start-engineering-workflow.py").unlink()
+        (root / "engineering-workflow.yml").unlink()
+        self.assertFalse((root / "extensions").exists())
+        code, output = self.diagnose("OMP")
+        self.assertEqual(code, 0, output)
+        self.assertIn("Optional OMP Python launcher is missing", output)
+        self.assertIn("Optional OMP workflow overlay is missing", output)
+        self.assertNotIn("Missing OMP", output)
+        self.assertNotIn("review gate", output)
+
+    def test_doctor_always_reports_omp_dispatch_unverified(self):
+        self.install("-Scope", "User", "-Harness", "OMP")
+        code, output = self.diagnose("OMP")
+        self.assertEqual(code, 0, output)
+        self.assertIn("OMP runtime dispatch and skill loading: UNVERIFIED", output)
+
+    def test_doctor_still_checks_installed_omp_roles_and_shared_skills(self):
+        self.install("-Scope", "User", "-Harness", "OMP")
+        (self.home / ".omp/agent/agents/workflow-reviewer.md").unlink()
+        (self.shared / "project-standards/SKILL.md").unlink()
+        code, output = self.diagnose("OMP")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Missing OMP agent: workflow-reviewer", output)
+        self.assertIn("Missing shared skill: project-standards", output)
+
+    def test_doctor_reports_project_standards_missing_from_existing_allowlists(self):
+        # An installation whose allowlists predate project-standards.
+        truncated = "skills:\n  includeSkills:\n" + "".join(
+            f"    - {skill}\n" for skill in doctor.SKILLS if skill != "project-standards"
+        )
+        user_config = self.home / ".omp/agent/config.yml"
+        project_config = self.project / ".omp/config.yml"
+        user_config.parent.mkdir(parents=True)
+        project_config.parent.mkdir(parents=True)
+        user_config.write_text(truncated, encoding="utf-8")
+        project_config.write_text(truncated, encoding="utf-8")
+
+        # Re-running the installer heals an existing allowlist instead of recreating it.
+        self.install("-Scope", "Project", "-Harness", "OMP", "-ProjectPath", str(self.project))
+        code, output = self.diagnose("OMP", "Project")
+        self.assertEqual(code, 0, output)
+        self.assertIn("- project-standards", user_config.read_text(encoding="utf-8"))
+        self.assertIn("- project-standards", project_config.read_text(encoding="utf-8"))
+
+        user_config.write_text(truncated, encoding="utf-8")
+        project_config.write_text(truncated, encoding="utf-8")
+        code, output = self.diagnose("OMP", "Project")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"OMP user config skill whitelist is missing: project-standards ({user_config})", output)
+        self.assertIn(f"OMP project config skill whitelist is missing: project-standards ({project_config})", output)
+
+    def test_tracked_omp_overlay_matches_canonical_skill_list(self):
+        def include_skills(path):
+            entries = []
+            inside = False
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.rstrip() == "  includeSkills:":
+                    inside = True
+                    continue
+                if inside:
+                    if not line.startswith("    - "):
+                        break
+                    entries.append(line[len("    - "):].strip())
+            return entries
+
+        canonical = include_skills(REPO / "config/omp-workflow.yml")
+        overlay = include_skills(REPO / ".omp/engineering-workflow.yml")
+        self.assertEqual(overlay, canonical)
+        self.assertIn("project-standards", overlay)
 
 
 if __name__ == "__main__":

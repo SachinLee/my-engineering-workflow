@@ -62,7 +62,7 @@ canonical OpenSpec tree and the `.workflow`/`.trellis` legacy read-only mappings
 OpenSpec helper once to `~/.agents/skills/`, regardless of Scope or Harness. Codex,
 OMP, Pi, and OpenCode discover that directory natively; Claude uses per-skill directory links
 (junctions on Windows, symlinks elsewhere). Scope defaults to User and controls
-only harness adapters: agents, commands, OMP config, launcher, review gate, and
+only harness adapters: agents, commands, the optional OMP config and launcher, and
 the OpenCode agent/command set.
 Project scope shares skill versions across projects. Both remains Codex + OMP.
 `project-standards` is installed as the seventh shared skill; it selects only the

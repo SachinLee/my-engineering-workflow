@@ -11,8 +11,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
-$ompExtensionsRoot = Join-Path (Split-Path -Parent $repoRoot) "omp-extensions"
-$workflowReviewGateSource = Join-Path $ompExtensionsRoot "workflow-review-gate"
 $agentDirOverride = if ([string]::IsNullOrWhiteSpace($env:PI_CODING_AGENT_DIR)) {
   $null
 } else {
@@ -414,9 +412,6 @@ foreach ($name in $skillNames) {
 if (-not (Test-Path -LiteralPath $compatSource -PathType Leaf)) {
   throw "Managed source file was not found: $compatSource"
 }
-if ($Harness -in @('OMP', 'Both', 'All') -and -not (Test-Path -LiteralPath $workflowReviewGateSource -PathType Container)) {
-  throw "Skill source directory was not found: $workflowReviewGateSource"
-}
 $managedFiles = @()
 if ($Harness -in @('OMP', 'Both', 'All')) {
   $root = if ($project) { Join-Path $project '.omp' } else { $ompUserRoot }
@@ -429,8 +424,6 @@ if ($Harness -in @('OMP', 'Both', 'All')) {
     Assert-SafeParents -Path $path
     Assert-NotReparsePoint -Path $path
   }
-  Assert-SafeTree -Path (Join-Path $root 'extensions/workflow-review-gate')
-  Assert-SafeTree -Path $workflowReviewGateSource
 }
 if ($Harness -in @('Claude', 'All')) {
   $root = if ($project) { Join-Path $project '.claude' } else { Join-Path $HOME '.claude' }
@@ -507,19 +500,12 @@ if ($Harness -in @("OMP", "Both", "All")) {
   }
 
   $ompAgents = Join-Path $ompRoot "agents"
-  $ompExtensions = Join-Path $ompRoot "extensions"
-
 
   foreach ($fileName in $ompAgentNames) {
     Copy-ManagedFile `
       -Source (Join-Path $repoRoot ".omp\agents\$fileName") `
       -Target (Join-Path $ompAgents $fileName)
   }
-
-  Sync-SkillDirectory `
-    -Source $workflowReviewGateSource `
-    -TargetRoot $ompExtensions `
-    -Name "workflow-review-gate"
 
   Copy-ManagedFile `
     -Source (Join-Path $repoRoot "config\omp-workflow.yml") `
@@ -637,9 +623,10 @@ if ($Harness -in @("Codex", "Both", "All")) {
 $resultVerb = if ($WhatIfPreference) { "Planned" } else { "Installed" }
 Write-Host "$resultVerb $($skillNames.Count) shared workflow skills at $sharedSkills; $Harness adapters at $Scope scope."
 if ($Scope -eq "Project" -and $Harness -in @("OMP", "Both", "All")) {
-  $startPrefix = if ($WhatIfPreference) { "After installation, start" } else { "Start" }
+  Write-Host "Start OMP from the trusted project root with: omp"
   $launcher = Join-Path $project ".omp\start-engineering-workflow.py"
-  Write-Host "$startPrefix OMP with: python '$launcher' --project-path '$project'"
+  $launcherVerb = if ($WhatIfPreference) { "would also be installed as" } else { "is also installed as" }
+  Write-Host "The optional launcher wrapper $launcherVerb a fallback for explicit project overlays or the shared Web UI: python '$launcher' --project-path '$project'"
 }
 if ($Scope -eq "Project" -and $Harness -in @("Pi", "All")) {
   Write-Host "Start Pi from the trusted project root with: pi"

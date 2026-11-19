@@ -19,6 +19,42 @@ OpenSpec artifacts (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, and
 `artifacts/`) are written in the user's language — Chinese by default. Keep code
 identifiers, paths, commands, log text, OpenSpec filenames, and status tokens
 (`PASS`, `NOT RUN`, `REVIEW_STATUS: CLEAN`) verbatim so they stay greppable.
+
+## Host And Workflow Boundary
+
+The shared quality contract in [quality-profiles.md](references/quality-profiles.md)
+owns delivery rules: acceptance criteria, evidence requirements, risk profiles and
+the single review budget. The host owns scheduling, model choice, tool
+availability and how a delegated role is spawned. Adapter sections below say only
+which roles exist and how to reach them; they never redefine quality.
+
+Delegation is proportionate, not renegotiated each time. An approved plan or an
+already authorized scope covers ordinary dispatch within that scope: create or
+reuse a subagent, hand a bounded slice to it, or run the step in the main session
+when the host supports no delegation. Re-ask only when scope, risk, or the
+reviewer's independence materially changes — not per delegation, and not merely
+because this client exposes another mechanism. One writer per bounded slice and
+one review budget still hold.
+
+## Specialist Routing
+
+The main session owns coordination, integration, and the evidence trail. Route
+by task shape, not by a stage template: `explore` for a read-only survey,
+`research` for external sources, `implement` for a bounded write slice,
+`consult` for a second opinion, and `review` for the single independent review.
+Read [specialist-routing.md](references/specialist-routing.md) for the shared
+task-shape matrix, the per-host capability boundaries, and the quality rules it
+must not duplicate.
+
+When the main session already holds the context — a small scoped edit, a
+documentation change, a targeted fix it just investigated — do the work
+directly; do not manufacture a five-stage pipeline. Read-only exploration may
+precede a formal change creation. Formal implementation and the final
+independent review still use the bounded OpenSpec handoff above: the context
+package, one writer per slice, and one shared review budget. Consultation is
+advice, not an additional review gate, and the main session's self-check never
+stands in for the independent review.
+
 ## Bounded Context And Dispatch Contract
 
 OpenSpec remains the only durable source of new task state. Treat a change id as
@@ -78,10 +114,14 @@ changing a risk profile.
 
 Read project rules and apply [Simple Work Fast Path](references/quality-profiles.md#simple-work-fast-path)
 before OpenSpec discovery or CLI access. Judge the current request, not the mere
-presence of a repository or unrelated old changes.
+presence of a repository or unrelated old changes. A small, clearly scoped behavior
+fix inside a bounded seam with a regression check is eligible; authentication,
+money, secrets, persistent data, migrations, public contracts, dependencies,
+destructive work and unknown risk are not, however small the diff.
 
-If eligible, execute and verify in the main session without creating task records;
-report results in the conversation, then return: skip the formal stages below.
+If eligible, execute and verify without creating task records — in the main
+session, or on the host's preferred bounded worker when it has one; report results
+in the conversation, then return: skip the formal stages below.
 Follow the shared path's stop-and-confirm escalation if the scope changes.
 Otherwise use the formal branch. Explicit OpenSpec requests and selected change
 continuations retain that branch and any still-valid selection confirmation.
@@ -185,8 +225,8 @@ Before formal dispatch, assess the task's risk profile by reading the selected O
    - **No** → profile is `standard` (normal features, bug fixes, refactors)
 3. **State the assessed profile explicitly** before proceeding to routing.
    Example: "This is a **standard** task (bug fix in presentation layer, no
-   auth or data changes). Implementation will stay in the main session unless a
-   bounded worker is justified."
+   auth or data changes). Implementation runs on the host's preferred writer
+   within the approved slice."
 
 When uncertain, default to `standard` and escalate to `critical` only when clear
 risk signals appear. Never default to `critical` for ordinary feature work.
@@ -196,12 +236,16 @@ risk signals appear. Never default to `critical` for ordinary feature work.
 After assessing the profile, route according to the task phase and the assessed
 risk level. The profile controls dispatch, not just the checklist:
 
-- `lightweight`: keep the work in the main session. Do not dispatch planner,
-  implementer, checker, or reviewer. Run one focused check before delivery.
-- `standard`: keep implementation in the main session. The default sole worker
-  is one independent `workflow-reviewer` through `review-implementation`.
-  Implementation delegation needs explicit justification and authorization;
-  it never replaces independent final review. Never dispatch duplicate reviewers.
+- `lightweight`: no mandatory formal planner, implementer, or independent
+  reviewer. Keep scheduling host-native — the main session, or a bounded worker
+  the host prefers — and run one focused check before delivery. Do not spend the
+  review budget on this profile.
+- `standard`: implement on the host's preferred writer — the main session only
+  when the host has no specialist policy. A bounded slice may go to a single
+  worker when fresh context or parallelism genuinely helps; the approved scope
+  already covers it. The default sole reviewer stays one independent
+  `workflow-reviewer` through `review-implementation`; delegation never replaces
+  independent final review. Never dispatch duplicate reviewers.
 - `critical`: use the full gated path when the change touches auth, secrets,
   money, persistent data, migrations, public contracts, destructive operations,
   or a cross-layer release boundary.
@@ -218,11 +262,12 @@ Phase routing:
   main session. Only dispatch `workflow-planner` if the task is assessed as
   `critical` or the user explicitly requests planning delegation.
 - `planning` with accepted requirements but no reviewed solution:
-  - For `lightweight` or `standard`: invoke `plan-solution` in the main session.
+  - For `lightweight` or `standard`: run `plan-solution`; use the main session or
+    the host's planning specialist, whichever the host prefers.
   - For `critical`: in OMP, dispatch `workflow-planner` on `@plan`. In Pi, use
-    the blocking `subagent` tool with `agentScope: "both"` when available;
-    otherwise keep planning in the main session and disclose the lack of fresh
-    context.
+    the blocking `subagent` tool with `options.agentScope: "both"` when
+    available; otherwise keep planning in the main session and disclose the lack
+    of fresh context.
   - Only dispatch a planner if the task is assessed as `critical` or when the
     main session cannot resolve a material design uncertainty.
 - `planning` with complete OpenSpec artifacts: start implementation only after the
@@ -230,14 +275,17 @@ Phase routing:
   is not permission to start implicitly; record the approval in `tasks.md` or the
   change's verification context.
 - `in_progress`: read OpenSpec `proposal.md`, the relevant `specs/`, `design.md`,
-  `tasks.md`, and `artifacts/context.md` before editing. Use ECC `tdd-workflow`
-  or Matt `tdd` for behavior changes and regression fixes.
-  - For `lightweight` or `standard`: implement in the main session. Only use a
-    single bounded worker if explicitly justified by the need for fresh
-    context.
-  - For `critical`: dispatch `workflow-implementer` on `@task` and require it
-    to read `skill://tdd-workflow` (or `tdd`) before editing. Keep the handoff
-    inside the declared file boundary.
+  `tasks.md`, and `artifacts/context.md` before editing. Prefer Matt `tdd` for
+  behavior changes and regression fixes; ECC `tdd-workflow` is an optional named
+  alternative when installed, never a default dependency.
+  - For `lightweight` or `standard`: implement on the host's preferred writer —
+    the main session when the host has no specialist policy. Within the approved
+    scope you may hand one bounded slice to a single worker when fresh context or
+    parallelism helps; no extra authorization step. Independent slices run as
+    parallel lanes only when they share no write files.
+  - For `critical`: dispatch the host's bounded TDD role (see its adapter below)
+    and require it to read `tdd` or the configured alternative before editing.
+    Keep the handoff inside the declared file boundary.
 - `in_progress` with a `tickets/` directory: recompute the frontier (every
   `blocked_by` ticket is `done`), advance exactly one ticket per writer, and set
   that ticket's `state: done` only after its verification command has executed
@@ -246,7 +294,8 @@ Phase routing:
 - Code changed: complete each slice with targeted checks, not a full review per slice.
   The main session is the only review scheduler. Follow the Delivery Review Budget
   in `references/quality-profiles.md`, including persisted rounds on resume.
-  - For `lightweight`: run one focused check before delivery.
+  - For `lightweight`: run one focused check before delivery, scheduled natively by
+    the host; no formal reviewer.
   - For `standard` and `critical`: wait until the approved delivery scope is
     complete and repository checks pass, then dispatch the one full review via
     `review-implementation` and `workflow-reviewer`. Cover Standards / Spec,
@@ -277,11 +326,14 @@ Phase routing:
 
 These limits enforce the profile-based routing rules:
 
-- **Prefer the main session for `lightweight` and `standard` implementation.**
-  Standard and Critical require the single independent reviewer specified in
-  `references/quality-profiles.md`. Implementation delegation needs explicit
-  authorization and justification; never spend the review budget on a writer.
-- Allow at most one live writer and one review/check worker for a task.
+- **Implement on the host's preferred writer — the main session only when the host
+  has no specialist policy.** Standard and Critical require the single
+  independent reviewer specified in `references/quality-profiles.md`. Within an
+  approved scope you may delegate a bounded slice without re-asking; never spend
+  the review budget on a writer.
+- One writer per bounded, non-overlapping slice. Independent lanes may
+  run in parallel when they share no write files; a slice keeps one writer and at
+  most one review/check worker.
 - Treat a worker as making progress only when it edits a declared file, runs a
   relevant check, reports a concrete result, or states a reproducible blocker.
 - If a worker appears stalled, request one status update based on observed state.
@@ -310,31 +362,27 @@ behavior change.
 
 ## OMP Roles
 
-Keep role selection separate from provider-specific model names. These roles are
-escalation targets for `critical` tasks, not an automatic pipeline for all work:
+Use OMP's native `scout` for bounded read-only discovery. Keep orchestration in
+`@default` and use the installed workflow roles where the change needs their
+handoff contracts:
 
-- Main session and interactive clarification: `@default`.
-- Optional solution planning: `workflow-planner` on `@plan` **only for
-  `critical` tasks** or explicitly requested planning.
-- Optional TDD implementation worker: `workflow-implementer` on `@task` **only
-  for `critical` tasks** when a bounded worker is justified.
-- Independent review: `workflow-reviewer` on `@advisor` **for `standard` and
-  `critical` tasks**, according to `references/quality-profiles.md`.
+- Read-only discovery: `scout` on `@smol`.
+- Specialist planning: `workflow-planner` on `@plan` for material design
+  uncertainty or explicitly requested planning.
+- Bounded TDD implementation: use native `task` on `@task` when the profile and
+  scope justify delegation, `prewalk` is disabled for the worker, and the host's
+  dispatch can preserve the file boundary and return executed checks. Use `workflow-implementer` when
+  these conditions are unverified. In either handoff include `Active change:`,
+  the acceptance criteria, `May modify:`, and `Verification:`. Require `tdd`
+  before editing and prohibit nested writers.
+- Independent review: `workflow-reviewer` on `@advisor` for `standard` and
+  `critical` tasks. Record `REVIEW_STATUS` and review rounds in the active change
+  under the Delivery Review Budget in `references/quality-profiles.md`.
 - Critical uncertainty or repeated implementation failure: escalate to
   `@default` or `@slow` before continuing.
 
-The role changes cost and perspective, not acceptance criteria or quality gates.
-Do not let OMP `prewalk` silently move implementation to `@smol`.
-
-### OMP Review Idempotency
-
-The Delivery Review Budget in `references/quality-profiles.md` governs approved
-scope and full/focused rounds, not one new full review per snapshot. The installed
-`workflow-review-gate` still keys its runtime decision from `Active task:` and
-profile data; it does not enforce the `Active change:` handoff or this round budget.
-Treat it as a limited legacy guard, not proof of runtime deduplication. Record
-rounds in OpenSpec artifacts and enforce the shared budget in the main router;
-repairing the external extension is a separate change.
+The main session enforces the delivery review budget across snapshots. Existing
+`workflow-review-gate` installs are optional legacy extensions.
 
 ## Pi Roles
 
@@ -342,19 +390,64 @@ Pi does not use OMP `@role` aliases or the OMP overlay. Keep these
 responsibilities while preserving Pi's native resource and project-trust model:
 
 - Main session: active Pi model, interactive clarification, approvals,
-  remediation, evidence, and final delivery claim.
-- Solution planning: `workflow-planner` through the blocking `subagent` tool
-  with `agentScope: "both"`; the installed definition inherits the active Pi
+  coordination, integration, remediation, evidence, and final delivery claim.
+- Solution planning: `workflow-planner` through the `subagent` tool with
+  `options.agentScope: "both"`; the installed definition inherits the active Pi
   model unless a user or trusted project definition selects another model.
-- TDD implementation: `workflow-implementer` through the blocking `subagent`
-  tool with the active task path and approved RED/GREEN slices.
-- Independent final review: the read-only `workflow-reviewer` through the
-  blocking `subagent` tool with `agentScope: "both"`.
+- TDD implementation: `workflow-implementer` with the active change path and
+  approved RED/GREEN slices.
+- Independent final review: the read-only `workflow-reviewer` with
+  `options.agentScope: "both"`.
 
 The project must be trusted before Pi loads `.pi` extensions, project agents, or
-project `.agents/skills`. If `subagent` is unavailable, keep planning,
-implementation dispatch, and review in the main session, run deterministic
-checks, and report that only context/model independence was unavailable.
+project `.agents/skills`. Activation and discovery are separate from delegation.
+When the live tool list already has `subagent`, use it directly; do not call the
+loader. Only when `subagent` is absent and `subagents_enable` is present — a
+fresh, unrestricted session on a model that accepts a new tool mid-conversation
+— call `subagents_enable({})`: it launches no work and exposes `subagent` on the
+next model request, together with `bg_wait` and `subagent_supervisor`. An older
+session may expose neither `subagents_enable` nor `subagent`; installing and
+reloading alone does not add them. Inspect the tools actually present before
+claiming a dispatch: a loader-only session has no `subagent` until activation
+succeeds, while a direct `subagent` needs no loader.
+
+Use the installed runtime schema for each launch: `agent`, `task`, and `output`
+are top-level fields, while `agentScope`, `context`, and `timeoutMs` are passed
+under `options`. `output` is a top-level field, not an option: pi-subagents
+rejects `options.output` with `'output' is a top-level field, not an option.`
+A complete review dispatch:
+
+```json
+{
+  "agent": "workflow-reviewer",
+  "task": "<bounded handoff: Active change, Assigned slice, Phase, Read, Must preserve, Review mode, Review scope, Evidence>",
+  "output": false,
+  "options": {
+    "agentScope": "both",
+    "context": "fresh",
+    "timeoutMs": 2147483647
+  }
+}
+```
+
+Set `output` to a path only when the findings belong in an authorized artifact;
+`false` returns them to the main session. Pass `options.agentScope: "both"` for
+the workflow roles above and `options.context: "fresh"` for explore, research,
+implement, and review so the specialist sees only the bounded handoff; `oracle`
+defaults to forked context, so an explicit fresh context is required for an
+independent read. `async` is the default: wait for the completion event or
+report once, treat a failed run as a terminal status, and never silently switch
+execution mode, retry a slice, or downgrade the review.
+
+Bounds for reused native helpers are in
+[specialist-routing.md](references/specialist-routing.md): `scout` and
+`researcher` default to writing `context.md` and `research.md`, and `scout`
+holds `bash`/`write`. Direct their output to the main session or an authorized
+artifact; never create a shadow plan, context, or research file. If `subagent`
+or an independent `workflow-reviewer` is unavailable, keep implementation and
+deterministic checks in the main session and report `UNVERIFIED` for the review
+gap. The main agent's self-review cannot stand in for independent review; state
+plainly that context/model independence was unavailable.
 
 ## Claude Code Roles
 
@@ -373,15 +466,66 @@ use Sonnet and planning/review should use Opus. If the main session is already
 Opus, a subagent still provides fresh context but not a different model. Never
 describe fresh context alone as cross-model independence.
 
+## OpenCode Roles
+
+OpenCode runs exactly one orchestrator: the Slim Orchestrator session. It is the
+sole orchestrator and scheduler: it owns discovery, confirmation, risk assessment,
+the writer budget, and the single review budget. Never introduce a second orchestrator, a
+second reviewer pass, or a nested dispatch chain to "cover" more work.
+
+The orchestrator delegates through OpenCode's native specialists:
+
+- `explorer` for bounded read-only investigation the main session would otherwise
+  do itself (the dispatch contract still requires an inlined context package).
+- `designer` for UI, layout, and visual-hierarchy decisions.
+- `fixer` for bounded implementation of an approved slice.
+- `oracle` for a second opinion on a material design or correctness uncertainty.
+
+Formal slices that need this repository's own procedures still use
+`workflow-planner`, `workflow-implementer`, and `workflow-reviewer`; `workflow`
+agents are for strict formal slices and the single independent review, not a
+parallel orchestrator. Review remains one shared review budget from
+`references/quality-profiles.md`, whoever the client schedules.
+
+For OpenCode specifically, Slim owns the model-bearing dispatch boundary. Route
+formal implementation slices through Slim `fixer` and the one independent
+formal review through Slim `oracle`; the active OMO-Slim preset supplies their
+models. Include the repository procedure and the bounded OpenSpec handoff in
+each specialist prompt. The model-free native workflow agents remain available
+for explicit/manual use, but parent-model inheritance is not evidence that
+Slim's role model was used. Never copy a model ID from
+`oh-my-opencode-slim.json` into these templates. If a role cannot be invoked or
+its effective model cannot be observed, record `UNVERIFIED` and state that a
+direct native agent inherits the parent session model instead.
+
+## Adapter Capabilities And Ownership
+
+The seven canonical skills under `skills/` are the shared, installer-managed
+source; adapters add managed links or native discovery on top and never fork the
+bodies. Model choice stays user-owned everywhere: Claude agents carry `opus`/
+`sonnet` labels that a user may remap, Pi agents omit `model` so user overrides
+can differ, and OMP roles resolve through the user's `modelRoles`. Codex shares
+the skills directory, and subagent capability there is claimed only after
+independent verification for that client version. Installing agent definitions
+does not prove runtime discovery or invocation of native roles; report runtime
+support only after both are verified. No adapter may promise independent review
+when the client cannot provide it; report `UNVERIFIED` instead.
+
 ## Precedence
 
 Resolve conflicts in this order:
 
 1. User and platform instructions.
 2. Repository `AGENTS.md` and OpenSpec governance conventions.
-3. Active OpenSpec change artifacts and applicable project specs.
+3. Active OpenSpec change artifacts, applicable project specs, and the project
+   standards brief selected by `project-standards`.
 4. This routing skill.
 5. Upstream skill defaults.
+
+When an applicable stack reference is needed, load `project-standards`, select
+only the relevant reference, and put the judged rules into the slice handoff.
+Do not replace project conventions with generic stack advice, and do not add a
+review round or model route for standards.
 
 OpenSpec owns new state and records. Matt-style skills provide clarification,
 design, TDD, and two-axis review; Ponytail owns complexity reduction;
